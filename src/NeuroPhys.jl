@@ -1,5 +1,6 @@
 module NeuroPhys
 
-greet() = print("Hello World!")
+using PyCall
+is_working() = print("Yes is working!")
 
 end # module
