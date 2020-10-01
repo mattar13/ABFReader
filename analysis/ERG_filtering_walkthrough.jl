@@ -77,10 +77,10 @@ begin
 	x_ch1 = data[1,:,1]; x_ch2 = data[1,:,2]; x_stim = data[1,:,3] .> 0.2;
 	p1 = plot(layout = grid(3,1), xlims = (0.0, 10.0),)
 	plot!(p1[1], t, x_ch1, label = "", title = "Unfiltered Data",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)"
+		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :blue
 	)
 	plot!(p1[2], t, x_ch2, label = "", title = "",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)"
+		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :blue
 	)
 	plot!(p1[3], t, raw_data[1,:,3], label = "", title = "",
 		xlabel = "Time (s)", ylabel = "Stimulus"
@@ -96,17 +96,17 @@ begin
 	pdrift = plot(layout = grid(3,1), xlims = (0.0, 10.0))
 	plot!(pdrift[1], t, x_lin1, label = "Drift Cancelled Data", 
 		title = "Drift Cancelled",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)"
+		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :red
 	)
 	plot!(pdrift[2], t, x_lin2, label = "", title = "",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)"
+		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :red
 	)
 	#Unfiltered data
 	plot!(pdrift[1], t, x_ch1, label = "Unfiltered data",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)"
+		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :blue
 	)
 	plot!(pdrift[2], t, x_ch2, label = "", title = "",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)"
+		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :blue
 	)
 	
 	
@@ -122,19 +122,20 @@ begin
 	x_adj1 = NeuroPhys.subtract_baseline(x_lin1, (1, stim_idxs[1]));
 	x_adj2 = NeuroPhys.subtract_baseline(x_lin2, (1, stim_idxs[1]));
 	pbase = plot(layout = grid(3,1), xlims = (0.0, 10.0))
-	plot!(pbase[1], t, x_adj1, label = "Baseline subtracted", title = "Baseline subtracted",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)"
+	plot!(pbase[1], t, x_adj1, label = "Baseline subtracted", 
+		title = "Baseline subtracted",
+		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :blue
 	)
 	plot!(pbase[2], t, x_adj2, label = "", title = "",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)"
+		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :blue
 	)
 	
 	#Drift cancelled data
 	plot!(pbase[1], t, x_lin1, label = "Drift Cancelled Data", 
-		xlabel = "", ylabel = "Response (\$\\mu\$V)"
+		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :red
 	)
 	plot!(pbase[2], t, x_lin2, label = "", title = "",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)"
+		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :red
 	)
 	
 	plot!(pbase[3], t, raw_data[1,:,3], label = "", title = "",
@@ -150,16 +151,16 @@ begin
 	x_norm2, norm_factor2 = NeuroPhys.normalize(x_adj2);
 	pnorm = plot(layout = grid(3,1), xlims = (0.0, 10.0))
 	plot!(pnorm[1], t, -x_norm1, label = "Normalized", title = "Normalized",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)"
+		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :red
 	)
 	plot!(pnorm[2], t, -x_norm2, label = "", title = "",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)"
+		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :red
 	)
 	plot!(pnorm[1], t, x_adj1, label = "Baseline subtracted", 
-		xlabel = "", ylabel = "Response (\$\\mu\$V)"
+		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :blue
 	)
 	plot!(pnorm[2], t, x_adj2, label = "", title = "",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)"
+		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :blue
 	)
 	
 	plot!(pnorm[3], t, raw_data[1,:,3], label = "", title = "",
@@ -176,21 +177,104 @@ begin
 	pcwt = plot(layout = grid(3,1), xlims = (0.0, 10.0))
 
 	#Unfiltered
-	plot!(pcwt[1], t, -x_norm1, label = "Normalized",
+	plot!(pcwt[1], t, -x_norm1, label = "Normalized",c = :blue,
 		xlabel = "", ylabel = "Response (\$\\mu\$V)"
 	)
-	plot!(pcwt[2], t, -x_norm2, label = "", title = "",
+	plot!(pcwt[2], t, -x_norm2, label = "", title = "",c = :blue,
 		xlabel = "", ylabel = "Response (\$\\mu\$V)"
 	)
 	plot!(pcwt[1], t, -x_cwt1, label = "CWT Filtered", title = "Using CWT filter",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)"
+		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :red,
 	)
 	plot!(pcwt[2], t, -x_cwt2, label = "", title = "",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)"
+		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :red,
 	)
 	plot!(pcwt[3], t, raw_data[1,:,3], label = "", title = "",
 		xlabel = "Time (s)", ylabel = "Stimulus"
 	)
+end
+
+# ╔═╡ 498f2320-0434-11eb-0cc3-f977a71c5196
+begin
+	using DSP
+	import NeuroPhys.fft_spectrum
+	#Lowpass filtering
+	responsetype = Lowpass(25.0; fs = 1/dt); designmethod = Butterworth(8)
+	x_bp1 = filt(digitalfilter(responsetype, designmethod), x_norm1);
+	#Lowpass filtering
+	responsetype = Lowpass(25.0; fs = 1/dt); designmethod = Butterworth(8)
+	x_bp2 = filt(digitalfilter(responsetype, designmethod), x_norm2);
+	
+	p1FF_1 = plot(t, -x_norm1, label = "", c = :blue, 
+		xlabel = "Time (s)", ylabel = "Response (mV)", 
+		title = "Filtering Ch1"
+		) 
+	plot!(p1FF_1, t, -x_cwt1, label = "CWT filtered", 
+		c = :red, lw = 2.0);
+	plot!(p1FF_1, t, -x_bp1, label = "BS Filtered", 
+		c = :green, lw  = 2.0, xlims = (1,3.0), ylims = (-1.0, 0.5))
+	stim_points = findall(x -> x>0.0, x_stim)
+	scatter!(p1FF_1, t[stim_points], [repeat([-1.0], length(stim_points))],  
+		marker = :square, markersize = 10.0, c = :black, label = "Light Stim"
+	)
+
+	#Spectra Analysis
+	freqs1, x_fft1 = fft_spectrum(t, -x_norm1);
+	freqs_F1, x_fft_F1 = fft_spectrum(t, -x_cwt1);
+	freqs_BS1, x_fft_BS1 = fft_spectrum(t, -x_bp1);
+	
+	p1FF_2 = plot(freqs1, abs.(x_fft1), label = "Normalized", c = :blue,
+		yaxis = :log, xaxis = :log,  
+		xlabel = "Frequency (hz)", ylabel = "Power (mv/hz)"
+		);
+	
+	plot!(p1FF_2, freqs_F1, abs.(x_fft_F1), label = "CWT Filtered", c = :red, 
+		yaxis = :log, xaxis = :log, );
+	plot!(p1FF_2, freqs_BS1, abs.(x_fft_BS1), label = "BS Filtered", 
+		yaxis = :log, xaxis = :log, 
+		c = :green, alpha = 0.8);
+
+	vspan!(p1FF_2, [59, 61], alpha = 0.5, c = :red, label = "Electrical Noise")
+	p1FF = plot(p1FF_1, p1FF_2, layout = grid(2,1), size = (1000, 800));
+
+	p2FF_1 = plot(t, -x_norm2, label = "", c = :blue, 
+		xlabel = "Time (s)", ylabel = "Response (mV)", 
+		title = "Filtering Ch2"
+		);
+	
+	plot!(p2FF_1, t, -x_cwt2, label = "CWT filtered", c = :red, lw = 2.0);
+	plot!(p2FF_1, t, -x_bp2, label = "BS Filtered", c = :green, lw  = 2.0, 
+		xlims = (1,3.0), ylims = (-1.0, 0.5))
+	
+	scatter!(p2FF_1, t[stim_points], [repeat([-1.0], length(stim_points))],  
+		marker = :square, markersize = 10.0, c = :black, label = "Light Stim"
+	)
+
+	#Spectra Analysis
+	freqs2, x_fft2 = fft_spectrum(t, -x_norm2);
+	freqs_F2, x_fft_F2 = fft_spectrum(t, -x_cwt2);
+	freqs_BS2, x_fft_BS2 = fft_spectrum(t, -x_bp2);
+	
+	
+	p2FF_2 = plot(freqs2, abs.(x_fft2), label = "Normalized", 
+		yaxis = :log, xaxis = :log, c = :blue, 
+		xlabel = "Frequency (hz)", ylabel = "Power (mv/hz)"
+		);
+	
+	plot!(p2FF_2, freqs_F2, abs.(x_fft_F2), label = "CWT Filtered", 
+		yaxis = :log, xaxis = :log, 
+		c = :red
+		);
+	
+	plot!(p2FF_2, freqs_BS2, abs.(x_fft_BS2), label = "BS Filtered", 
+		yaxis = :log, xaxis = :log, 
+		c = :green, alpha = 0.8, legend = :bottomleft
+		);
+
+	vline!(p2FF_2, [60], c = :black, label = "Electrical Noise")
+	p2FF = plot(p2FF_1, p2FF_2, layout = grid(2,1), size = (1000, 800));
+
+	plot(p1FF, p2FF, layout = grid(1,2))
 end
 
 # ╔═╡ Cell order:
@@ -209,3 +293,4 @@ end
 # ╟─1fcf25b0-0431-11eb-0c6c-2d2204083a98
 # ╟─4aee4550-0431-11eb-2643-29f5e0eb19b5
 # ╟─7dabc5d0-0431-11eb-0ca4-dfbfbc09620d
+# ╟─498f2320-0434-11eb-0cc3-f977a71c5196
