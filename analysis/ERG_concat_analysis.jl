@@ -48,10 +48,26 @@ begin
 	import NeuroPhys: concat, clean_data
 	concat_paths = a_paths[1:5];
 	t, concat_data = concat(concat_paths;
-		filter = NeuroPhys.clean_data, t_cutoff = 0.75, t_eff = 0.25);
+		filter_func = NeuroPhys.clean_data, t_cutoff = 0.75, t_eff = 0.25);
 	#Normalize data
-	#ch1_norm, norm_factor1 = normalize(concat_data[:,:,1]);
-	#ch2_norm, norm_factor2 = normalize(concat_data[:,:,2]);
+	ch1_norm, norm_factor1 = normalize(concat_data[:,:,1]);
+	ch2_norm, norm_factor2 = normalize(concat_data[:,:,2]);
+	
+	p = plot(layout = grid(2,1))
+	plot_idxs = collect(1:size(concat_data,1))
+	for i in plot_idxs
+		plot!(p[1], t, -ch1_norm[i,:], label = "", c = :delta, line_z = i, 
+			xlabel = "", ylabel = "Response (\$\\mu\$V)"
+		)
+		plot!(p[2], t, -ch2_norm[i,:], label = "", c = :delta, line_z = i, 
+			xlabel = "Time (s)", ylabel = "Response (\$\\mu\$V)"
+		)
+		stim_start = findall(x -> x == true, concat_data[i,:,3])[1]
+		stim_end = findall(x -> x == true, concat_data[i,:,3])[end]
+		vspan!(p[1], [t[stim_start], t[stim_end]], c = :gray, label = "")
+		vspan!(p[2], [t[stim_start], t[stim_end]], c = :gray, label = "")
+	end
+	p
 end
 
 # ╔═╡ Cell order:

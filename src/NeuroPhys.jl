@@ -14,6 +14,6 @@ include("utils.jl")
 export parse_abf, extract_abf
 
 include("functions.jl")
-
+export drift_cancel, subtract_baseline, normalize, cwt_filter, fft_spectrum, clean_data
 
 end # module
