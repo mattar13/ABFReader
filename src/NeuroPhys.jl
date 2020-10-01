@@ -15,5 +15,7 @@ export parse_abf, extract_abf
 
 include("functions.jl")
 export drift_cancel, subtract_baseline, normalize, cwt_filter, fft_spectrum, clean_data
+#Export the Amplification and IR models
+export IR, IR_dev, AMP
 
 end # module
