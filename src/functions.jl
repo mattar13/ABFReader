@@ -58,51 +58,6 @@ function fft_spectrum(t, data::Array{T, 1}) where T <: Real
     return freqs[over_0], x_fft[over_0] 
 end
 
-"""
-Filter functions should be in the form (t,x) -> func(t,x)
-
-The concatenated file, the sweeps are removed and replaced with traces. 
-If the traces are different length, they are padded with 0's. 
-The kwarg pad controls whether or not the padding is added to the beginning (:pre)
-or the end (:post)
-
-Prestim_time sets the amount of time (in seconds) before the END of the stimulus. This sets it so the effective time is always the prestim time
-
-T_cutoff truncates the data to the time (in seconds)
-"""
-function concat(path_arr; t_cutoff = 3.5, t_eff = 0.5, filter_func = clean_data, sweep_avg = true, pad = :post)
-    abfs = map(p -> extract_abf(p)[1:2], path_arr)
-    n_traces = length(path_arr)
-    
-    dt = abfs[1][1][2] - abfs[1][1][1]
-    t = collect(0.0:dt:(t_cutoff+t_eff))
-    concatenated_trace = zeros(n_traces, length(t), 3)
-    #Average multiple traces
-    for (i, (t, raw_data)) in enumerate(abfs)
-        print(i)
-        if sweep_avg
-            data = sum(raw_data, dims = 1)/size(raw_data,1)
-        else
-            data = raw_data
-        end
-        if filter_func == nothing
-            x_ch1, x_ch2, x_stim = data[1,:,:] 
-            x_stim = x_stim .> 0.2
-        else
-            x_ch1, x_ch2, x_stim = filter_func(t, data)
-        end
-                
-        t_stim_end = findall(x -> x == true, x_stim)[end]
-        t_start = t_stim_end - (t_eff/dt) |> Int64
-        t_end = t_stim_end + (t_cutoff/dt) |> Int64
-        
-        concatenated_trace[i, :, 1] = x_ch1[t_start:t_end] 
-        concatenated_trace[i, :, 2] = x_ch2[t_start:t_end] 
-        concatenated_trace[i, :, 3] = x_stim[t_start:t_end] 
-    end 
-    t, concatenated_trace
-end
-
 #########################################Everything Below here is for Pepperburg analysis
 """
 This function normalizes data and sets the minimum of the highest intensity nose component

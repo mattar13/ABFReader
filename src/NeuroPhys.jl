@@ -16,5 +16,4 @@ export parse_abf, extract_abf
 include("functions.jl")
 
 
-
 end # module
