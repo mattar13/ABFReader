@@ -126,7 +126,18 @@ I_data = [
 ]
 
 # ╔═╡ 429f77d0-043f-11eb-0a0f-c55192c50fa9
-
+begin 
+	#To describe the IR curve we must first fit the data
+	Ih = exp(12)
+	n = 2
+	α = 10.0
+	SI = 10.0
+	S = 1.0
+	#Set the initial conditions and then fit the model
+	p0 = [Ih, n, α, SI, S]
+	IR_fit = curve_fit((x, p) -> IR.(x, p[1], n), I_data, R_ch1, p0)
+	scatter(I_data |> sort, R_ch1 |> sort)
+end
 
 # ╔═╡ 26494980-043f-11eb-213e-df8105dbd25f
 scatter(I_data |> sort, R_ch1 |> sort)
@@ -145,4 +156,4 @@ scatter(I_data |> sort, R_ch1 |> sort)
 # ╟─bb3d2420-043b-11eb-0860-4f82337e4064
 # ╟─503e7a00-043d-11eb-08b7-a5f07f236fc4
 # ╠═429f77d0-043f-11eb-0a0f-c55192c50fa9
-# ╟─26494980-043f-11eb-213e-df8105dbd25f
+# ╠═26494980-043f-11eb-213e-df8105dbd25f
