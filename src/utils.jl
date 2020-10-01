@@ -97,3 +97,8 @@ function stim_intensity(filename; kwargs...)
     stim_i = reshape(stim_i,  (length(stim_i)));
     return stim_t, stim_i
 end
+
+"""
+This function opens the .abf file in clampfit if it is installed
+"""
+openABF(path) = pyABF.ABF(path).launchInClampFit()
