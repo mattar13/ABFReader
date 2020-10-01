@@ -11,8 +11,10 @@ using LsqFit #Used for fitting amplification and Intensity Response models
 
 #Including files
 include("utils.jl")
-include("functions.jl")
 export parse_abf, extract_abf
+
+include("functions.jl")
+
 
 
 end # module
