@@ -101,7 +101,10 @@ end
 """
 This function opens the .abf file in clampfit if it is installed
 """
-openABF(path) = pyABF.ABF(path).launchInClampFit()
+function openABF(path) 
+    pyABF = pyimport("pyabf")
+    pyABF.ABF(path).launchInClampFit()
+end
 
 
 """
