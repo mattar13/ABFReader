@@ -4,4 +4,13 @@ authors = ["Matthew Tarchick <mtarchick13@gmail.com>"]
 version = "0.1.0"
 
 [deps]
+DSP = "717857b8-e6f2-59f4-9121-6e50c889abd2"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
+FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
+LsqFit = "2fda8390-95c7-5789-9bda-21331edee243"
+Polynomials = "f27b6e38-b328-58d1-80ce-0feddd5e7a45"
 PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+Wavelets = "29a6e085-ba6d-5f35-a997-948ac2efa89a"
+XLSX = "fdbf4ff8-1666-58a4-91e7-1b58723a45e0"
