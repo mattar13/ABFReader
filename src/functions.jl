@@ -153,4 +153,3 @@ IR_dev(I, Ih, n, α, SI, S) = α*(1-exp(SI)) + (1-α)*(I^n / (Ih^n + S))
 
 #Amplification models
 AMP(t, α, t_eff, rmax) = t > t_eff ? rmax * (1 - exp(-α*(t-t_eff)^2)) : 0.0 
-
