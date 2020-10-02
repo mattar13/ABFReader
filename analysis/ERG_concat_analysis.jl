@@ -87,28 +87,7 @@ end
 # ╔═╡ bb3d2420-043b-11eb-0860-4f82337e4064
 md"
 ## [1] Intensity response 
-
-$$R = f(I)$$ where f is the intensity response relationship
-
-- Developmental Intensity response (>P14)
-$$R = f(I) =R_{max}\left(\alpha(1 - e^{SI}) + (1-\alpha)\frac{I^n}{I^n_{1/2}+S^1}\right)$$
-- Adult Intensity Response (<P14)
-$$R = f(I) =R_{max}\frac{I^n}{I^n_{1/2}+I^n}$$
-
-if Response values are normalized to 1, then $R_{max}$ = 1 and can be cancelled out to form the equations
-
-$$R = f(I) =\left(\alpha(1 - e^{SI}) + (1-\alpha)\frac{I^n}{I^n_{1/2}+S^1}\right)$$
-- Adult Intensity Response (<P14)
-$$R = f(I) =\frac{I^n}{I^n_{1/2}+I^n}$$
-
-### Variables: 
-- The response amplitude (R) is the dependent variable
-- The stimulus light intensity (I) is the independent variable
-### Parameters: 
-- Maximum saturating value($R_{max}$)
-- The flash strength required to elicit half of $R_{max}$: ($I_{1/2}$)
-- S is the fractional sensitivity
-- The temperature-dependent weighting coefficient: $\alpha$  $(0<\alpha<1)$
+The intensity response function is outlined more in the documentation for the function. To learn more hover over the function IR()
 "
 
 # ╔═╡ 503e7a00-043d-11eb-08b7-a5f07f236fc4
@@ -229,5 +208,5 @@ end
 # ╟─bb3d2420-043b-11eb-0860-4f82337e4064
 # ╟─503e7a00-043d-11eb-08b7-a5f07f236fc4
 # ╟─429f77d0-043f-11eb-0a0f-c55192c50fa9
-# ╟─6225cd0e-0463-11eb-3a05-495ac06c57b0
+# ╠═6225cd0e-0463-11eb-3a05-495ac06c57b0
 # ╟─0c3af310-0465-11eb-2acd-6d353d975720
