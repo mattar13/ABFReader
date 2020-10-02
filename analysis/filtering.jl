@@ -24,6 +24,9 @@ md"
 # ╔═╡ e09e64b0-0425-11eb-1a08-8f78d2ceca08
 target_path = "D:\\Data\\ERG\\Gnat_Group\\2020_09_04_ERG\\Mouse1"
 
+# ╔═╡ 17e14832-04d4-11eb-2c56-ed8f73a52a3a
+pwd()
+
 # ╔═╡ e4f40dc2-0426-11eb-23ee-557c4c757b76
 begin 
 	paths = target_path |> parse_abf
@@ -40,16 +43,25 @@ begin
 	end	
 end;
 
-# ╔═╡ c004ae60-0427-11eb-0c32-6f66fa5a79e8
+# ╔═╡ 441cd450-04d4-11eb-0196-954026b6614b
 md"
 Full ERG traces: $(length(ab_paths))
-
-$ab_paths
-
-a-wave ERG traces $(length(a_paths))
-
-$a_paths
 "
+
+# ╔═╡ 4081d342-04d4-11eb-2199-bfdcb8a14c93
+map(1:length(ab_paths)) do i
+    md"File: $i -> $(ab_paths[i])"
+end
+
+# ╔═╡ 3bdbcad0-04d4-11eb-103d-859f98cd80fb
+md"
+a-wave ERG traces $(length(a_paths))
+"
+
+# ╔═╡ 364c9ae0-04d4-11eb-1885-3fdf09cbec9a
+map(1:length(a_paths)) do i
+    md"File: $i -> $(a_paths[i])"
+end
 
 # ╔═╡ cc74a240-042c-11eb-257c-f969882fcc79
 md"
@@ -282,9 +294,13 @@ end
 # ╠═eec4b7f2-0426-11eb-1f69-b3fea7ffedb1
 # ╟─e7c07a90-042e-11eb-2565-8f992ddf6aea
 # ╟─6aa33000-0426-11eb-3757-d55b61aebc53
-# ╟─e09e64b0-0425-11eb-1a08-8f78d2ceca08
+# ╠═e09e64b0-0425-11eb-1a08-8f78d2ceca08
+# ╠═17e14832-04d4-11eb-2c56-ed8f73a52a3a
 # ╟─e4f40dc2-0426-11eb-23ee-557c4c757b76
-# ╠═c004ae60-0427-11eb-0c32-6f66fa5a79e8
+# ╟─441cd450-04d4-11eb-0196-954026b6614b
+# ╟─4081d342-04d4-11eb-2199-bfdcb8a14c93
+# ╟─3bdbcad0-04d4-11eb-103d-859f98cd80fb
+# ╟─364c9ae0-04d4-11eb-1885-3fdf09cbec9a
 # ╟─cc74a240-042c-11eb-257c-f969882fcc79
 # ╠═314d0fc0-042f-11eb-1010-df1cf170f382
 # ╟─559b57b0-042f-11eb-24e1-1bbc8984acb1

@@ -82,7 +82,6 @@ begin
 		vspan!(fig1[2], [t[stim_start], t[stim_end]], c = :gray, label = "")
 	end
 	fig1
-
 end
 
 # ╔═╡ bb3d2420-043b-11eb-0860-4f82337e4064
@@ -130,11 +129,11 @@ begin
 	#To describe the IR curve we must first fit the data
 	Ih = exp(12)
 	n = 2
-	α = 10.0
+	a = 10.0
 	SI = 10.0
 	S = 1.0
 	#Set the initial conditions and then fit the model
-	p_IR = [Ih, n, α, SI, S]
+	p_IR = [Ih, n, a, SI, S]
 	IR_fit = curve_fit((x, p) -> IR.(x, p[1], n), I_data, R_ch1, p_IR)
 	scatter(sort(I_data), sort(R_ch1))
 	scatter!(sort(I_data), sort(R_ch2))
@@ -148,7 +147,7 @@ end
 
 # ╔═╡ 6225cd0e-0463-11eb-3a05-495ac06c57b0
 md"
-## [3] Amplification
+## [2] Amplification
 
 Amplification is a function of time, the relationship is demonstrated by
 
@@ -172,17 +171,26 @@ This dataset is a time series
 
 # ╔═╡ 0c3af310-0465-11eb-2acd-6d353d975720
 begin	
+	
+	#Define the initial parameters
+	α = 90.0
+	t_eff = 0.25 #For data we have concatenated, this is 0.5
+	rmax = -1.0
+	pAMP = [α, t_eff, rmax];
+	
 	p = plot(layout = grid(2,1))
 	α_arr = Float64[]
+	x_data = t;
+	y_data1 = -ch1_norm; #The data for some reason can get quite mixed up
+	y_data2 = -ch2_norm; 
 	for x in 1:size(y_data1,1)
-		#y = -y_data[x,:,1]/(minimum(y_data[x,:,1]))
 		plot!(p[1], x_data, y_data1[x,:], c = :delta, line_z = x, label = "")
 		plot!(p[2], x_data, y_data2[x,:], c = :delta, line_z = x, label = "")
 		#Fitting equation
 		AMP_fit1 = curve_fit(
 			(t, p) -> AMP.(t, p[1], t_eff, rmax), 
 			x_data, y_data1[x,:], 
-			p0, 
+			pAMP, 
 			lower = [0.1, 0.20, -2.0],
 			upper = [Inf, 0.33, 0.0]
 		)
@@ -190,15 +198,16 @@ begin
 		AMP_fit2 = curve_fit(
 			(t, p) -> AMP.(t, p[1], t_eff, rmax), 
 			x_data, y_data2[x,:], 
-			p0, 
+			pAMP, 
 			lower = [0.1, 0.20, -2.0],
 			upper = [Inf, 0.33, 0.0]
 		)
 
-		plot!(p[1], t -> AMP(t, AMP_fit1.param...), x_data[1], x_data[end], label = "\$\\alpha\$ = $(AMP_fit1.param[1])", c = :red)
-		plot!(p[2], t -> AMP(t, AMP_fit2.param...), x_data[1], x_data[end], label = "\$\\alpha\$ = $(AMP_fit2.param[1])", c = :red)
-		println("Trace $x Ch1: α:$(AMP_fit1.param[1]) t_eff:$(AMP_fit1.param[2]) rmax:$(AMP_fit1.param[3])")
-		println("Trace $x Ch2: α:$(AMP_fit2.param[1]) t_eff:$(AMP_fit2.param[2]) rmax:$(AMP_fit2.param[3])")
+		plot!(p[1], t -> AMP(t, AMP_fit1.param...), x_data[1], x_data[end], 
+			label = "", c = :red)
+		plot!(p[2], t -> AMP(t, AMP_fit2.param...), x_data[1], x_data[end], 
+			label = "", c = :red)
+
 		push!(α_arr, AMP_fit1.param[1])
 		push!(α_arr, AMP_fit2.param[1])
 	end
@@ -209,8 +218,8 @@ end
 # ╔═╡ Cell order:
 # ╠═66f48ca0-0436-11eb-0e18-45060045af67
 # ╠═830b8f10-0436-11eb-3668-a9da07d1ee55
-# ╠═87a9cf50-0436-11eb-1695-974c7d2f3298
-# ╠═8addd130-0436-11eb-2256-6bae5253165e
+# ╟─87a9cf50-0436-11eb-1695-974c7d2f3298
+# ╟─8addd130-0436-11eb-2256-6bae5253165e
 # ╟─9693dd30-0436-11eb-2285-2bc0ee518909
 # ╟─91642b00-0439-11eb-3532-e5f6ee4497bd
 # ╟─62c98e4e-043b-11eb-14ff-1d6d51faabb3
@@ -219,6 +228,6 @@ end
 # ╟─ab8187b0-0436-11eb-159a-93c1a4f73e13
 # ╟─bb3d2420-043b-11eb-0860-4f82337e4064
 # ╟─503e7a00-043d-11eb-08b7-a5f07f236fc4
-# ╠═429f77d0-043f-11eb-0a0f-c55192c50fa9
+# ╟─429f77d0-043f-11eb-0a0f-c55192c50fa9
 # ╟─6225cd0e-0463-11eb-3a05-495ac06c57b0
 # ╟─0c3af310-0465-11eb-2acd-6d353d975720
