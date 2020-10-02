@@ -127,25 +127,7 @@ end
 # ╔═╡ 6225cd0e-0463-11eb-3a05-495ac06c57b0
 md"
 ## [2] Amplification
-
-Amplification is a function of time, the relationship is demonstrated by
-
-$$R = f(t)$$
-
-$$\frac{R}{R_{max}} = (1-e^{-\alpha(t-t_{eff})^2})$$
-
-if $R_{max}$ = 1 then
-
-$$f(t) = (1-e^{-\alpha(t-t_{eff})^2})$$
-
-### Variables
-- The response (R) is the dependent variable
-- Time (t) is the independent variable.
-This dataset is a time series 
-
-### Parameters
-- Effective time delay ($t_{eff}$): a short delay (effective time delay) between stimulus onset and response onset indicative of the biomolecuar diffusion rates
-- The amplification coefficient ($\alpha$): represents the rate of the response increases from the biomolecular processes. 
+More documentaiton is given in the amplification in the Live docs. 
 "
 
 # ╔═╡ 0c3af310-0465-11eb-2acd-6d353d975720
@@ -208,5 +190,5 @@ end
 # ╟─bb3d2420-043b-11eb-0860-4f82337e4064
 # ╟─503e7a00-043d-11eb-08b7-a5f07f236fc4
 # ╟─429f77d0-043f-11eb-0a0f-c55192c50fa9
-# ╠═6225cd0e-0463-11eb-3a05-495ac06c57b0
+# ╟─6225cd0e-0463-11eb-3a05-495ac06c57b0
 # ╟─0c3af310-0465-11eb-2acd-6d353d975720
