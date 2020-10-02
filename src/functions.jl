@@ -176,8 +176,10 @@ IR(I, Ih, n) = I^n / (Ih^n + I^n)
 
 ## The relationship is demonstrated by 
 \$R = f(I)\$ 
- where 
-\$f(I) =R_{max}\\left(\\alpha(1 - e^{SI}) + (1-\\alpha)\\frac{I^n}\$
+ 
+where 
+
+\$f(I) =R_{max}\\left(\\alpha(1 - e^{SI}) + (1-\\alpha)\\frac{I^n}{Ih^n + S}\$
 
 if Response values are normalized to 1, then \$R_{max}\$ = 1 and can be cancelled out to form the equations
 
@@ -188,7 +190,7 @@ if Response values are normalized to 1, then \$R_{max}\$ = 1 and can be cancelle
 - R_max: Maximum saturating value(\$R_{max}\$)
 - Ih: The flash strength required to elicit half of \$R_{max}\$: (\$I_{1/2}\$)
 - n: The power of the equation
-- \$\\alpha\$: The temperature-dependent weighting coefficient:  
+- (\$\\alpha\$): The temperature-dependent weighting coefficient:  
 - S: he fractional sensitivity
 ### Function usage
 [IN 1]:  IR_dev(I, Ih, n, α, SI, S)
@@ -205,15 +207,15 @@ Amplification is a time series, therefore it is a function of time
 ## The relationship is demonstrated by
 \$R = f(t)\$
 
-\$\\\$f(t) = R_{max}(1-e^{-\\alpha(t-t_{eff})^2})\$\$
+\$f(t) = R_{max}(1-e^{-\\alpha(t-t_{eff})^2})\$
 
 ### Variables
 - R: The response is the dependent variable
 - t: Time is the independent variable.
 
 ### Parameters
-- \$t_{eff}\$: The effective time delay is a short delay between stimulus onset and response onset indicative of the biomolecuar diffusion rates
-- \$\\alpha\$: The amplification coefficient  represents the rate of the response increases from the biomolecular processes. 
+- (\$t_{eff}\$): The effective time delay is a short delay between stimulus onset and response onset indicative of the biomolecuar diffusion rates
+- (\$\\alpha\$): The amplification coefficient  represents the rate of the response increases from the biomolecular processes. 
 
 ### Function usage
 [IN 1]:  AMP(t, α, t_eff, rmax)

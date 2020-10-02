@@ -90,6 +90,12 @@ md"
 The intensity response function is outlined more in the documentation for the function. To learn more hover over the function IR()
 "
 
+# ╔═╡ 96d00a80-04f4-11eb-37b5-41ffe86c31c6
+IR
+
+# ╔═╡ c4a01950-04f4-11eb-3afa-89adf993acae
+IR_dev
+
 # ╔═╡ 503e7a00-043d-11eb-08b7-a5f07f236fc4
 I_data = [
     1780710.7, #100% 4ms
@@ -129,6 +135,9 @@ md"
 ## [2] Amplification
 More documentaiton is given in the amplification in the Live docs. 
 "
+
+# ╔═╡ bfe661d2-04f4-11eb-0de1-736030b124ff
+AMP
 
 # ╔═╡ 0c3af310-0465-11eb-2acd-6d353d975720
 begin	
@@ -188,7 +197,10 @@ end
 # ╟─7a1748e0-043b-11eb-04ba-a9955b3be2a8
 # ╟─ab8187b0-0436-11eb-159a-93c1a4f73e13
 # ╟─bb3d2420-043b-11eb-0860-4f82337e4064
+# ╠═96d00a80-04f4-11eb-37b5-41ffe86c31c6
+# ╠═c4a01950-04f4-11eb-3afa-89adf993acae
 # ╟─503e7a00-043d-11eb-08b7-a5f07f236fc4
 # ╟─429f77d0-043f-11eb-0a0f-c55192c50fa9
 # ╟─6225cd0e-0463-11eb-3a05-495ac06c57b0
+# ╠═bfe661d2-04f4-11eb-0de1-736030b124ff
 # ╟─0c3af310-0465-11eb-2acd-6d353d975720
