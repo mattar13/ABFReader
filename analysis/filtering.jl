@@ -21,14 +21,8 @@ md"
 
 "
 
-# ╔═╡ c931f0e2-05cd-11eb-209e-e3214ef86fe2
-
-
 # ╔═╡ e09e64b0-0425-11eb-1a08-8f78d2ceca08
 target_path = "to_filter.abf"
-
-# ╔═╡ 46aa1bc0-05cd-11eb-2030-7d66fdcc7226
-pwd()
 
 # ╔═╡ cc74a240-042c-11eb-257c-f969882fcc79
 md"
@@ -255,9 +249,7 @@ end
 # ╠═eec4b7f2-0426-11eb-1f69-b3fea7ffedb1
 # ╟─e7c07a90-042e-11eb-2565-8f992ddf6aea
 # ╟─6aa33000-0426-11eb-3757-d55b61aebc53
-# ╠═c931f0e2-05cd-11eb-209e-e3214ef86fe2
 # ╠═e09e64b0-0425-11eb-1a08-8f78d2ceca08
-# ╠═46aa1bc0-05cd-11eb-2030-7d66fdcc7226
 # ╟─cc74a240-042c-11eb-257c-f969882fcc79
 # ╠═5dfb2940-042e-11eb-1d71-d3d70aed94e4
 # ╟─8e5be320-0430-11eb-2ea2-c9fbd7e40caa
