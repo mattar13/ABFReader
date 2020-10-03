@@ -21,47 +21,14 @@ md"
 
 "
 
+# ╔═╡ c931f0e2-05cd-11eb-209e-e3214ef86fe2
+
+
 # ╔═╡ e09e64b0-0425-11eb-1a08-8f78d2ceca08
-target_path = "D:\\Data\\ERG\\Gnat_Group\\2020_09_04_ERG\\Mouse1"
+target_path = "to_filter.abf"
 
-# ╔═╡ 17e14832-04d4-11eb-2c56-ed8f73a52a3a
+# ╔═╡ 46aa1bc0-05cd-11eb-2030-7d66fdcc7226
 pwd()
-
-# ╔═╡ e4f40dc2-0426-11eb-23ee-557c4c757b76
-begin 
-	paths = target_path |> parse_abf
-	a_paths = String[]
-	#And AB wave traces
-	ab_paths = String[]
-	for path in paths
-		search = (splitpath(path))
-		if length(findall(x -> x == "Drugs", search)) > 0
-			push!(a_paths, path)
-		elseif length(findall(x -> x == "NoDrugs", search)) > 0
-			push!(ab_paths, path)
-		end
-	end	
-end;
-
-# ╔═╡ 441cd450-04d4-11eb-0196-954026b6614b
-md"
-Full ERG traces: $(length(ab_paths))
-"
-
-# ╔═╡ 4081d342-04d4-11eb-2199-bfdcb8a14c93
-map(1:length(ab_paths)) do i
-    md"File: $i -> $(ab_paths[i])"
-end
-
-# ╔═╡ 3bdbcad0-04d4-11eb-103d-859f98cd80fb
-md"
-a-wave ERG traces $(length(a_paths))
-"
-
-# ╔═╡ 364c9ae0-04d4-11eb-1885-3fdf09cbec9a
-map(1:length(a_paths)) do i
-    md"File: $i -> $(a_paths[i])"
-end
 
 # ╔═╡ cc74a240-042c-11eb-257c-f969882fcc79
 md"
@@ -75,16 +42,10 @@ We can clean the data using the functions
 - Continuous wavelet transform filtering
 "
 
-# ╔═╡ 314d0fc0-042f-11eb-1010-df1cf170f382
-n_file = 8
-
-# ╔═╡ 559b57b0-042f-11eb-24e1-1bbc8984acb1
-md" File to be analyzed: $(a_paths[n_file])"
-
 # ╔═╡ 5dfb2940-042e-11eb-1d71-d3d70aed94e4
 begin
 	#First open the file
-	t, raw_data, dt = extract_abf(a_paths[n_file]);
+	t, raw_data, dt = extract_abf(target_path);
 	data = sum(raw_data, dims = 1)/size(raw_data,1);
 	x_ch1 = data[1,:,1]; x_ch2 = data[1,:,2]; x_stim = data[1,:,3] .> 0.2;
 	p1 = plot(layout = grid(3,1), xlims = (0.0, 10.0),)
@@ -294,17 +255,11 @@ end
 # ╠═eec4b7f2-0426-11eb-1f69-b3fea7ffedb1
 # ╟─e7c07a90-042e-11eb-2565-8f992ddf6aea
 # ╟─6aa33000-0426-11eb-3757-d55b61aebc53
+# ╠═c931f0e2-05cd-11eb-209e-e3214ef86fe2
 # ╠═e09e64b0-0425-11eb-1a08-8f78d2ceca08
-# ╠═17e14832-04d4-11eb-2c56-ed8f73a52a3a
-# ╟─e4f40dc2-0426-11eb-23ee-557c4c757b76
-# ╟─441cd450-04d4-11eb-0196-954026b6614b
-# ╟─4081d342-04d4-11eb-2199-bfdcb8a14c93
-# ╟─3bdbcad0-04d4-11eb-103d-859f98cd80fb
-# ╟─364c9ae0-04d4-11eb-1885-3fdf09cbec9a
+# ╠═46aa1bc0-05cd-11eb-2030-7d66fdcc7226
 # ╟─cc74a240-042c-11eb-257c-f969882fcc79
-# ╠═314d0fc0-042f-11eb-1010-df1cf170f382
-# ╟─559b57b0-042f-11eb-24e1-1bbc8984acb1
-# ╟─5dfb2940-042e-11eb-1d71-d3d70aed94e4
+# ╠═5dfb2940-042e-11eb-1d71-d3d70aed94e4
 # ╟─8e5be320-0430-11eb-2ea2-c9fbd7e40caa
 # ╟─1fcf25b0-0431-11eb-0c6c-2d2204083a98
 # ╟─4aee4550-0431-11eb-2643-29f5e0eb19b5
