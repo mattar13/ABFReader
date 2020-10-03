@@ -19,6 +19,7 @@ include("functions.jl")
 export curve_fit #curve fitting from LsqFit
 #export filtering functions
 export drift_cancel, subtract_baseline, normalize, cwt_filter, fft_spectrum, clean_data
+include("models.jl")
 #Export the Amplification and IR models
 export IR, IR_dev, AMP
 

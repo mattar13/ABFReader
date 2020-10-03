@@ -1,3 +1,6 @@
+
+#These functions open and load ABF data
+
 """
 This function walks through the directory and locates any .abf file. 
 The extension can be changed with the keyword argument extension
@@ -151,4 +154,3 @@ function concat(path_arr; t_cutoff = 3.5, t_eff = 0.5, filter_func = nothing, sw
     end 
     t, concatenated_trace
 end
-
