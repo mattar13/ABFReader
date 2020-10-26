@@ -139,8 +139,8 @@ end
 
 begin
 	#CWT filtering (Probably not ready for CWT filtering )
-	x_cwt1, cwt1_raster = NeuroPhys.cwt_filter(x_norm1, periods = 1:9);
-	x_cwt2, cwt2_raster = NeuroPhys.cwt_filter(x_norm2, periods = 1:9);
+	x_cwt1, cwt1_raster = NeuroPhys.cwt_filter(x_norm1, periods = 1:10);
+	x_cwt2, cwt2_raster = NeuroPhys.cwt_filter(x_norm2, periods = 1:10);
 	pcwt = plot(layout = grid(3,1), xlims = (0.0, 10.0))
 
 	#Unfiltered
@@ -244,6 +244,9 @@ begin
 	plot(p1FF, p2FF, layout = grid(1,2))
 end
 
+# ╔═╡ 1431a140-05d2-11eb-161d-c9151633db9d
+heatmap(cwt1_raster')
+
 # ╔═╡ Cell order:
 # ╠═acb06ef0-042f-11eb-2b35-e7f2578cf3bd
 # ╠═eec4b7f2-0426-11eb-1f69-b3fea7ffedb1
@@ -251,9 +254,10 @@ end
 # ╟─6aa33000-0426-11eb-3757-d55b61aebc53
 # ╠═e09e64b0-0425-11eb-1a08-8f78d2ceca08
 # ╟─cc74a240-042c-11eb-257c-f969882fcc79
-# ╠═5dfb2940-042e-11eb-1d71-d3d70aed94e4
+# ╟─5dfb2940-042e-11eb-1d71-d3d70aed94e4
 # ╟─8e5be320-0430-11eb-2ea2-c9fbd7e40caa
 # ╟─1fcf25b0-0431-11eb-0c6c-2d2204083a98
 # ╟─4aee4550-0431-11eb-2643-29f5e0eb19b5
 # ╟─7dabc5d0-0431-11eb-0ca4-dfbfbc09620d
+# ╠═1431a140-05d2-11eb-161d-c9151633db9d
 # ╟─498f2320-0434-11eb-0cc3-f977a71c5196
