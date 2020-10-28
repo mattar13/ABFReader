@@ -138,8 +138,11 @@ function concat(path_arr; t_cutoff = 3.5, t_eff = 0.5, filter_func = nothing, sw
             data = raw_data
         end
         if filter_func == nothing
-            x_ch1, x_ch2, x_stim = data[1,:,:] 
-            x_stim = x_stim .> 0.2
+            println(data |> size)
+            x_ch1 = data[1,:,1] 
+            x_ch2 = data[1,:,2] 
+            x_stim = data[1,:,3] .> 0.2
+            #x_stim = x_stim .> 0.2
         else
             x_ch1, x_ch2, x_stim = filter_func(t, data)
         end
@@ -147,7 +150,6 @@ function concat(path_arr; t_cutoff = 3.5, t_eff = 0.5, filter_func = nothing, sw
         t_stim_end = findall(x -> x == true, x_stim)[end]
         t_start = t_stim_end - (t_eff/dt) |> Int64
         t_end = t_stim_end + (t_cutoff/dt) |> Int64
-        
         concatenated_trace[i, :, 1] = x_ch1[t_start:t_end] 
         concatenated_trace[i, :, 2] = x_ch2[t_start:t_end] 
         concatenated_trace[i, :, 3] = x_stim[t_start:t_end] 

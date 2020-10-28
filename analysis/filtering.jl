@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.11.14
+# v0.12.4
 
 using Markdown
 using InteractiveUtils
@@ -254,7 +254,7 @@ heatmap(cwt1_raster')
 # ╟─6aa33000-0426-11eb-3757-d55b61aebc53
 # ╠═e09e64b0-0425-11eb-1a08-8f78d2ceca08
 # ╟─cc74a240-042c-11eb-257c-f969882fcc79
-# ╟─5dfb2940-042e-11eb-1d71-d3d70aed94e4
+# ╠═5dfb2940-042e-11eb-1d71-d3d70aed94e4
 # ╟─8e5be320-0430-11eb-2ea2-c9fbd7e40caa
 # ╟─1fcf25b0-0431-11eb-0c6c-2d2204083a98
 # ╟─4aee4550-0431-11eb-2643-29f5e0eb19b5

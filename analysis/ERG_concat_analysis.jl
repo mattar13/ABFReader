@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.11.14
+# v0.12.4
 
 using Markdown
 using InteractiveUtils
@@ -14,7 +14,7 @@ using NeuroPhys, Plots
 pyplot()
 
 # ╔═╡ 8addd130-0436-11eb-2256-6bae5253165e
-target_path = "D:\\Data\\ERG\\Gnat_Group\\2020_09_04_ERG\\Mouse1"
+target_path = "D:\\Data\\ERG\\Gnat\\2020_08_28_ERG_P10\\Mouse1\\NoDrugs\\525Green"
 
 # ╔═╡ 9693dd30-0436-11eb-2285-2bc0ee518909
 begin 
@@ -53,12 +53,12 @@ map(1:length(a_paths)) do i
     md"File: $i -> $(a_paths[i])"
 end
 
-# ╔═╡ ab8187b0-0436-11eb-159a-93c1a4f73e13
+# ╔═╡ 21c1fd70-1958-11eb-01e6-8def49bbdcab
 begin 
 	import NeuroPhys: concat, clean_data, normalize
-	concat_paths = a_paths[6:13];
+	concat_paths = ab_paths;
 	t, concat_data = concat(concat_paths;
-		filter_func = clean_data, t_cutoff = 0.75, t_eff = 0.25);
+		filter_func = nothing, t_cutoff = 0.75, t_eff = 0.25);
 	#Normalize data
 	ch1_norm, norm_factor1 = normalize(concat_data[:,:,1]);
 	ch2_norm, norm_factor2 = normalize(concat_data[:,:,2]);
@@ -83,6 +83,12 @@ begin
 	end
 	fig1
 end
+
+# ╔═╡ be662100-1959-11eb-2afb-971419abebed
+t2, raw_data, dt = extract_abf(ab_paths[1]);
+
+# ╔═╡ 0ecb2f00-195a-11eb-07ae-152144ecf1eb
+raw_data |> size
 
 # ╔═╡ bb3d2420-043b-11eb-0860-4f82337e4064
 md"
@@ -189,18 +195,20 @@ end
 # ╠═66f48ca0-0436-11eb-0e18-45060045af67
 # ╠═830b8f10-0436-11eb-3668-a9da07d1ee55
 # ╟─87a9cf50-0436-11eb-1695-974c7d2f3298
-# ╟─8addd130-0436-11eb-2256-6bae5253165e
-# ╟─9693dd30-0436-11eb-2285-2bc0ee518909
+# ╠═8addd130-0436-11eb-2256-6bae5253165e
+# ╠═9693dd30-0436-11eb-2285-2bc0ee518909
 # ╟─91642b00-0439-11eb-3532-e5f6ee4497bd
 # ╟─62c98e4e-043b-11eb-14ff-1d6d51faabb3
 # ╟─697fb20e-043b-11eb-319e-ab1011833049
-# ╟─7a1748e0-043b-11eb-04ba-a9955b3be2a8
-# ╟─ab8187b0-0436-11eb-159a-93c1a4f73e13
+# ╠═7a1748e0-043b-11eb-04ba-a9955b3be2a8
+# ╠═21c1fd70-1958-11eb-01e6-8def49bbdcab
+# ╠═be662100-1959-11eb-2afb-971419abebed
+# ╠═0ecb2f00-195a-11eb-07ae-152144ecf1eb
 # ╟─bb3d2420-043b-11eb-0860-4f82337e4064
 # ╠═96d00a80-04f4-11eb-37b5-41ffe86c31c6
 # ╠═c4a01950-04f4-11eb-3afa-89adf993acae
 # ╟─503e7a00-043d-11eb-08b7-a5f07f236fc4
-# ╟─429f77d0-043f-11eb-0a0f-c55192c50fa9
+# ╠═429f77d0-043f-11eb-0a0f-c55192c50fa9
 # ╟─6225cd0e-0463-11eb-3a05-495ac06c57b0
 # ╠═bfe661d2-04f4-11eb-0de1-736030b124ff
 # ╟─0c3af310-0465-11eb-2acd-6d353d975720
