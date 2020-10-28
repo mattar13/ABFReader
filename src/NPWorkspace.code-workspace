@@ -6,5 +6,8 @@
         {
             "path": "..\\..\\RetinalChaos"
         }
-    ]
+    ],
+    "settings": {
+        "julia.environmentPath": "C:\\Users\\mtarc\\.julia\\environments\\v1.5"
+    }
 }

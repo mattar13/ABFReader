@@ -58,7 +58,7 @@ begin
 	import NeuroPhys: concat, clean_data, normalize
 	concat_paths = ab_paths;
 	t, concat_data = concat(concat_paths;
-		filter_func = nothing, t_cutoff = 0.75, t_eff = 0.25);
+		filter_func = (t,data) -> clean_data(t, data), t_cutoff = 1.75, t_eff = 0.25);
 	#Normalize data
 	ch1_norm, norm_factor1 = normalize(concat_data[:,:,1]);
 	ch2_norm, norm_factor2 = normalize(concat_data[:,:,2]);
@@ -83,12 +83,6 @@ begin
 	end
 	fig1
 end
-
-# ╔═╡ be662100-1959-11eb-2afb-971419abebed
-t2, raw_data, dt = extract_abf(ab_paths[1]);
-
-# ╔═╡ 0ecb2f00-195a-11eb-07ae-152144ecf1eb
-raw_data |> size
 
 # ╔═╡ bb3d2420-043b-11eb-0860-4f82337e4064
 md"
@@ -200,10 +194,8 @@ end
 # ╟─91642b00-0439-11eb-3532-e5f6ee4497bd
 # ╟─62c98e4e-043b-11eb-14ff-1d6d51faabb3
 # ╟─697fb20e-043b-11eb-319e-ab1011833049
-# ╠═7a1748e0-043b-11eb-04ba-a9955b3be2a8
-# ╠═21c1fd70-1958-11eb-01e6-8def49bbdcab
-# ╠═be662100-1959-11eb-2afb-971419abebed
-# ╠═0ecb2f00-195a-11eb-07ae-152144ecf1eb
+# ╟─7a1748e0-043b-11eb-04ba-a9955b3be2a8
+# ╟─21c1fd70-1958-11eb-01e6-8def49bbdcab
 # ╟─bb3d2420-043b-11eb-0860-4f82337e4064
 # ╠═96d00a80-04f4-11eb-37b5-41ffe86c31c6
 # ╠═c4a01950-04f4-11eb-3afa-89adf993acae
