@@ -156,3 +156,26 @@ function concat(path_arr; t_cutoff = 3.5, t_eff = 0.5, filter_func = nothing, sw
     end 
     t, concatenated_trace
 end
+
+#%% Sandbox for testing things
+
+using DataFrames
+#We want to make a file parser that includes all data behind the recordings
+
+super_folder = "D:\\Data\\ERG\\Gnat"
+common_root = split(super_folder, "\\")
+structure = collect(walkdir(super_folder))
+[:date, :animal, :blockers, :condition]
+for (root, dirs, files) in walkdir(super_folder)
+    if !isempty(files)
+        reduced_root = filter(e -> e ∉ common_root, split(root, "\\"))
+        println(reduced_root)
+        #Reduced root should be made of 
+    end
+end
+
+#%% trying to make a delete function
+
+list = ["a", "b", "c", "d"]
+"a" ∉ list
+filter(e -> e ∉ ["a", "c"], list)

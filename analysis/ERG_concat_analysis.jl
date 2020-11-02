@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.4
+# v0.12.6
 
 using Markdown
 using InteractiveUtils
@@ -12,6 +12,9 @@ using NeuroPhys, Plots
 
 # ╔═╡ 87a9cf50-0436-11eb-1695-974c7d2f3298
 pyplot()
+
+# ╔═╡ fc958970-1c97-11eb-00d0-2bbaf2c95ee5
+
 
 # ╔═╡ 8addd130-0436-11eb-2256-6bae5253165e
 target_path = "D:\\Data\\ERG\\Gnat\\2020_08_28_ERG_P10\\Mouse1\\NoDrugs\\525Green"
@@ -189,8 +192,9 @@ end
 # ╠═66f48ca0-0436-11eb-0e18-45060045af67
 # ╠═830b8f10-0436-11eb-3668-a9da07d1ee55
 # ╟─87a9cf50-0436-11eb-1695-974c7d2f3298
+# ╠═fc958970-1c97-11eb-00d0-2bbaf2c95ee5
 # ╠═8addd130-0436-11eb-2256-6bae5253165e
-# ╠═9693dd30-0436-11eb-2285-2bc0ee518909
+# ╟─9693dd30-0436-11eb-2285-2bc0ee518909
 # ╟─91642b00-0439-11eb-3532-e5f6ee4497bd
 # ╟─62c98e4e-043b-11eb-14ff-1d6d51faabb3
 # ╟─697fb20e-043b-11eb-319e-ab1011833049
