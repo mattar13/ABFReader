@@ -11,10 +11,9 @@ using LsqFit #Used for fitting amplification and Intensity Response models
 
 #Including files
 include("utils.jl")
-export parse_abf, extract_abf
+export parse_abf, extract_abf, extract_numbers
 
-include("functions.jl")
-#export functions part of other packages
+include("functions.jl") #export functions part of other packages
 #export Lowpass
 export curve_fit #curve fitting from LsqFit
 #export filtering functions
