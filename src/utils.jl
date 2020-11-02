@@ -1,4 +1,46 @@
 
+
+
+########################### These are some functions that will make parsing folder names easier ##############
+"""
+This function pulls out all adjacent numbers from a string and returns a list of numbers and letters
+"""
+function extract_numbers(str)
+    #First we want to split the string into characters
+    char_str = split(str, "")
+    #We can dilate numbers next to each other
+    numerical = String[]
+    text = String[]
+    place_number = ""
+    place_text = ""
+    for c in char_str
+        if tryparse(Int, c) != nothing
+            if place_text != ""
+                push!(text, place_text)
+                place_text = ""
+            end
+            place_number *= c
+        else
+            if place_number != ""
+                push!(numerical, place_number)
+                place_number = ""
+            end
+            place_text *= c
+        end
+    end
+    #Clear any remaining numbers or texts
+    if place_number != ""
+        push!(numerical, place_number)
+    end
+    if place_text != ""
+        push!(text, place_text)
+    end
+    #Finally we want to convert all numbers within the numerical array into numbers
+    numerical = map(c -> parse(Int, c), numerical)
+    return numerical, text
+end
+
+
 #These functions open and load ABF data
 
 """
@@ -174,8 +216,6 @@ for (root, dirs, files) in walkdir(super_folder)
     end
 end
 
-#%% trying to make a delete function
-
-list = ["a", "b", "c", "d"]
-"a" ∉ list
-filter(e -> e ∉ ["a", "c"], list)
+#%%
+a = "100p"
+a |> extract_numbers
