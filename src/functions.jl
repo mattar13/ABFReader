@@ -59,7 +59,7 @@ function fft_spectrum(t, data::Array{T, 1}) where T <: Real
 end
 
 #A single filtering pipeline
-function clean_data(t, data; negative = true, wave = WT.dog2, cutoff_octave = 9)
+function clean_data_cwt(t, data; negative = true, wave = WT.dog2, cutoff_octave = 9)
     x_ch1 = data[1,:,1]; x_ch2 = data[1,:,2]; x_stim = data[1,:,3] .> 0.2;
     #Cancelling drift
     x_lin1 = drift_cancel(t, x_ch1);
@@ -79,7 +79,7 @@ function clean_data(t, data; negative = true, wave = WT.dog2, cutoff_octave = 9)
 end
 
 #A single filtering pipeline
-function clean_data2(t, data; negative = true, wave = WT.dog2, cutoff_octave = 9)
+function clean_data(t, data; negative = true, wave = WT.dog2, cutoff_octave = 9)
     x_ch1 = data[1,:,1]; x_ch2 = data[1,:,2]; x_stim = data[1,:,3] .> 0.2;
     #Cancelling drift
     x_lin1 = drift_cancel(t, x_ch1);
@@ -88,14 +88,8 @@ function clean_data2(t, data; negative = true, wave = WT.dog2, cutoff_octave = 9
     stim_idxs = findall(x -> x == true, x_stim) #Stimulus is same for both channels
     x_adj1 = subtract_baseline(x_lin1, (1, stim_idxs[1]));
     x_adj2 = subtract_baseline(x_lin2, (1, stim_idxs[1]));
-    #Normalization
-    x_norm1, norm_factor1 = normalize(x_adj1);
-    x_norm2, norm_factor2 = normalize(x_adj2);
-    #CWT filtering (Probably not ready for CWT filtering )
-    #x_cwt1, cwt1_raster = cwt_filter(x_norm1, periods = 1:cutoff_octave);
-    #x_cwt2, cwt2_raster = cwt_filter(x_norm2, periods = 1:cutoff_octave);
-    #return x_cwt1.*norm_factor1, x_cwt2.*norm_factor2, x_stim
-    return x_cwt1, x_cwt2, x_stim
+    #Normalization should be done to all data points after concatenation
+    return x_adj1, x_adj2, x_stim
 end
 
 #########################################Everything Below here is for Pepperburg analysis

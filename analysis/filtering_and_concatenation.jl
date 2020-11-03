@@ -114,8 +114,8 @@ end
 
 begin
 	#Normalization
-	x_norm1, norm_factor1 = NeuroPhys.normalize(x_adj1);
-	x_norm2, norm_factor2 = NeuroPhys.normalize(x_adj2);
+	x_norm1, _ = NeuroPhys.normalize(x_adj1);
+	x_norm2, _ = NeuroPhys.normalize(x_adj2);
 	pnorm = plot(layout = grid(3,1), xlims = (0.0, 10.0))
 	plot!(pnorm[1], t, -x_norm1, label = "Normalized", title = "Normalized",
 		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :red
@@ -296,8 +296,32 @@ md"
 ERG traces: $(length(paths))
 "
 
+# ╔═╡ 3e3eddb0-1e26-11eb-0395-39a84aaaa1ab
+import NeuroPhys: concat, clean_data2
+
 # ╔═╡ d244f590-1e25-11eb-2c40-95fa9fa915b0
-t2, concat_data = concat(concat_paths; t_cutoff = 1.75, t_eff = 0.25);
+begin
+	t2, concat_data = concat(paths; filter_func = clean_data2, t_cutoff = 1.75, t_eff = 0.25);
+		#Normalize data
+	ch1_norm, norm_factor1 = normalize(concat_data[:,:,1]);
+	ch2_norm, norm_factor2 = normalize(concat_data[:,:,2]);
+	fig1 = plot(layout = grid(2,1))
+	plot_idxs = collect(1:size(concat_data,1))
+	for i in plot_idxs
+		plot!(fig1[1], t, -ch1_norm[i,:], label = "", c = :delta, line_z = i, 
+			xlabel = "", ylabel = "Response (\$\\mu\$V)"
+		)
+		plot!(fig1[2], t, -ch2_norm[i,:], label = "", c = :delta, line_z = i, 
+			xlabel = "Time (s)", ylabel = "Response (\$\\mu\$V)"
+		)
+		stim_start = findall(x -> x == true, concat_data[i,:,3])[1]
+		stim_end = findall(x -> x == true, concat_data[i,:,3])[end]
+		vspan!(fig1[1], [t[stim_start], t[stim_end]], c = :gray, label = "")
+		vspan!(fig1[2], [t[stim_start], t[stim_end]], c = :gray, label = "")
+	end
+	fig1
+	
+end	
 
 # ╔═╡ Cell order:
 # ╠═acb06ef0-042f-11eb-2b35-e7f2578cf3bd
@@ -318,4 +342,5 @@ t2, concat_data = concat(concat_paths; t_cutoff = 1.75, t_eff = 0.25);
 # ╟─7ad594de-1e1b-11eb-28ce-e18d72a90517
 # ╟─f129e1e0-1e21-11eb-060c-b7c6b7444713
 # ╟─b57790e0-1e24-11eb-0b7a-491baff911d1
+# ╠═3e3eddb0-1e26-11eb-0395-39a84aaaa1ab
 # ╠═d244f590-1e25-11eb-2c40-95fa9fa915b0
