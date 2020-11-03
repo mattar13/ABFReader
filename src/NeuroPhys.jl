@@ -2,13 +2,16 @@ module NeuroPhys
 
 is_working() = print("Yes is working!") 
 
+#TODO: Next I want to make the data analysis in one succinct folder
+
 #Imports
 using PyCall
 using StatsBase, DataFrames, XLSX
 using Polynomials, Distributions #Used for polynomial fitting
 using DSP, Wavelets, FFTW #Used for filtering
 using LsqFit #Used for fitting amplification and Intensity Response models
-using DataFrames
+using DataFrames, XLSX #Used for saving data
+
 #Including files
 include("utils.jl")
 export parse_abf, extract_abf, extract_numbers

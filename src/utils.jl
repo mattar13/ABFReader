@@ -211,12 +211,20 @@ function concat(path_arr; t_cutoff = 3.5, t_eff = 0.5, filter_func = nothing, sw
     t, concatenated_trace
 end
 
-#%% Sandbox for testing things
+"""
+This function extracts all possible important information about the current dataset. 
 
-#using NeuroPhys
+First you give the file a super folder, then it classifier information about the files within the super_folder
+including: 
+    Year, Month, Day data was recorded
+    Animal number that day, age of animal, genotype of that animal
+    Whether or not B-wave blockers were added
+    The ND filter used, the percent intensity of the LED source, and the stimulus time
+It returns the file in a dataframe, which later can be saved into excel. 
 
-#We want to make a file parser that includes all data behind the recordings
-#super_folder = "D:\\Data\\ERG\\Gnat"
+Or if necessary, you can append a column for many other data analysis categories. 
+
+"""
 function dataframe_maker(super_folder)
     df = DataFrame(
         Year = Int[], 
