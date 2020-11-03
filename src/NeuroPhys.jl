@@ -8,7 +8,7 @@ using StatsBase, DataFrames, XLSX
 using Polynomials, Distributions #Used for polynomial fitting
 using DSP, Wavelets, FFTW #Used for filtering
 using LsqFit #Used for fitting amplification and Intensity Response models
-
+using DataFrames
 #Including files
 include("utils.jl")
 export parse_abf, extract_abf, extract_numbers

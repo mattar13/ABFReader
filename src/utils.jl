@@ -213,45 +213,76 @@ end
 
 #%% Sandbox for testing things
 
-using NeuroPhys
-using DataFrames
+#using NeuroPhys
+
 #We want to make a file parser that includes all data behind the recordings
-df = DataFrame(
-    Year = Int[], 
-    Month = Int[], 
-    Day = Int[]    
-    )
-super_folder = "D:\\Data\\ERG\\Gnat"
-common_root = split(super_folder, "\\")
-structure = collect(walkdir(super_folder))
-[:date, :animal, :blockers, :condition]
-for (root, dirs, files) in walkdir(super_folder)
-    if !isempty(files)    
-        reduced_root = filter(e -> e ∉ common_root, split(root, "\\"))
-        if !isempty(reduced_root)
-            date, animal, blockers, condition = reduced_root
-            #println(reduced_root)
-            year, month, day = map(x -> extract_numbers(x)[1], split(date, "_"))
-            animal_n, age, genotype = split(animal, "_")
-            drugs_added = blockers == "Drugs"
-            wavelengh, color = condition |> extract_numbers
-            for file in files
-                intensity_info = split(file, "_")
-                if length(intensity_info) == 2
-                    println("This file has not yet been renamed")
-                elseif length(intensity_info) == 3 || length(intensity_info) == 4
-                    #This is the case for files that have been converted to 
-                    #println(intensity_info)
-                    println(year[1])
-                    #push!(df, (year, month, day))
-                else 
+#super_folder = "D:\\Data\\ERG\\Gnat"
+function dataframe_maker(super_folder)
+    df = DataFrame(
+        Year = Int[], 
+        Month = Int[], 
+        Day = Int[], 
+        Animal_number = Int[], age = Int[], Genotype = String[], 
+        Drugs = Bool[], 
+        ND = Int[], Intensity = Int[], T_stim = Int[]
+        )
+    common_root = split(super_folder, "\\")
+
+    for (root, dirs, files) in walkdir(super_folder)
+        if !isempty(files)    
+            reduced_root = filter(e -> e ∉ common_root, split(root, "\\"))
+            if !isempty(reduced_root)
+                date, animal, blockers, condition = reduced_root
+                #println(reduced_root)
+                year, month, day = map(x -> extract_numbers(x), split(date, "_"))
+                animal_n, age, genotype = split(animal, "_")
+                animal_n = animal_n |> extract_numbers
+                age = age |> number_seperator
+                age = !isempty(age[1]) ? age[1][1] : 30
+
+                drugs_added = blockers == "Drugs"
+                wavelengh, color = condition |> number_seperator
+                for file in files
+                    intensity_info = split(file, "_")
+                    if length(intensity_info) == 2
+                        println("This file has not yet been renamed")
+                    elseif length(intensity_info) == 3 || length(intensity_info) == 4
+                        nd = intensity_info[1] |> extract_numbers
+                        intensity = intensity_info[2] |> extract_numbers
+                        #Soemtimes we get an error where there is extra stuff after the stimulus time
+                        t_stim = (intensity_info[3] |> extract_numbers)[1]
+                        push!(df, (year, month, day, 
+                            animal_n, age, genotype, 
+                            drugs_added, 
+                            nd, intensity, t_stim
+                            )
+                        )
+                    else 
+                        nd = intensity_info[1] |> extract_numbers
+                        intensity = intensity_info[2] |> extract_numbers
+                        #In some files, I have it set up so 1, 2, and 4 are done sequentially. In this case, 0 corresponds to 1
+                        if intensity_info[end][1] == 0
+                            t_stim = 1
+                        elseif intensity_info[end][1] == 1
+                            t_stim = 2
+                        else
+                            t_stim = 4
+                        end
+
+                        push!(df, (year, month, day, 
+                            animal_n, age, genotype, 
+                            drugs_added, 
+                            nd, intensity, t_stim
+                            )
+                        )
+                    end
                 end
+                #Reduced root should be made of 
             end
-            #Reduced root should be made of 
         end
     end
+    return df
 end
 
 #%%
-a = "100f"
-a |> extract_numbers
+#df
