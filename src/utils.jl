@@ -5,7 +5,7 @@
 """
 This function pulls out all adjacent numbers from a string and returns a list of numbers and letters
 """
-function extract_numbers(str)
+function number_seperator(str)
     #First we want to split the string into characters
     char_str = split(str, "")
     #We can dilate numbers next to each other
@@ -14,7 +14,7 @@ function extract_numbers(str)
     place_number = ""
     place_text = ""
     for c in char_str
-        if tryparse(Int, c) != nothing
+        if tryparse(Int, c) !== nothing
             if place_text != ""
                 push!(text, place_text)
                 place_text = ""
@@ -40,7 +40,19 @@ function extract_numbers(str)
     return numerical, text
 end
 
-
+"""
+This function takes all the data from the file/folder name and returns only the numbers
+"""
+function extract_numbers(str) 
+    datafield = extract_filenames(str)
+    if datafield |> length == 1
+        #If it is only one number return only that number
+        return datafield[1]
+    else
+        #If the datafield is multiple numbers return all of them
+        return datafield
+    end
+end
 #These functions open and load ABF data
 
 """
@@ -179,7 +191,7 @@ function concat(path_arr; t_cutoff = 3.5, t_eff = 0.5, filter_func = nothing, sw
         else
             data = raw_data
         end
-        if filter_func == nothing
+        if filter_func === nothing
             println(data |> size)
             x_ch1 = data[1,:,1] 
             x_ch2 = data[1,:,2] 
@@ -203,19 +215,42 @@ end
 
 using DataFrames
 #We want to make a file parser that includes all data behind the recordings
-
+df = DataFrame(
+    Year = Int[], 
+    Month = Int[], 
+    Day = Int[]    
+    )
 super_folder = "D:\\Data\\ERG\\Gnat"
 common_root = split(super_folder, "\\")
 structure = collect(walkdir(super_folder))
 [:date, :animal, :blockers, :condition]
 for (root, dirs, files) in walkdir(super_folder)
-    if !isempty(files)
+    if !isempty(files)    
         reduced_root = filter(e -> e ∉ common_root, split(root, "\\"))
-        println(reduced_root)
-        #Reduced root should be made of 
+        if !isempty(reduced_root)
+            date, animal, blockers, condition = reduced_root
+            #println(reduced_root)
+            year, month, day = map(x -> extract_numbers(x)[1], split(date, "_"))
+            animal_n, age, genotype = split(animal, "_")
+            drugs_added = blockers == "Drugs"
+            wavelengh, color = condition |> extract_numbers
+            for file in files
+                intensity_info = split(file, "_")
+                if length(intensity_info) == 2
+                    println("This file has not yet been renamed")
+                elseif length(intensity_info) == 3 || length(intensity_info) == 4
+                    #This is the case for files that have been converted to 
+                    #println(intensity_info)
+                    println(year[1])
+                    #push!(df, (year, month, day))
+                else 
+                end
+            end
+            #Reduced root should be made of 
+        end
     end
 end
 
 #%%
-a = "100p"
+a = "100f"
 a |> extract_numbers

@@ -142,7 +142,7 @@ This function conducts a Pepperburg analysis on a single trace.
 """
 function pepperburg_analysis(X::AbstractArray; dt = 5.0e-5, rank = 6, graphically = false, peak_args...)
     rmax = peak_finder(X; peak_args...)
-    if rmax != nothing
+    if rmax !== nothing
         #Now we need to find the values at 60% of the rmax found here (otherwise known as rank 6)
         rmax_idx = findall(x -> round(x, digits = 4) < round(rmax, digits = 4), X)[end]
         if length(rmax_idx) == 0
