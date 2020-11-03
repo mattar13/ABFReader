@@ -289,20 +289,15 @@ md"### [2] Concatenating files
 cat_path = "to_concatenate"
 
 # ╔═╡ f129e1e0-1e21-11eb-060c-b7c6b7444713
-begin 
-	paths = cat_path |> parse_abf
-	a_paths = String[]
-	#And AB wave traces
-	ab_paths = String[]
-	for path in paths
-		search = (splitpath(path))
-		if length(findall(x -> x == "Drugs", search)) > 0
-			push!(a_paths, path)
-		elseif length(findall(x -> x == "NoDrugs", search)) > 0
-			push!(ab_paths, path)
-		end
-	end	
-end;
+paths = cat_path |> parse_abf |> sort
+
+# ╔═╡ b57790e0-1e24-11eb-0b7a-491baff911d1
+md"
+ERG traces: $(length(paths))
+"
+
+# ╔═╡ d244f590-1e25-11eb-2c40-95fa9fa915b0
+t2, concat_data = concat(concat_paths; t_cutoff = 1.75, t_eff = 0.25);
 
 # ╔═╡ Cell order:
 # ╠═acb06ef0-042f-11eb-2b35-e7f2578cf3bd
@@ -311,7 +306,7 @@ end;
 # ╟─6aa33000-0426-11eb-3757-d55b61aebc53
 # ╠═e09e64b0-0425-11eb-1a08-8f78d2ceca08
 # ╟─cc74a240-042c-11eb-257c-f969882fcc79
-# ╟─5dfb2940-042e-11eb-1d71-d3d70aed94e4
+# ╠═5dfb2940-042e-11eb-1d71-d3d70aed94e4
 # ╟─8e5be320-0430-11eb-2ea2-c9fbd7e40caa
 # ╟─1fcf25b0-0431-11eb-0c6c-2d2204083a98
 # ╟─4aee4550-0431-11eb-2643-29f5e0eb19b5
@@ -320,5 +315,7 @@ end;
 # ╟─498f2320-0434-11eb-0cc3-f977a71c5196
 # ╟─31814662-1e1e-11eb-3f29-5bccaf4079af
 # ╠═4d825730-1e1b-11eb-3e3a-0b1c0d22971e
-# ╠═7ad594de-1e1b-11eb-28ce-e18d72a90517
-# ╠═f129e1e0-1e21-11eb-060c-b7c6b7444713
+# ╟─7ad594de-1e1b-11eb-28ce-e18d72a90517
+# ╟─f129e1e0-1e21-11eb-060c-b7c6b7444713
+# ╟─b57790e0-1e24-11eb-0b7a-491baff911d1
+# ╠═d244f590-1e25-11eb-2c40-95fa9fa915b0
