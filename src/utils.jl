@@ -44,13 +44,13 @@ end
 This function takes all the data from the file/folder name and returns only the numbers
 """
 function extract_numbers(str) 
-    datafield = extract_filenames(str)
-    if datafield |> length == 1
+    number_field = number_seperator(str)[1]
+    if number_field |> length == 1
         #If it is only one number return only that number
-        return datafield[1]
+        return number_field[1]
     else
         #If the datafield is multiple numbers return all of them
-        return datafield
+        return number_field
     end
 end
 #These functions open and load ABF data
@@ -213,6 +213,7 @@ end
 
 #%% Sandbox for testing things
 
+using NeuroPhys
 using DataFrames
 #We want to make a file parser that includes all data behind the recordings
 df = DataFrame(
