@@ -286,7 +286,23 @@ md"### [2] Concatenating files
 "
 
 # ╔═╡ 7ad594de-1e1b-11eb-28ce-e18d72a90517
+cat_path = "to_concatenate"
 
+# ╔═╡ f129e1e0-1e21-11eb-060c-b7c6b7444713
+begin 
+	paths = cat_path |> parse_abf
+	a_paths = String[]
+	#And AB wave traces
+	ab_paths = String[]
+	for path in paths
+		search = (splitpath(path))
+		if length(findall(x -> x == "Drugs", search)) > 0
+			push!(a_paths, path)
+		elseif length(findall(x -> x == "NoDrugs", search)) > 0
+			push!(ab_paths, path)
+		end
+	end	
+end;
 
 # ╔═╡ Cell order:
 # ╠═acb06ef0-042f-11eb-2b35-e7f2578cf3bd
@@ -305,3 +321,4 @@ md"### [2] Concatenating files
 # ╟─31814662-1e1e-11eb-3f29-5bccaf4079af
 # ╠═4d825730-1e1b-11eb-3e3a-0b1c0d22971e
 # ╠═7ad594de-1e1b-11eb-28ce-e18d72a90517
+# ╠═f129e1e0-1e21-11eb-060c-b7c6b7444713
