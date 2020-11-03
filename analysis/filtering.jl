@@ -8,14 +8,14 @@ using InteractiveUtils
 using PlutoUI
 
 # ╔═╡ eec4b7f2-0426-11eb-1f69-b3fea7ffedb1
-using NeuroPhys, Plots
+using NeuroPhys, Plots, DSP
 
 # ╔═╡ e7c07a90-042e-11eb-2565-8f992ddf6aea
 pyplot()
 
 # ╔═╡ 6aa33000-0426-11eb-3757-d55b61aebc53
 md"
-## Analyzing Individual ERG files
+## [1] Filtering individual ERG files
 
 - The first thing we can do to generate ERG reports enter the location of the file in here
 
@@ -139,8 +139,8 @@ end
 
 begin
 	#CWT filtering (Probably not ready for CWT filtering )
-	x_cwt1, cwt1_raster = NeuroPhys.cwt_filter(x_norm1, periods = 1:10);
-	x_cwt2, cwt2_raster = NeuroPhys.cwt_filter(x_norm2, periods = 1:10);
+	x_cwt1, cwt1_raster = NeuroPhys.cwt_filter(x_norm1, periods = 2:10);
+	x_cwt2, cwt2_raster = NeuroPhys.cwt_filter(x_norm2, periods = 2:11);
 	pcwt = plot(layout = grid(3,1), xlims = (0.0, 10.0))
 
 	#Unfiltered
@@ -161,17 +161,41 @@ begin
 	)
 end
 
-# ╔═╡ 498f2320-0434-11eb-0cc3-f977a71c5196
+# ╔═╡ 9e481b70-1e1e-11eb-372b-23f7c5d76b91
 begin
-	using DSP
-	import NeuroPhys.fft_spectrum
-	#Lowpass filtering
+	#CWT filtering (Probably not ready for CWT filtering )
 	responsetype = Lowpass(25.0; fs = 1/dt); designmethod = Butterworth(8)
 	x_bp1 = filt(digitalfilter(responsetype, designmethod), x_norm1);
 	#Lowpass filtering
 	responsetype = Lowpass(25.0; fs = 1/dt); designmethod = Butterworth(8)
 	x_bp2 = filt(digitalfilter(responsetype, designmethod), x_norm2);
 	
+	pbs = plot(layout = grid(3,1), xlims = (0.0, 10.0))
+
+	#Unfiltered
+	plot!(pbs[1], t, -x_norm1, label = "Normalized",c = :blue,
+		xlabel = "", ylabel = "Response (\$\\mu\$V)"
+	)
+	plot!(pbs[2], t, -x_norm2, label = "", title = "",c = :blue,
+		xlabel = "", ylabel = "Response (\$\\mu\$V)"
+	)
+	plot!(pbs[1], t, -x_bp1, label = "Butterworth Filtered", title = "Using Bandpass filter",
+		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :red,
+	)
+	plot!(pbs[2], t, -x_bp2, label = "", title = "",
+		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :red,
+	)
+	plot!(pbs[3], t, raw_data[1,:,3], label = "", title = "",
+		xlabel = "Time (s)", ylabel = "Stimulus"
+	)
+end
+
+# ╔═╡ 498f2320-0434-11eb-0cc3-f977a71c5196
+begin
+	import NeuroPhys.fft_spectrum
+	stim_points = findall(x -> x>0.0, x_stim)
+	t_start = t[stim_points[1]]-0.5
+	t_end = 4.0
 	p1FF_1 = plot(t, -x_norm1, label = "", c = :blue, 
 		xlabel = "Time (s)", ylabel = "Response (mV)", 
 		title = "Filtering Ch1"
@@ -179,8 +203,8 @@ begin
 	plot!(p1FF_1, t, -x_cwt1, label = "CWT filtered", 
 		c = :red, lw = 2.0);
 	plot!(p1FF_1, t, -x_bp1, label = "BS Filtered", 
-		c = :green, lw  = 2.0, xlims = (1,3.0), ylims = (-1.0, 0.5))
-	stim_points = findall(x -> x>0.0, x_stim)
+		c = :green, lw  = 2.0, xlims = (t_start,t_end), ylims = (-1.0, 0.5))
+	
 	scatter!(p1FF_1, t[stim_points], [repeat([-1.0], length(stim_points))],  
 		marker = :square, markersize = 10.0, c = :black, label = "Light Stim"
 	)
@@ -211,7 +235,7 @@ begin
 	
 	plot!(p2FF_1, t, -x_cwt2, label = "CWT filtered", c = :red, lw = 2.0);
 	plot!(p2FF_1, t, -x_bp2, label = "BS Filtered", c = :green, lw  = 2.0, 
-		xlims = (1,3.0), ylims = (-1.0, 0.5))
+		xlims = (t_start,t_end), ylims = (-1.0, 0.5))
 	
 	scatter!(p2FF_1, t[stim_points], [repeat([-1.0], length(stim_points))],  
 		marker = :square, markersize = 10.0, c = :black, label = "Light Stim"
@@ -244,8 +268,25 @@ begin
 	plot(p1FF, p2FF, layout = grid(1,2))
 end
 
-# ╔═╡ 1431a140-05d2-11eb-161d-c9151633db9d
-heatmap(cwt1_raster')
+# ╔═╡ 31814662-1e1e-11eb-3f29-5bccaf4079af
+md"
+##### Summary
+
+I think filtering should be used only in very noisy cases. In most cases, the averaged data should be sufficient to make a good analysis. 
+
+In the case filtering needs to be used: 
+- CWT preserved the effective times, but can cause errors in the amplitudes
+- Bandpass filtering can preserve the amplitudes, but cause errors in the effective time 
+
+Therefore depending on which metric needs to be applied, use the appropriate filtering method
+"
+
+# ╔═╡ 4d825730-1e1b-11eb-3e3a-0b1c0d22971e
+md"### [2] Concatenating files
+"
+
+# ╔═╡ 7ad594de-1e1b-11eb-28ce-e18d72a90517
+
 
 # ╔═╡ Cell order:
 # ╠═acb06ef0-042f-11eb-2b35-e7f2578cf3bd
@@ -254,10 +295,13 @@ heatmap(cwt1_raster')
 # ╟─6aa33000-0426-11eb-3757-d55b61aebc53
 # ╠═e09e64b0-0425-11eb-1a08-8f78d2ceca08
 # ╟─cc74a240-042c-11eb-257c-f969882fcc79
-# ╠═5dfb2940-042e-11eb-1d71-d3d70aed94e4
+# ╟─5dfb2940-042e-11eb-1d71-d3d70aed94e4
 # ╟─8e5be320-0430-11eb-2ea2-c9fbd7e40caa
 # ╟─1fcf25b0-0431-11eb-0c6c-2d2204083a98
 # ╟─4aee4550-0431-11eb-2643-29f5e0eb19b5
 # ╟─7dabc5d0-0431-11eb-0ca4-dfbfbc09620d
-# ╠═1431a140-05d2-11eb-161d-c9151633db9d
+# ╟─9e481b70-1e1e-11eb-372b-23f7c5d76b91
 # ╟─498f2320-0434-11eb-0cc3-f977a71c5196
+# ╟─31814662-1e1e-11eb-3f29-5bccaf4079af
+# ╠═4d825730-1e1b-11eb-3e3a-0b1c0d22971e
+# ╠═7ad594de-1e1b-11eb-28ce-e18d72a90517
