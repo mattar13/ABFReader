@@ -297,27 +297,27 @@ ERG traces: $(length(paths))
 "
 
 # ╔═╡ 3e3eddb0-1e26-11eb-0395-39a84aaaa1ab
-import NeuroPhys: concat, clean_data2
+import NeuroPhys: concat, clean_data
 
 # ╔═╡ d244f590-1e25-11eb-2c40-95fa9fa915b0
 begin
-	t2, concat_data = concat(paths; filter_func = clean_data2, t_cutoff = 1.75, t_eff = 0.25);
+	t2, concat_data = concat(paths; filter_func = clean_data, t_cutoff = 1.75, t_eff = 0.2);
 		#Normalize data
 	ch1_norm, norm_factor1 = normalize(concat_data[:,:,1]);
 	ch2_norm, norm_factor2 = normalize(concat_data[:,:,2]);
 	fig1 = plot(layout = grid(2,1))
 	plot_idxs = collect(1:size(concat_data,1))
 	for i in plot_idxs
-		plot!(fig1[1], t, -ch1_norm[i,:], label = "", c = :delta, line_z = i, 
+		plot!(fig1[1], t2, -ch1_norm[i,:], label = "", c = :delta, line_z = i, 
 			xlabel = "", ylabel = "Response (\$\\mu\$V)"
 		)
-		plot!(fig1[2], t, -ch2_norm[i,:], label = "", c = :delta, line_z = i, 
+		plot!(fig1[2], t2, -ch2_norm[i,:], label = "", c = :delta, line_z = i, 
 			xlabel = "Time (s)", ylabel = "Response (\$\\mu\$V)"
 		)
 		stim_start = findall(x -> x == true, concat_data[i,:,3])[1]
 		stim_end = findall(x -> x == true, concat_data[i,:,3])[end]
-		vspan!(fig1[1], [t[stim_start], t[stim_end]], c = :gray, label = "")
-		vspan!(fig1[2], [t[stim_start], t[stim_end]], c = :gray, label = "")
+		vspan!(fig1[1], [t2[stim_start], t2[stim_end]], c = :gray, label = "")
+		vspan!(fig1[2], [t2[stim_start], t2[stim_end]], c = :gray, label = "")
 	end
 	fig1
 	

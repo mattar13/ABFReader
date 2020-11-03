@@ -14,7 +14,7 @@ using DataFrames, XLSX #Used for saving data
 
 #Including files
 include("utils.jl")
-export parse_abf, extract_abf, extract_numbers
+export parse_abf, extract_abf, extract_numbers, concat
 
 include("functions.jl") #export functions part of other packages
 #export Lowpass
