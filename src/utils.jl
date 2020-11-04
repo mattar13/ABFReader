@@ -282,7 +282,7 @@ function dataframe_maker(super_folder)
                 drugs_added = blockers == "Drugs"
                 wavelengh, color = condition |> number_seperator
                 for file in files
-                    filename_extractor(file)
+                    nd, intensity, t_stim = filename_extractor(file)
                     push!(df, (year, month, day, 
                         animal_n, age, genotype, 
                         drugs_added, 
@@ -298,4 +298,5 @@ end
 
 
 #%%
-#df
+folder = "D:\\Data\\ERG\\Gnat\\"
+df = dataframe_maker(folder)
