@@ -15,12 +15,13 @@ using DataFrames, XLSX #Used for saving data
 #Including files
 include("utils.jl")
 export parse_abf, extract_abf, extract_numbers, concat, filename_extractor
-
 include("functions.jl") #export functions part of other packages
 #export Lowpass
 export curve_fit #curve fitting from LsqFit
 #export filtering functions
 export drift_cancel, subtract_baseline, normalize, cwt_filter, fft_spectrum, clean_data
+export stim_intensity, photons
+
 include("models.jl")
 #Export the Amplification and IR models
 export IR, IR_dev, AMP
