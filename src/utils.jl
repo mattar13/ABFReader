@@ -219,6 +219,7 @@ function filename_extractor(filename::String)
     intensity_info = split(filename, "_")
     if length(intensity_info) == 2
         println("This file has not yet been renamed")
+        return nothing
     elseif length(intensity_info) == 3 || length(intensity_info) == 4
         nd = intensity_info[1] |> extract_numbers
         intensity = intensity_info[2] |> extract_numbers
@@ -282,13 +283,16 @@ function dataframe_maker(super_folder)
                 drugs_added = blockers == "Drugs"
                 wavelengh, color = condition |> number_seperator
                 for file in files
-                    nd, intensity, t_stim = filename_extractor(file)
-                    push!(df, (year, month, day, 
-                        animal_n, age, genotype, 
-                        drugs_added, 
-                        nd, intensity, t_stim
+                    info = filename_extractor(file)
+                    if info != nothing
+                        nd, intensity, t_stim = info
+                        push!(df, (year, month, day, 
+                            animal_n, age, genotype, 
+                            drugs_added, 
+                            nd, intensity, t_stim
+                            )
                         )
-                    )
+                    end
                 end 
             end
         end
@@ -298,5 +302,6 @@ end
 
 
 #%%
+import NeuroPhys: dataframe_maker
 folder = "D:\\Data\\ERG\\Gnat\\"
 df = dataframe_maker(folder)
