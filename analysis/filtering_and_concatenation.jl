@@ -291,19 +291,22 @@ cat_path = "to_concatenate"
 # ╔═╡ f129e1e0-1e21-11eb-060c-b7c6b7444713
 paths = cat_path |> parse_abf |> sort
 
-# ╔═╡ 7bcf7fd0-1ecc-11eb-10ec-7986784aa7bb
-paths |> typeof
-
 # ╔═╡ b57790e0-1e24-11eb-0b7a-491baff911d1
 md"
 ERG traces: $(length(paths))
 "
 
-# ╔═╡ 3e3eddb0-1e26-11eb-0395-39a84aaaa1ab
-import NeuroPhys: concat, clean_data
+# ╔═╡ 7b745590-1ece-11eb-1e05-1d219c25f08b
+import NeuroPhys: filename_extractor
 
 # ╔═╡ d632f430-1ecb-11eb-1eaa-59586b8430cb
+begin
+	path_split = split(paths[1], "\\")
+	nd, intensity, t_stim = filename_extractor(path_split[1]|>String)
+end
 
+# ╔═╡ c61d0920-1ece-11eb-091a-d59ae55c9f93
+path_split[1] |> typeof
 
 # ╔═╡ d244f590-1e25-11eb-2c40-95fa9fa915b0
 begin
@@ -352,10 +355,10 @@ end
 # ╟─498f2320-0434-11eb-0cc3-f977a71c5196
 # ╟─31814662-1e1e-11eb-3f29-5bccaf4079af
 # ╠═4d825730-1e1b-11eb-3e3a-0b1c0d22971e
-# ╠═7bcf7fd0-1ecc-11eb-10ec-7986784aa7bb
 # ╟─7ad594de-1e1b-11eb-28ce-e18d72a90517
 # ╟─f129e1e0-1e21-11eb-060c-b7c6b7444713
 # ╟─b57790e0-1e24-11eb-0b7a-491baff911d1
-# ╠═3e3eddb0-1e26-11eb-0395-39a84aaaa1ab
 # ╠═d632f430-1ecb-11eb-1eaa-59586b8430cb
+# ╠═7b745590-1ece-11eb-1e05-1d219c25f08b
+# ╠═c61d0920-1ece-11eb-091a-d59ae55c9f93
 # ╠═d244f590-1e25-11eb-2c40-95fa9fa915b0

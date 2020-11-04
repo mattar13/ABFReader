@@ -216,7 +216,7 @@ This extracts info from each filename.
 ND -> Intensity -> Stimulus time
 """
 function filename_extractor(filename::String)
-    intensity_info = split(file, "_")
+    intensity_info = split(filename, "_")
     if length(intensity_info) == 2
         println("This file has not yet been renamed")
     elseif length(intensity_info) == 3 || length(intensity_info) == 4
@@ -239,6 +239,8 @@ function filename_extractor(filename::String)
         return nd, intensity, t_stim
     end
 end
+
+filename_extractor(filename::SubString{String}) = filename_extractor(filename |> String)
 
 """
 This function extracts all possible important information about the current dataset. 
