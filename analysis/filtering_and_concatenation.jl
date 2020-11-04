@@ -301,7 +301,7 @@ import NeuroPhys: concat, clean_data
 
 # ╔═╡ d244f590-1e25-11eb-2c40-95fa9fa915b0
 begin
-	t2, concat_data = concat(paths; filter_func = clean_data, t_cutoff = 1.75, t_eff = 0.2);
+	t2, concat_data = concat(paths; filter_func = clean_data, t_cutoff = 1.75, t_eff = 0.1);
 		#Normalize data
 	ch1_norm, norm_factor1 = normalize(concat_data[:,:,1]);
 	ch2_norm, norm_factor2 = normalize(concat_data[:,:,2]);
@@ -343,4 +343,4 @@ end
 # ╟─f129e1e0-1e21-11eb-060c-b7c6b7444713
 # ╟─b57790e0-1e24-11eb-0b7a-491baff911d1
 # ╠═3e3eddb0-1e26-11eb-0395-39a84aaaa1ab
-# ╠═d244f590-1e25-11eb-2c40-95fa9fa915b0
+# ╟─d244f590-1e25-11eb-2c40-95fa9fa915b0
