@@ -291,6 +291,9 @@ cat_path = "to_concatenate"
 # ╔═╡ f129e1e0-1e21-11eb-060c-b7c6b7444713
 paths = cat_path |> parse_abf |> sort
 
+# ╔═╡ 7bcf7fd0-1ecc-11eb-10ec-7986784aa7bb
+paths |> typeof
+
 # ╔═╡ b57790e0-1e24-11eb-0b7a-491baff911d1
 md"
 ERG traces: $(length(paths))
@@ -299,28 +302,38 @@ ERG traces: $(length(paths))
 # ╔═╡ 3e3eddb0-1e26-11eb-0395-39a84aaaa1ab
 import NeuroPhys: concat, clean_data
 
+# ╔═╡ d632f430-1ecb-11eb-1eaa-59586b8430cb
+
+
 # ╔═╡ d244f590-1e25-11eb-2c40-95fa9fa915b0
 begin
-	t2, concat_data = concat(paths; filter_func = clean_data, t_cutoff = 1.75, t_eff = 0.1);
+	t2, concat_data = concat(paths; filter_func = clean_data, t_cutoff = 0.51, t_eff = 0.1);
 		#Normalize data
 	ch1_norm, norm_factor1 = normalize(concat_data[:,:,1]);
 	ch2_norm, norm_factor2 = normalize(concat_data[:,:,2]);
-	fig1 = plot(layout = grid(2,1))
+	
+	#Extract the response
+	R_ch1 = maximum(ch1_norm, dims = 2) |> vec
+	R_ch2 = maximum(ch2_norm, dims = 2) |> vec
+	
+	fig1a = plot(layout = grid(2,1))
 	plot_idxs = collect(1:size(concat_data,1))
 	for i in plot_idxs
-		plot!(fig1[1], t2, -ch1_norm[i,:], label = "", c = :delta, line_z = i, 
+		plot!(fig1a[1], t2, -ch1_norm[i,:], label = "", c = :delta, line_z = i, 
 			xlabel = "", ylabel = "Response (\$\\mu\$V)"
 		)
-		plot!(fig1[2], t2, -ch2_norm[i,:], label = "", c = :delta, line_z = i, 
+		plot!(fig1a[2], t2, -ch2_norm[i,:], label = "", c = :delta, line_z = i, 
 			xlabel = "Time (s)", ylabel = "Response (\$\\mu\$V)"
 		)
 		stim_start = findall(x -> x == true, concat_data[i,:,3])[1]
 		stim_end = findall(x -> x == true, concat_data[i,:,3])[end]
-		vspan!(fig1[1], [t2[stim_start], t2[stim_end]], c = :gray, label = "")
-		vspan!(fig1[2], [t2[stim_start], t2[stim_end]], c = :gray, label = "")
+		vspan!(fig1a[1], [t2[stim_start], t2[stim_end]], c = :gray, label = "")
+		vspan!(fig1a[2], [t2[stim_start], t2[stim_end]], c = :gray, label = "")
 	end
-	fig1
+	fig1b = plot(sort(R_ch1), seriestype = :scatter)
+	plot!(fig1b, sort(R_ch2), seriestype = :scatter)
 	
+	fig1 = plot(fig1a, fig1b, layout = grid(1,2))	
 end	
 
 # ╔═╡ Cell order:
@@ -330,17 +343,19 @@ end
 # ╟─6aa33000-0426-11eb-3757-d55b61aebc53
 # ╠═e09e64b0-0425-11eb-1a08-8f78d2ceca08
 # ╟─cc74a240-042c-11eb-257c-f969882fcc79
-# ╠═5dfb2940-042e-11eb-1d71-d3d70aed94e4
+# ╟─5dfb2940-042e-11eb-1d71-d3d70aed94e4
 # ╟─8e5be320-0430-11eb-2ea2-c9fbd7e40caa
 # ╟─1fcf25b0-0431-11eb-0c6c-2d2204083a98
 # ╟─4aee4550-0431-11eb-2643-29f5e0eb19b5
-# ╠═7dabc5d0-0431-11eb-0ca4-dfbfbc09620d
+# ╟─7dabc5d0-0431-11eb-0ca4-dfbfbc09620d
 # ╟─9e481b70-1e1e-11eb-372b-23f7c5d76b91
 # ╟─498f2320-0434-11eb-0cc3-f977a71c5196
 # ╟─31814662-1e1e-11eb-3f29-5bccaf4079af
 # ╠═4d825730-1e1b-11eb-3e3a-0b1c0d22971e
+# ╠═7bcf7fd0-1ecc-11eb-10ec-7986784aa7bb
 # ╟─7ad594de-1e1b-11eb-28ce-e18d72a90517
 # ╟─f129e1e0-1e21-11eb-060c-b7c6b7444713
 # ╟─b57790e0-1e24-11eb-0b7a-491baff911d1
 # ╠═3e3eddb0-1e26-11eb-0395-39a84aaaa1ab
-# ╟─d244f590-1e25-11eb-2c40-95fa9fa915b0
+# ╠═d632f430-1ecb-11eb-1eaa-59586b8430cb
+# ╠═d244f590-1e25-11eb-2c40-95fa9fa915b0

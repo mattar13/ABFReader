@@ -60,7 +60,7 @@ This function walks through the directory and locates any .abf file.
 The extension can be changed with the keyword argument extension
 """
 function parse_abf(super_folder::String; extension::String = ".abf", verbose = false)
-    file_list = []
+    file_list = String[]
     for (root, dirs, files) in walkdir(super_folder)
         for file in files
             if file[end-3:end] == extension
@@ -212,6 +212,35 @@ function concat(path_arr; t_cutoff = 3.5, t_eff = 0.5, filter_func = nothing, sw
 end
 
 """
+This extracts info from each filename.
+ND -> Intensity -> Stimulus time
+"""
+function filename_extractor(filename::String)
+    intensity_info = split(file, "_")
+    if length(intensity_info) == 2
+        println("This file has not yet been renamed")
+    elseif length(intensity_info) == 3 || length(intensity_info) == 4
+        nd = intensity_info[1] |> extract_numbers
+        intensity = intensity_info[2] |> extract_numbers
+        #Soemtimes we get an error where there is extra stuff after the stimulus time
+        t_stim = (intensity_info[3] |> extract_numbers)[1]
+        return nd, intensity, t_stim
+    else 
+        nd = intensity_info[1] |> extract_numbers
+        intensity = intensity_info[2] |> extract_numbers
+        #In some files, I have it set up so 1, 2, and 4 are done sequentially. In this case, 0 corresponds to 1
+        if intensity_info[end][1] == 0
+            t_stim = 1
+        elseif intensity_info[end][1] == 1
+            t_stim = 2
+        else
+            t_stim = 4
+        end
+        return nd, intensity, t_stim
+    end
+end
+
+"""
 This function extracts all possible important information about the current dataset. 
 
 First you give the file a super folder, then it classifier information about the files within the super_folder
@@ -251,46 +280,20 @@ function dataframe_maker(super_folder)
                 drugs_added = blockers == "Drugs"
                 wavelengh, color = condition |> number_seperator
                 for file in files
-                    intensity_info = split(file, "_")
-                    if length(intensity_info) == 2
-                        println("This file has not yet been renamed")
-                    elseif length(intensity_info) == 3 || length(intensity_info) == 4
-                        nd = intensity_info[1] |> extract_numbers
-                        intensity = intensity_info[2] |> extract_numbers
-                        #Soemtimes we get an error where there is extra stuff after the stimulus time
-                        t_stim = (intensity_info[3] |> extract_numbers)[1]
-                        push!(df, (year, month, day, 
-                            animal_n, age, genotype, 
-                            drugs_added, 
-                            nd, intensity, t_stim
-                            )
+                    filename_extractor(file)
+                    push!(df, (year, month, day, 
+                        animal_n, age, genotype, 
+                        drugs_added, 
+                        nd, intensity, t_stim
                         )
-                    else 
-                        nd = intensity_info[1] |> extract_numbers
-                        intensity = intensity_info[2] |> extract_numbers
-                        #In some files, I have it set up so 1, 2, and 4 are done sequentially. In this case, 0 corresponds to 1
-                        if intensity_info[end][1] == 0
-                            t_stim = 1
-                        elseif intensity_info[end][1] == 1
-                            t_stim = 2
-                        else
-                            t_stim = 4
-                        end
-
-                        push!(df, (year, month, day, 
-                            animal_n, age, genotype, 
-                            drugs_added, 
-                            nd, intensity, t_stim
-                            )
-                        )
-                    end
-                end
-                #Reduced root should be made of 
+                    )
+                end 
             end
         end
     end
     return df
 end
+
 
 #%%
 #df
