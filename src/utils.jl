@@ -1,5 +1,22 @@
-
-
+"""
+This function walks through the directory tree and locates any .abf file. 
+The extension can be changed with the keyword argument extension
+"""
+function parse_abf(super_folder::String; extension::String = ".abf", verbose = false)
+    file_list = String[]
+    for (root, dirs, files) in walkdir(super_folder)
+        for file in files
+            if file[end-3:end] == extension
+                path = joinpath(root, file)
+                if verbose 
+                    println(path) # path to files
+                end
+                push!(file_list, path)
+            end
+        end
+    end
+    file_list
+end
 
 ########################### These are some functions that will make parsing folder names easier ##############
 """
@@ -43,7 +60,7 @@ end
 """
 This function takes all the data from the file/folder name and returns only the numbers
 """
-function extract_numbers(str) 
+function number_extractpr(str) 
     number_field = number_seperator(str)[1]
     if number_field |> length == 1
         #If it is only one number return only that number
@@ -55,25 +72,41 @@ function extract_numbers(str)
 end
 #These functions open and load ABF data
 
+
 """
-This function walks through the directory and locates any .abf file. 
-The extension can be changed with the keyword argument extension
+This extracts info from each filename.
+ND -> Intensity -> Stimulus time
 """
-function parse_abf(super_folder::String; extension::String = ".abf", verbose = false)
-    file_list = String[]
-    for (root, dirs, files) in walkdir(super_folder)
-        for file in files
-            if file[end-3:end] == extension
-                path = joinpath(root, file)
-                if verbose 
-                    println(path) # path to files
-                end
-                push!(file_list, path)
-            end
+function filename_extractor(filename::String)
+    intensity_info = split(filename, "_")
+    if length(intensity_info) == 2
+        println("This file has not yet been renamed")
+        return nothing
+    elseif length(intensity_info) == 3 || length(intensity_info) == 4
+        nd = intensity_info[1] |> extract_numbers
+        intensity = intensity_info[2] |> extract_numbers
+        #Soemtimes we get an error where there is extra stuff after the stimulus time
+        t_stim = (intensity_info[3] |> extract_numbers)[1]
+        return nd, intensity, t_stim
+    else 
+        nd = intensity_info[1] |> extract_numbers
+        intensity = intensity_info[2] |> extract_numbers
+        #In some files, I have it set up so 1, 2, and 4 are done sequentially. In this case, 0 corresponds to 1
+        if intensity_info[end][1] == 0
+            t_stim = 1
+        elseif intensity_info[end][1] == 1
+            t_stim = 2
+        else
+            t_stim = 4
         end
+        return nd, intensity, t_stim
     end
-    file_list
 end
+
+filename_extractor(filename::SubString{String}) = filename_extractor(filename |> String)
+
+
+
 
 """
 This function walks through the directory and locates any .abf file. 
@@ -211,37 +244,7 @@ function concat(path_arr; t_cutoff = 3.5, t_eff = 0.5, filter_func = nothing, sw
     t, concatenated_trace
 end
 
-"""
-This extracts info from each filename.
-ND -> Intensity -> Stimulus time
-"""
-function filename_extractor(filename::String)
-    intensity_info = split(filename, "_")
-    if length(intensity_info) == 2
-        println("This file has not yet been renamed")
-        return nothing
-    elseif length(intensity_info) == 3 || length(intensity_info) == 4
-        nd = intensity_info[1] |> extract_numbers
-        intensity = intensity_info[2] |> extract_numbers
-        #Soemtimes we get an error where there is extra stuff after the stimulus time
-        t_stim = (intensity_info[3] |> extract_numbers)[1]
-        return nd, intensity, t_stim
-    else 
-        nd = intensity_info[1] |> extract_numbers
-        intensity = intensity_info[2] |> extract_numbers
-        #In some files, I have it set up so 1, 2, and 4 are done sequentially. In this case, 0 corresponds to 1
-        if intensity_info[end][1] == 0
-            t_stim = 1
-        elseif intensity_info[end][1] == 1
-            t_stim = 2
-        else
-            t_stim = 4
-        end
-        return nd, intensity, t_stim
-    end
-end
 
-filename_extractor(filename::SubString{String}) = filename_extractor(filename |> String)
 
 """
 This function extracts all possible important information about the current dataset. 
