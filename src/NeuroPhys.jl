@@ -27,7 +27,7 @@ export stim_intensity
 #Models are anything that is used to create new data
 include("models.jl") 
 #Export the photon calculation and Rig-specific Photon equation
-export photons
+export photons, Transferrance
 #Export the Amplification and IR models
 export IR, IR_dev, AMP
 
