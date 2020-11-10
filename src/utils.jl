@@ -83,8 +83,8 @@ function filename_extractor(filename::String)
         println("This file has not yet been renamed")
         return nothing
     elseif length(intensity_info) == 3 || length(intensity_info) == 4
-        nd = intensity_info[1] |> extract_numbers
-        intensity = intensity_info[2] |> extract_numbers
+        nd = intensity_info[1] |> number_extractor
+        intensity = intensity_info[2] |> number_extractor
         #Soemtimes we get an error where there is extra stuff after the stimulus time
         t_stim = (intensity_info[3] |> extract_numbers)[1]
         return nd, intensity, t_stim
