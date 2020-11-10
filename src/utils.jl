@@ -86,11 +86,11 @@ function filename_extractor(filename::String)
         nd = intensity_info[1] |> number_extractor
         intensity = intensity_info[2] |> number_extractor
         #Soemtimes we get an error where there is extra stuff after the stimulus time
-        t_stim = (intensity_info[3] |> extract_numbers)[1]
+        t_stim = (intensity_info[3] |> number_extractor)[1]
         return nd, intensity, t_stim
     else 
-        nd = intensity_info[1] |> extract_numbers
-        intensity = intensity_info[2] |> extract_numbers
+        nd = intensity_info[1] |> number_extractor
+        intensity = intensity_info[2] |> number_extractor
         #In some files, I have it set up so 1, 2, and 4 are done sequentially. In this case, 0 corresponds to 1
         if intensity_info[end][1] == 0
             t_stim = 1
@@ -279,7 +279,7 @@ function dataframe_maker(super_folder)
                 #println(reduced_root)
                 year, month, day = map(x -> number_extractor(x), split(date, "_"))
                 animal_n, age, genotype = split(animal, "_")
-                animal_n = animal_n |> extract_numbers
+                animal_n = animal_n |> number_extractor
                 age = age |> number_seperator
                 age = !isempty(age[1]) ? age[1][1] : 30
 
