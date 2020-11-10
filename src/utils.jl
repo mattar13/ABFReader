@@ -277,7 +277,7 @@ function dataframe_maker(super_folder)
             if !isempty(reduced_root)
                 date, animal, blockers, condition = reduced_root
                 #println(reduced_root)
-                year, month, day = map(x -> extract_numbers(x), split(date, "_"))
+                year, month, day = map(x -> number_extractor(x), split(date, "_"))
                 animal_n, age, genotype = split(animal, "_")
                 animal_n = animal_n |> extract_numbers
                 age = age |> number_seperator
@@ -305,6 +305,6 @@ end
 
 
 #%%
-import NeuroPhys: dataframe_maker
-folder = "D:\\Data\\ERG\\Gnat\\"
-df = dataframe_maker(folder)
+#import NeuroPhys: dataframe_maker
+#folder = "D:\\Data\\ERG\\Gnat\\"
+#df = dataframe_maker(folder)
