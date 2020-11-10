@@ -12,18 +12,20 @@ using DSP, Wavelets, FFTW #Used for filtering
 using LsqFit #Used for fitting amplification and Intensity Response models
 using DataFrames, XLSX #Used for saving data
 
-#Including files
+#Utility files contain file extraction and abf editing functions
 include("utils.jl")
 export parse_abf, extract_abf, extract_numbers, concat, filename_extractor
 
-include("functions.jl") #export functions part of other packages
+#functions are anything that alters the existing data
+include("functions.jl") 
 export RSQ
 export curve_fit #curve fitting from LsqFit
 #export filtering functions
 export drift_cancel, subtract_baseline, normalize, cwt_filter, fft_spectrum, clean_data
 export stim_intensity
 
-include("models.jl")
+#Models are anything that is used to create new data
+include("models.jl") 
 #Export the photon calculation and Rig-specific Photon equation
 export photons
 #Export the Amplification and IR models

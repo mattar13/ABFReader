@@ -54,6 +54,7 @@ end
 f_T(x) = 10^-x
 
 # ╔═╡ 7cbada1e-1ee0-11eb-39bb-5d77235312ae
+
 begin
 	data_photon = DataFrame(
 		OD = Int64[], 
@@ -84,7 +85,7 @@ begin
 						(
 							nd, 
 							f_T(nd|>Float64), 
-							per, 
+							per/100, 
 							wavelength,
 							round(stim_t[idx]),
 							(stim_y[idx]/1000)*100,
@@ -142,7 +143,7 @@ begin
 	r21 = round(RSQ(line_poly1, Q1[!,:LED_Intensity], Q1[!,:Photons]); digits = 3)
 	p1 = @df Q1 plot(:LED_Intensity, :Photons, 
 		ylabel = "Photons at ND0 stim 1ms",
-		xlabel = "LED Intensity (%)",
+		xlabel = "LED Intensity",
 		seriestype = :scatter)
 	
 	plot!(p1, line_poly1, minimum(Q1[!,:LED_Intensity]), maximum(Q1[!,:LED_Intensity]), 
@@ -171,38 +172,94 @@ I = stimulus intensity (%)
 D = Optical Density
 
 $ y = (βx^2 + β_2x + α) * 10^{-D} $
-
-However we can transform all of our Optical Density data to equal fractional transferrance, and this can be a much better representation (T)
-
-$ y = T(βx^2 + β_2x + α)  $
 "
 
 # ╔═╡ 485f37b0-22ca-11eb-16c6-9f11691d5b3b
 Q2 = @from i in data_photon begin
      @where i.Stim_time == 1
 	 @where i.LED_Intensity == 1
+	 #@where i.OD != 2
      @select {i.Transferrance, i.Photons}
 	 @collect DataFrame
 end
 
-# ╔═╡ 7e2b8a90-22e5-11eb-3918-3b0475614928
+# ╔═╡ 53a812a0-237d-11eb-05d5-8b6b89581555
+md"
+Making a equation using both Transferrance (T) and LED Intensity (I)
 
+$ Photons = T(γI^2 + β I + α) $
+"
 
-# ╔═╡ 5fa0bd40-22ca-11eb-0198-1728507b54e2
+# ╔═╡ ffaca202-237d-11eb-311a-4d04e3f1e8ca
 begin
-	line_poly2 = Polynomials.fit(Q2[!,:Transferrance], Q2[!,:Photons], 1)
-	m2 = round(line_poly2.coeffs[2]; digits = 2)
-	b2 = round(line_poly2.coeffs[1]; digits = 2)
-	r22 = round(RSQ(line_poly2, Q2[!,:Transferrance], Q2[!,:Photons]); digits = 3)
+	"""
+	This is a model relating the LED intensity, Optical Density, and Stimulus time to 
+	the number of integrated photons
+	"""
+	excite_model(x::Array{Float64,1}, p::Array{Float64,1}) = 
+		x[1]*(p[1]*x[2]^2 + p[2]*x[2] + p[3])
+	excite_model(x::Array{Float64,2}, p::Array{Float64,1}) = 
+		[excite_model(x[i,:], p) for i in 1:size(x,1)]
+end
+
+# ╔═╡ 67e0a880-237e-11eb-17d8-595f3fdeef0b
+Qi = @from i in data_photon begin
+     @where i.Stim_time == 1
+	 #@where i.LED_Intensity == 2
+	 @where i.OD != 2
+     @select {i.Transferrance, i.LED_Intensity, i.Photons}
+	 @collect DataFrame
+end;
+
+# ╔═╡ a4f3baa0-237e-11eb-07e1-b5d7faa6240f
+begin
+	#The model we want to curve fit
+	p0 = [3298.48, 4513.65, 41.87]
+	ivars = Array(Qi[!,[:Transferrance, :LED_Intensity]]);
+	dvars = Qi[!,:Photons];
+	excite_fit = curve_fit(excite_model, ivars, dvars, p0)
+	pi = excite_fit.param
+	Qi[!, :Prediction] = excite_model(ivars, pi);
+end;
+
+# ╔═╡ 79958340-238b-11eb-2d92-a7e1c66b1492
+pi
+
+# ╔═╡ 438e2560-237f-11eb-3d29-bbdfb85c9307
+Qi
+
+# ╔═╡ 30fb36ee-2383-11eb-0bda-01cd0fcba1d9
+begin
+	Trng = LinRange(0.01, 1, 10)
+	Irng = LinRange(0.01, 1, 10)
+	Pvals = Float64[]
+	for varT in Trng
+		for varI in Irng
+			println(varT, varI)
+			dVarP = excite_model([varT, varI], pi)
+			push!(Pvals, dVarP)
+		end
+	end
 	
-	p2 = @df Q2 plot(:Transferrance, :Photons, 
-		ylabel = "Photons at 1ms 1%",
-		xlabel = "Fractional Transferrance",
-		seriestype = :scatter)
-	
-	plot!(p2, line_poly2, minimum(Q2[!,:Transferrance]), maximum(Q2[!,:Transferrance]), 
-		label = "y = $m2 x + $b2 ; R2 = $r22"
+end
+
+# ╔═╡ c4868470-1eeb-11eb-1b80-57d69a615902
+md"
+Vx: $(@bind vx Slider(0:90))
+Vy: $(@bind vy Slider(0:90))
+"
+
+# ╔═╡ 739734a0-1ee7-11eb-074d-a1e6cd45c40b
+begin
+	p = @df Qi plot(:Transferrance, :LED_Intensity ,:Photons, 
+		seriestype = :scatter, camera = (vx, vy), label="Known values",
+		xlabel = "Transferrance", ylabel = "LED Intensity (%)", zlabel = "Photons"
 	)
+	@df Qi plot!(:Transferrance, :LED_Intensity ,:Prediction, 
+		seriestype = :scatter, camera = (vx, vy), label = "Predicted Values",
+		xlabel = "Transferrance", ylabel = "LED Intensity (%)", zlabel = "Photons"
+	)
+	plot!(Trng, Irng, Pvals, seriestype = :surface)
 end
 
 # ╔═╡ 4be1f280-21dd-11eb-2980-af3191de0ae3
@@ -240,39 +297,6 @@ begin
 	)
 end
 
-# ╔═╡ 0f35b8f0-1ef2-11eb-3f6d-e70f9a20279d
-md"#### Using the dataframe here we can estimate the properties of the non-linear model for prediction of photons
-"
-
-# ╔═╡ ee52e530-22e4-11eb-3db4-2131b916852e
-
-
-# ╔═╡ 51443ed0-22c9-11eb-32d3-11726a77e642
-mlm = lm(@formula(Photons~LED_Intensity+Transferrance+Stim_time), data_photon)
-
-# ╔═╡ 7e4e1770-22c9-11eb-0d7f-e33aca5f9183
-predict(mlm, DataFrame(Transferrance = 1.0, LED_Intensity = 100.0, Stim_time = 1))
-
-# ╔═╡ c4868470-1eeb-11eb-1b80-57d69a615902
-md"
-Vx: $(@bind vx Slider(0:90))
-Vy: $(@bind vy Slider(0:90))
-"
-
-# ╔═╡ 739734a0-1ee7-11eb-074d-a1e6cd45c40b
-begin
-	Q4 = @from i in data_photon begin
-		 @where i.Stim_time == 1
-		 @select {i.Transferrance, i.LED_Intensity, i.Photons}
-		 @collect DataFrame
-	end 
-	p = @df Q4 plot(:Transferrance, :LED_Intensity ,:Photons, 
-		seriestype = :surface, camera = (vx, vy), 
-		colorbar_title = "Photons", 
-		xlabel = "Transferrance", ylabel = "Stimulus Time", zlabel = "Photons"
-	)	
-end
-
 # ╔═╡ Cell order:
 # ╠═43750630-1eec-11eb-0a2a-a5c92595dfe0
 # ╠═41e9ea6e-1ecd-11eb-3dfc-ab8db76a04bc
@@ -284,24 +308,25 @@ end
 # ╟─03afd290-1ecf-11eb-2738-b5c190ada7a4
 # ╠═ecea6fb0-21e0-11eb-0442-c7aebca4e7f8
 # ╠═e428a8f2-229a-11eb-032c-e5e98fc1c289
-# ╠═7cbada1e-1ee0-11eb-39bb-5d77235312ae
+# ╟─7cbada1e-1ee0-11eb-39bb-5d77235312ae
 # ╟─f4a11470-2299-11eb-1f88-2545159a0c06
 # ╠═d83ad020-1ee1-11eb-31fc-e50fcf1030e0
 # ╟─982ba89e-229d-11eb-3736-0dac2acd1338
 # ╟─a9960350-229e-11eb-18a0-6525509d9176
-# ╟─0dbec790-21eb-11eb-1959-412f9c022bca
+# ╠═0dbec790-21eb-11eb-1959-412f9c022bca
 # ╟─d90c44e0-229a-11eb-2064-251e46b77c5c
 # ╠═41351910-22a1-11eb-2ace-f13567348a5f
 # ╟─312e8990-229f-11eb-177a-337c1d75ec08
-# ╠═485f37b0-22ca-11eb-16c6-9f11691d5b3b
-# ╠═7e2b8a90-22e5-11eb-3918-3b0475614928
-# ╠═5fa0bd40-22ca-11eb-0198-1728507b54e2
+# ╟─485f37b0-22ca-11eb-16c6-9f11691d5b3b
+# ╟─53a812a0-237d-11eb-05d5-8b6b89581555
+# ╠═ffaca202-237d-11eb-311a-4d04e3f1e8ca
+# ╠═67e0a880-237e-11eb-17d8-595f3fdeef0b
+# ╠═a4f3baa0-237e-11eb-07e1-b5d7faa6240f
+# ╟─79958340-238b-11eb-2d92-a7e1c66b1492
+# ╠═438e2560-237f-11eb-3d29-bbdfb85c9307
+# ╟─30fb36ee-2383-11eb-0bda-01cd0fcba1d9
+# ╟─c4868470-1eeb-11eb-1b80-57d69a615902
+# ╟─739734a0-1ee7-11eb-074d-a1e6cd45c40b
 # ╟─4be1f280-21dd-11eb-2980-af3191de0ae3
 # ╟─dbac6710-21dd-11eb-3d20-f9f8e9a298b7
 # ╟─9a95d8a0-21de-11eb-2304-eb38aee7c819
-# ╠═0f35b8f0-1ef2-11eb-3f6d-e70f9a20279d
-# ╠═ee52e530-22e4-11eb-3db4-2131b916852e
-# ╟─51443ed0-22c9-11eb-32d3-11726a77e642
-# ╟─7e4e1770-22c9-11eb-0d7f-e33aca5f9183
-# ╟─c4868470-1eeb-11eb-1b80-57d69a615902
-# ╠═739734a0-1ee7-11eb-074d-a1e6cd45c40b
