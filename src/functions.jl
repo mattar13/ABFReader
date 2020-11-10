@@ -1,5 +1,13 @@
-#This calculates the photons density
-photons(E::Float64; λ::Int64 = 525) = ( E / (6.626e-34 * 3e8/(λ*10e-9)))*10e-8
+"""
+This function is for computing the R-squared of a polynomial
+"""
+function RSQ(poly::Polynomial, x, y)
+	ŷ = poly.(x)
+	ȳ = sum(ŷ)/length(ŷ)
+	SSE = sum((y-ŷ).^2)
+	SST = sum((y.-ȳ).^2)
+	1-SSE/SST
+end
 
 ####################These functions are for filtering and adjusting the traces################
 
