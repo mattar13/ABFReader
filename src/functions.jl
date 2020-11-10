@@ -1,5 +1,5 @@
 #This calculates the photons density
-photons(E::Float64; λ::Int64 = 525) = ( E / (6.626e-34 * 3e8/(λ*10^-9)))*10e-8
+photons(E::Float64; λ::Int64 = 525) = ( E / (6.626e-34 * 3e8/(λ*10e-9)))*10e-8
 
 ####################These functions are for filtering and adjusting the traces################
 
