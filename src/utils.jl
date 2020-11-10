@@ -60,7 +60,7 @@ end
 """
 This function takes all the data from the file/folder name and returns only the numbers
 """
-function number_extractpr(str) 
+function number_extractor(str) 
     number_field = number_seperator(str)[1]
     if number_field |> length == 1
         #If it is only one number return only that number
