@@ -3,7 +3,7 @@ This function is used to calculate the photon density based on the photon energy
 
 The equation for this function is as follows
 
-E = Photon Energy (\$ \micro W * cm^2 * ms\$)
+E = Photon Energy
 C = speed of Light
 E/(C)
 """
