@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.6
+# v0.12.7
 
 using Markdown
 using InteractiveUtils
@@ -302,7 +302,7 @@ import NeuroPhys: filename_extractor
 # ╔═╡ d632f430-1ecb-11eb-1eaa-59586b8430cb
 begin
 	path_split = split(paths[1], "\\")
-	nd, intensity, t_stim = filename_extractor(path_split[1])
+	nd, intensity, t_stim = filename_extractor(path_split[end])
 end
 
 # ╔═╡ c61d0920-1ece-11eb-091a-d59ae55c9f93
