@@ -1,3 +1,20 @@
+"""
+This function is used to calculate the photon density based on the photon energy from the calibrator
+
+The equation for this function is as follows
+
+E = Photon Energy (\$ \micro W * cm^2 * ms\$)
+C = speed of Light
+E/(C)
+"""
+photons(E::Float64; λ::Int64 = 525) = ( E / (6.626e-34 * 3e8/(λ*10e-9)))*10e-8
+
+
+"""
+This function is used to calculate the transferrance from the optical density (D)
+"""
+Transferrance(D) = 10^-D
+
 ##############################These are the IR and Amplification models#############
 
 """
@@ -77,3 +94,4 @@ Amplification is a time series, therefore it is a function of time
 
 """
 AMP(t, α, t_eff, rmax) = t > t_eff ? rmax * (1 - exp(-α*(t-t_eff)^2)) : 0.0 
+
