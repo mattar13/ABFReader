@@ -102,9 +102,6 @@ end
 
 filename_extractor(filename::SubString{String}) = filename_extractor(filename |> String)
 
-
-
-
 """
 This function walks through the directory and locates any .abf file. 
 The extension can be changed with the keyword argument extension
