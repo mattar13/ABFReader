@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.7
+# v0.12.9
 
 using Markdown
 using InteractiveUtils
@@ -312,7 +312,7 @@ $ Photons = t_{stim} T ($γ I^2 + $β I + $α) $
 # ╟─d90c44e0-229a-11eb-2064-251e46b77c5c
 # ╠═41351910-22a1-11eb-2ace-f13567348a5f
 # ╟─312e8990-229f-11eb-177a-337c1d75ec08
-# ╟─485f37b0-22ca-11eb-16c6-9f11691d5b3b
+# ╠═485f37b0-22ca-11eb-16c6-9f11691d5b3b
 # ╟─53a812a0-237d-11eb-05d5-8b6b89581555
 # ╠═a4f3baa0-237e-11eb-07e1-b5d7faa6240f
 # ╠═c8562f70-23e0-11eb-3077-5bfd6940070a
