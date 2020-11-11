@@ -28,7 +28,7 @@ This function is the relationship between:
         Photons (P)
 """
 stimulus_model(x::Array{Float64,1}, p::Array{Float64,1}) = x[1]*(p[1]*x[2]^2 + p[2]*x[2] + p[3])*x[3]
-stimulus_model(x::Array{Float64,2}, p::Array{Float64,1}) = [excite_model(x[i,:], p) for i in 1:size(x,1)]
+stimulus_model(x::Array{Float64,2}, p::Array{Float64,1}) = [stimulus_model(x[i,:], p) for i in 1:size(x,1)]
 stimulus_model(x::Array{Float64,1}) = stimulus_model(x, [25352.59, 43857.01, 929.56]) 
 stimulus_model(x::Array{Float64,2}) = stimulus_model(x, [25352.59, 43857.01, 929.56]) 
     
