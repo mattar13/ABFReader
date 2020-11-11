@@ -15,6 +15,23 @@ This function is used to calculate the transferrance from the optical density (D
 """
 Transferrance(D) = 10^-D
 
+#For the next equation we have 3 fit variables previously determined
+
+
+"""
+This function is the relationship between: 
+    Independent Variables: 
+        Transferrance (T) 
+        LED Intensity (I)
+        Stimulus Time (t_stim)
+    Dependent Variable
+        Photons (P)
+"""
+stimulus_model(x::Array{Float64,1}, p::Array{Float64,1}) = x[1]*(p[1]*x[2]^2 + p[2]*x[2] + p[3])*x[3]
+stimulus_model(x::Array{Float64,2}, p::Array{Float64,1}) = [excite_model(x[i,:], p) for i in 1:size(x,1)]
+stimulus_model(x::Array{Float64,1}; p = [25352.59, 43857.01, 929.56]) = stimulus_model(x::Array{Float64,1}, p::Array{Float64,1}) 
+stimulus_model(x::Array{Float64,2}; p = [25352.59, 43857.01, 929.56]) = stimulus_model(x::Array{Float64,2}, p::Array{Float64,1}) 
+    
 ##############################These are the IR and Amplification models#############
 
 """
