@@ -95,7 +95,7 @@ function filename_extractor(filename::String)
         #In some files, I have it set up so 1, 2, and 4 are done sequentially. In this case, 0 corresponds to 1
         tstim_mode = intensity_info[end] |> number_extractor 
         subset = intensity_info[3:end-1] .|> number_extractor
-        tstim = subset[tstim_mode]
+        t_stim = subset[tstim_mode+1]
         return nd, intensity, t_stim
     end
 end
