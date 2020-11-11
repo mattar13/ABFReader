@@ -162,7 +162,6 @@ Q2 = @from i in data_photon begin
 	 @where i.LED_Intensity == 1
 	 #@where i.OD != 2
      @select {i.Transferrance, i.LED_Intensity, i.Stim_time, i.Photons}
-	 @collect DataFrame
 end
 
 # ╔═╡ 53a812a0-237d-11eb-05d5-8b6b89581555

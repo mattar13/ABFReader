@@ -20,6 +20,7 @@ export truncate_data
 include("functions.jl") 
 export RSQ
 export curve_fit #curve fitting from LsqFit
+export remove_artifact
 #export filtering functions
 export drift_cancel, subtract_baseline, normalize, cwt_filter, fft_spectrum, clean_data
 export stim_intensity

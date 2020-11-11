@@ -183,7 +183,6 @@ function truncate_data(t, data::Array{Float64,3}; t_eff = 0.5, t_cutoff = 3.0)
 	t[t_start:t_end], data[:,t_start:t_end,:]
 end
 
-
 """
 This extracts the stimulus intensities from a light calibration trial
 """

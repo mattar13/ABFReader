@@ -100,6 +100,31 @@ function clean_data(t, data; negative = true, wave = WT.dog2, cutoff_octave = 9)
     return x_adj1, x_adj2, x_stim
 end
 
+"""
+This function removes the stimulus artifact. 
+The estimated duration of the stimulus artifact is 0.0025s or 25us
+"""
+function remove_artifact(t, data; est_duration = 0.0025)
+	dt = t[2]-t[1]
+	x_ch1  = data[1,:,1] 
+	x_ch2  = data[1,:,2] 
+	x_stim = data[1,:,3] .> 0.2
+	offset = round(Int,est_duration/dt)
+	t_stim_start = findall(x -> x == true, x_stim)[1]
+	t_stim_end = findall(x -> x == true, x_stim)[end]
+	stim_snip_ch1 = x_ch1[t_stim_start:t_stim_end] 
+	stim_snip_ch2 = x_ch2[t_stim_start:t_stim_end]
+	
+	artifact_thresh_ch1 = (sum(stim_snip_ch1)/length(stim_snip_ch1))
+	artifact_thresh_ch2 = (sum(stim_snip_ch2)/length(stim_snip_ch2))
+	
+	data[1,t_stim_start:(t_stim_start+offset),1] .= artifact_thresh_ch1
+	data[1,t_stim_start:(t_stim_start+offset),2] .= artifact_thresh_ch2
+	data[1,t_stim_end:(t_stim_end+offset),1] .= artifact_thresh_ch1
+	data[1,t_stim_end:(t_stim_end+offset),2] .= artifact_thresh_ch2
+	return t, data
+end
+
 #########################################Everything Below here is for Pepperburg analysis
 """
 This function normalizes data and sets the minimum of the highest intensity nose component
