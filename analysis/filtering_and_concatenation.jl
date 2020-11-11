@@ -8,7 +8,13 @@ using InteractiveUtils
 using PlutoUI
 
 # ╔═╡ eec4b7f2-0426-11eb-1f69-b3fea7ffedb1
-using NeuroPhys, Plots, DSP
+using NeuroPhys
+
+# ╔═╡ 7aec9f70-23e6-11eb-293a-8f4e69df4f50
+using Plots, DSP, StatsPlots
+
+# ╔═╡ 8c373e20-23dc-11eb-01b3-9143dc22e796
+using DataFrames, Query
 
 # ╔═╡ e7c07a90-042e-11eb-2565-8f992ddf6aea
 pyplot()
@@ -296,36 +302,65 @@ md"
 ERG traces: $(length(paths))
 "
 
-# ╔═╡ 7b745590-1ece-11eb-1e05-1d219c25f08b
-import NeuroPhys: filename_extractor
+# ╔═╡ 90e76340-23dd-11eb-0cf7-f12c2da517d8
+t2, concat_data = concat(paths; 
+	filter_func = clean_data, t_cutoff = 0.51, t_eff = 0.1
+		);
 
-# ╔═╡ d632f430-1ecb-11eb-1eaa-59586b8430cb
+# ╔═╡ cc8d9ef0-23dd-11eb-01f4-c562c2d21a14
+md" 
+### [3] File analysis
+
+Since we have these files, we will show a quick file analysis. The intention then being that we will delve deeper into analysis in future files
+- Intensity Response
+
+Using the previously derived equation for relating Transferrance, Intensity and Stimulus time to number of photons, we can calculate the approximate number of photons in the current recordings. 
+
+$ Photons = t_{stim} T (γI^2 + βI + α) $
+"
+
+# ╔═╡ f4739e80-23db-11eb-1511-59f6bfa6dac6
 begin
-	path_split = split(paths[1], "\\")
-	nd, intensity, t_stim = filename_extractor(path_split[end])
+	#Normalize data
+	#ch1_norm, norm_factor1 = normalize(concat_data[:,:,1]);
+	#ch2_norm, norm_factor2 = normalize(concat_data[:,:,2]);
+	ch1_norm = concat_data[:,:,1];
+	ch2_norm = concat_data[:,:,2];
+	#Extract the response
+	R_ch1 = maximum(-ch1_norm, dims = 2) |> vec
+	R_ch2 = maximum(-ch2_norm, dims = 2) |> vec
+	
+	
+	analysis = DataFrame(
+		OD = Float64[], 
+		LED_Intensity = Float64[], 
+		Stim_time = Float64[]
+	)
+	for path in paths
+		info = split(path, "\\")[end] |> filename_extractor
+		push!(analysis, (info[1], info[2], info[3]))
+	end
+	analysis[!, :Transferrance] = analysis[!,:OD] .|> Transferrance
+	ivar = analysis[!, [:Transferrance, :LED_Intensity, :Stim_time]] |> Array
+	analysis[!, :Photons] = stimulus_model(ivar)
+	
+	
+	analysis[!, :Ch1_R] = R_ch1
+	analysis[!, :Ch2_R] = R_ch2
+	analysis
 end
 
-# ╔═╡ c61d0920-1ece-11eb-091a-d59ae55c9f93
-path_split[1] |> typeof
-
-# ╔═╡ d244f590-1e25-11eb-2c40-95fa9fa915b0
+# ╔═╡ f67381a0-23e5-11eb-2c5e-55836c165487
 begin
-	t2, concat_data = concat(paths; filter_func = clean_data, t_cutoff = 0.51, t_eff = 0.1);
-		#Normalize data
-	ch1_norm, norm_factor1 = normalize(concat_data[:,:,1]);
-	ch2_norm, norm_factor2 = normalize(concat_data[:,:,2]);
-	
-	#Extract the response
-	R_ch1 = maximum(ch1_norm, dims = 2) |> vec
-	R_ch2 = maximum(ch2_norm, dims = 2) |> vec
-	
 	fig1a = plot(layout = grid(2,1))
 	plot_idxs = collect(1:size(concat_data,1))
 	for i in plot_idxs
-		plot!(fig1a[1], t2, -ch1_norm[i,:], label = "", c = :delta, line_z = i, 
+		plot!(fig1a[1], t2, ch1_norm[i,:], label = "", c = :delta, 
+			line_z = log(analysis[i, :Photons]), 
 			xlabel = "", ylabel = "Response (\$\\mu\$V)"
 		)
-		plot!(fig1a[2], t2, -ch2_norm[i,:], label = "", c = :delta, line_z = i, 
+		plot!(fig1a[2], t2, ch2_norm[i,:], label = "", 
+			c = :delta, line_z = log(analysis[i, :Photons]), 
 			xlabel = "Time (s)", ylabel = "Response (\$\\mu\$V)"
 		)
 		stim_start = findall(x -> x == true, concat_data[i,:,3])[1]
@@ -333,15 +368,17 @@ begin
 		vspan!(fig1a[1], [t2[stim_start], t2[stim_end]], c = :gray, label = "")
 		vspan!(fig1a[2], [t2[stim_start], t2[stim_end]], c = :gray, label = "")
 	end
-	fig1b = plot(sort(R_ch1), seriestype = :scatter)
-	plot!(fig1b, sort(R_ch2), seriestype = :scatter)
+	fig1b = @df analysis plot(:Photons, :Ch1_R, seriestype = :scatter)
+	#@df analysis plot!(fig1b, :Photons, :Ch2_R, seriestype = :scatter)
 	
 	fig1 = plot(fig1a, fig1b, layout = grid(1,2))	
-end	
+end
 
 # ╔═╡ Cell order:
 # ╠═acb06ef0-042f-11eb-2b35-e7f2578cf3bd
 # ╠═eec4b7f2-0426-11eb-1f69-b3fea7ffedb1
+# ╠═7aec9f70-23e6-11eb-293a-8f4e69df4f50
+# ╠═8c373e20-23dc-11eb-01b3-9143dc22e796
 # ╟─e7c07a90-042e-11eb-2565-8f992ddf6aea
 # ╟─6aa33000-0426-11eb-3757-d55b61aebc53
 # ╠═e09e64b0-0425-11eb-1a08-8f78d2ceca08
@@ -354,11 +391,11 @@ end
 # ╟─9e481b70-1e1e-11eb-372b-23f7c5d76b91
 # ╟─498f2320-0434-11eb-0cc3-f977a71c5196
 # ╟─31814662-1e1e-11eb-3f29-5bccaf4079af
-# ╠═4d825730-1e1b-11eb-3e3a-0b1c0d22971e
+# ╟─4d825730-1e1b-11eb-3e3a-0b1c0d22971e
 # ╟─7ad594de-1e1b-11eb-28ce-e18d72a90517
 # ╟─f129e1e0-1e21-11eb-060c-b7c6b7444713
 # ╟─b57790e0-1e24-11eb-0b7a-491baff911d1
-# ╠═d632f430-1ecb-11eb-1eaa-59586b8430cb
-# ╠═7b745590-1ece-11eb-1e05-1d219c25f08b
-# ╠═c61d0920-1ece-11eb-091a-d59ae55c9f93
-# ╠═d244f590-1e25-11eb-2c40-95fa9fa915b0
+# ╠═90e76340-23dd-11eb-0cf7-f12c2da517d8
+# ╠═cc8d9ef0-23dd-11eb-01f4-c562c2d21a14
+# ╟─f4739e80-23db-11eb-1511-59f6bfa6dac6
+# ╟─f67381a0-23e5-11eb-2c5e-55836c165487
