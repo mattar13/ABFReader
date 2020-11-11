@@ -15,7 +15,7 @@ using DataFrames, XLSX #Used for saving data
 #Utility files contain file extraction and abf editing functions
 include("utils.jl")
 export parse_abf, extract_abf, number_extractor, concat, filename_extractor
-
+export truncate_data
 #functions are anything that alters the existing data
 include("functions.jl") 
 export RSQ

@@ -89,7 +89,6 @@ function filename_extractor(filename::String)
         t_stim = (intensity_info[3] |> number_extractor)[1]
         return nd, intensity, t_stim
     else 
-        println("Just a checkpoint")
         nd = intensity_info[1] |> number_extractor
         intensity = intensity_info[2] |> number_extractor
         #In some files, I have it set up so 1, 2, and 4 are done sequentially. In this case, 0 corresponds to 1
@@ -167,8 +166,23 @@ function extract_abf(abf_path; swps = -1, chs = ["Vm_prime","Vm_prime4", "IN 7"]
         end
         data_array[swp_idx, :, ch_idx] = data
     end
-    t, data_array, dt
+    t, data_array
 end
+
+"""
+This goes into the extracted data and truncates it by the t_eff and t_cutoff in s
+"""
+function truncate_data(t, data::Array{Float64,3}; t_eff = 0.5, t_cutoff = 3.0)
+	dt = t[2] - t[1]
+	x_ch1 = data[1,:,1] 
+	x_ch2 = data[1,:,2] 
+	x_stim = data[1,:,3] .> 0.2
+	t_stim_end = findall(x -> x == true, x_stim)[end]
+	t_start = t_stim_end - (t_eff/dt) |> Int64
+	t_end = t_stim_end + (t_cutoff/dt) |> Int64
+	t[t_start:t_end], data[:,t_start:t_end,:]
+end
+
 
 """
 This extracts the stimulus intensities from a light calibration trial
@@ -238,7 +252,9 @@ function concat(path_arr; t_cutoff = 3.5, t_eff = 0.5, filter_func = nothing, sw
     t, concatenated_trace
 end
 
-
+function truncate(data_file)
+    println("Not implemented yet")
+end
 
 """
 This function extracts all possible important information about the current dataset. 
