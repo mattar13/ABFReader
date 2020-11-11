@@ -89,16 +89,13 @@ function filename_extractor(filename::String)
         t_stim = (intensity_info[3] |> number_extractor)[1]
         return nd, intensity, t_stim
     else 
+        println("Just a checkpoint")
         nd = intensity_info[1] |> number_extractor
         intensity = intensity_info[2] |> number_extractor
         #In some files, I have it set up so 1, 2, and 4 are done sequentially. In this case, 0 corresponds to 1
-        if intensity_info[end][1] == 0
-            t_stim = 1
-        elseif intensity_info[end][1] == 1
-            t_stim = 2
-        else
-            t_stim = 4
-        end
+        tstim_mode = intensity_info[end] |> number_extractor 
+        subset = intensity_info[3:end-1] .|> number_extractor
+        tstim = subset[tstim_mode]
         return nd, intensity, t_stim
     end
 end
