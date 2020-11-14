@@ -112,8 +112,8 @@ function remove_artifact(t, data; est_duration = 0.0025, artifact_val = :mean)
 	offset = round(Int,est_duration/dt)
 	t_stim_start = findall(x -> x == true, x_stim)[1]
 	t_stim_end = findall(x -> x == true, x_stim)[end]
-	stim_snip_ch1 = x_ch1[t_stim_start:t_stim_end] 
-	stim_snip_ch2 = x_ch2[t_stim_start:t_stim_end]
+	stim_snip_ch1 = x_ch1[1:t_stim_start] 
+	stim_snip_ch2 = x_ch2[1:t_stim_start]
 	
 	artifact_thresh_ch1 = (sum(stim_snip_ch1)/length(stim_snip_ch1))
 	artifact_thresh_ch2 = (sum(stim_snip_ch2)/length(stim_snip_ch2))
