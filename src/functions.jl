@@ -104,7 +104,7 @@ end
 This function removes the stimulus artifact. 
 The estimated duration of the stimulus artifact is 0.0025s or 25us
 """
-function remove_artifact(t, data; est_duration = 0.0025)
+function remove_artifact(t, data; est_duration = 0.0025, artifact_val = :mean)
 	dt = t[2]-t[1]
 	x_ch1  = data[1,:,1] 
 	x_ch2  = data[1,:,2] 
@@ -117,12 +117,19 @@ function remove_artifact(t, data; est_duration = 0.0025)
 	
 	artifact_thresh_ch1 = (sum(stim_snip_ch1)/length(stim_snip_ch1))
 	artifact_thresh_ch2 = (sum(stim_snip_ch2)/length(stim_snip_ch2))
-	
-	data[1,t_stim_start:(t_stim_start+offset),1] .= 0.0#artifact_thresh_ch1
-	data[1,t_stim_start:(t_stim_start+offset),2] .= 0.0#artifact_thresh_ch2
-	data[1,t_stim_end:(t_stim_end+offset),1] .= 0.0#artifact_thresh_ch1
-	data[1,t_stim_end:(t_stim_end+offset),2] .= 0.0#artifact_thresh_ch2
-	return t, data
+	if artifact_val == :mean
+        data[1,t_stim_start:(t_stim_start+offset),1] .= artifact_thresh_ch1
+        data[1,t_stim_start:(t_stim_start+offset),2] .= artifact_thresh_ch2
+        data[1,t_stim_end:(t_stim_end+offset),1] .= artifact_thresh_ch1
+        data[1,t_stim_end:(t_stim_end+offset),2] .= artifact_thresh_ch2
+        return t, data
+    else
+        data[1,t_stim_start:(t_stim_start+offset),1] .= artifact_val
+        data[1,t_stim_start:(t_stim_start+offset),2] .= artifact_val
+        data[1,t_stim_end:(t_stim_end+offset),1] .= artifact_val
+        data[1,t_stim_end:(t_stim_end+offset),2] .= artifact_val
+        return t, data
+    end
 end
 
 #########################################Everything Below here is for Pepperburg analysis
