@@ -132,6 +132,11 @@ function remove_artifact(t, data; est_duration = 0.0025, artifact_val = :mean)
     end
 end
 
+"""
+If the traces contain multiple runs, then this file averages the data
+"""
+average_runs(data::Array{Float64,3}) = sum(data, dims = 1)/size(data,1)
+
 #########################################Everything Below here is for Pepperburg analysis
 """
 This function normalizes data and sets the minimum of the highest intensity nose component
