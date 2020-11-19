@@ -251,10 +251,6 @@ function concat(path_arr; t_cutoff = 3.5, t_eff = 0.5, filter_func = nothing, sw
     t, concatenated_trace
 end
 
-function truncate(data_file)
-    println("Not implemented yet")
-end
-
 """
 This function extracts all possible important information about the current dataset. 
 
