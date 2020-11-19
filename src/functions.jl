@@ -57,6 +57,27 @@ function cwt_filter(x_data; wave = WT.dog2, periods = 1:9, return_cwt = true)
     end
 end
 
+
+function notch_filter(t, x_data; pole = 8, center = 60.0, std = 0.1)
+	dt = t[2]-t[1]
+	fs = 1/dt
+	responsetype = Bandstop(center-std, center+std; fs = fs)
+	designmethod = Butterworth(8)
+	digital_filter = digitalfilter(responsetype, designmethod)
+	filt(digital_filter, x_data)	
+end
+
+function lowpass_filter(t, x_data; pole = 8, center = 40.0)
+	dt = t[2]-t[1]
+	fs = 1/dt
+	responsetype = Lowpass(center; fs = fs)
+	designmethod = Butterworth(8)
+	digital_filter = digitalfilter(responsetype, designmethod)
+	filt(digital_filter, x_data)	
+end
+
+
+
 function fft_spectrum(t, data::Array{T, 1}) where T <: Real
     #FFTW filtering
     x_fft = fft(data) |> fftshift
