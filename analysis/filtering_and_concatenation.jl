@@ -45,9 +45,10 @@ We can clean the data using the functions
 # ╔═╡ 5dfb2940-042e-11eb-1d71-d3d70aed94e4
 begin
 	#First open the file
-	t, raw_data, dt = extract_abf(target_path);
-	data = sum(raw_data, dims = 1)/size(raw_data,1);
-	x_ch1 = data[1,:,1]; x_ch2 = data[1,:,2]; x_stim = data[1,:,3] .> 0.2;
+	t, raw_data = extract_abf(target_path);
+	dt = t[2]-t[1]
+	#data = sum(data, dims = 1)/size(data,1);
+	x_ch1 = raw_data[1,:,1]; x_ch2 = raw_data[1,:,2]; x_stim = raw_data[1,:,3] .> 0.2;
 	p1 = plot(layout = grid(3,1), xlims = (0.0, 10.0),)
 	plot!(p1[1], t, x_ch1, label = "", title = "Unfiltered Data",
 		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :blue
@@ -55,10 +56,15 @@ begin
 	plot!(p1[2], t, x_ch2, label = "", title = "",
 		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :blue
 	)
-	plot!(p1[3], t, raw_data[1,:,3], label = "", title = "",
+	plot!(p1[3], t, x_stim, label = "", title = "",
 		xlabel = "Time (s)", ylabel = "Stimulus"
 	)
 end
+
+# ╔═╡ cdb8fba0-2a98-11eb-022e-bdc0a537368d
+md"
+### Adjusting baseline and normalization
+"
 
 # ╔═╡ 8e5be320-0430-11eb-2ea2-c9fbd7e40caa
 begin
@@ -384,12 +390,13 @@ end
 # ╠═e09e64b0-0425-11eb-1a08-8f78d2ceca08
 # ╟─cc74a240-042c-11eb-257c-f969882fcc79
 # ╟─5dfb2940-042e-11eb-1d71-d3d70aed94e4
+# ╟─cdb8fba0-2a98-11eb-022e-bdc0a537368d
 # ╟─8e5be320-0430-11eb-2ea2-c9fbd7e40caa
 # ╟─1fcf25b0-0431-11eb-0c6c-2d2204083a98
 # ╟─4aee4550-0431-11eb-2643-29f5e0eb19b5
 # ╟─7dabc5d0-0431-11eb-0ca4-dfbfbc09620d
-# ╟─9e481b70-1e1e-11eb-372b-23f7c5d76b91
-# ╟─498f2320-0434-11eb-0cc3-f977a71c5196
+# ╠═9e481b70-1e1e-11eb-372b-23f7c5d76b91
+# ╠═498f2320-0434-11eb-0cc3-f977a71c5196
 # ╟─31814662-1e1e-11eb-3f29-5bccaf4079af
 # ╟─4d825730-1e1b-11eb-3e3a-0b1c0d22971e
 # ╟─7ad594de-1e1b-11eb-28ce-e18d72a90517
