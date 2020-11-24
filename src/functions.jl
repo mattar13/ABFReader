@@ -48,8 +48,7 @@ end
 
 function cwt_filter(x_data; wave = WT.dog2, periods = 1:9, return_cwt = true)
     y = cwt(x_data, wavelet(wave))
-    x_cwt = sum(real.(y[:,periods]), dims = 2);
-    x_cwt ./= minimum(x_cwt);
+    x_cwt = sum(real.(y[:,periods]), dims = 2)/size(y, 2);
     if return_cwt
         return vec(x_cwt), y
     else
