@@ -102,6 +102,29 @@ end
 filename_extractor(filename::SubString{String}) = filename_extractor(filename |> String)
 
 """
+This file contains the ABF data traces. 
+
+To see all fields of the pyABF data: 
+>> PyCall.inspect[:getmembers](exp_data)
+
+Fields: 
+    t: the time points contained within the traces
+    dt: the interval of the timepoints
+    data: The trace data organized by [Sweep, Datapoints, Channels]
+    channels: The names for each of the channels
+"""
+mutable struct NeuroTrace{T}
+    date_collected::
+    t::Array{T, 1}
+    tUnits::String
+    dt::T
+    data::Array{T, 3}
+    chNames::Array{String, 1}
+    chUnits::Array{String, 1}
+    cmdNames::Array{String,1}
+end
+
+"""
 This function walks through the directory and locates any .abf file. 
 The extension can be changed with the keyword argument extension
 """
