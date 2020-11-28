@@ -129,11 +129,13 @@ mutable struct NeuroTrace{T}
     stim_ch::Union{String, Int64}
 end
 
+#We can add some indexing options next
+#getchannel(obj::NeuroTrace, idx)
 """
 This function extracts an ABF file from a path
     - It creates a NeuroTrace object which 
 """
-function extract_abf(abf_path; T = Float64, swps = -1, chs = ["Vm_prime","Vm_prime4", "IN 7"], verbose = false, v_offset = -25.0, sweep_sort = false)
+function extract_abf(abf_path; T = Float64, stim_ch = 3, swps = -1, chs = ["Vm_prime","Vm_prime4", "IN 7"], verbose = false, v_offset = -25.0, sweep_sort = false)
     if length(abf_path |> splitpath) > 1
         full_path = abf_path
     else
@@ -204,7 +206,7 @@ function extract_abf(abf_path; T = Float64, swps = -1, chs = ["Vm_prime","Vm_pri
         end
         data_array[swp_idx, :, ch_idx] = data
     end
-    NeuroTrace{T}(date_collected, t, tUnits, dt, data_array, chNames, chUnits, labels)
+    NeuroTrace{T}(date_collected, t, tUnits, dt, data_array, chNames, chUnits, labels, stim_ch)
 end
 
 """
@@ -223,6 +225,7 @@ end
 
 """
 This extracts the stimulus intensities from a light calibration trial
+    - This might become deprecated if i can't find a way 
 """
 function stim_intensity(filename; kwargs...)
     t, data_array, dt = extract_abf(filename; kwargs...);
