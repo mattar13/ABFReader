@@ -180,8 +180,8 @@ function extract_abf(abf_path; T = Float64, stim_ch = 3, swps = -1, chs = ["Vm_p
         data_channels = trace_file.channelList
     end 
         #Identify channel names
-    chNames = trace_file.adcNames[data_channels...]
-    chUnits = trace_file.adcUnits[data_channels...]
+    chNames = trace_file.adcNames[(data_channels.+1)...]
+    chUnits = trace_file.adcUnits[(data_channels.+1)...]
 
     #Set up the data array
     t = T.(trace_file.sweepX);
