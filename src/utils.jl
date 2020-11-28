@@ -130,9 +130,13 @@ mutable struct NeuroTrace{T}
 end
 
 #We can add some indexing options next
-#getchannel(trace::NeuroTrace, idx::Int64)
+getchannel(trace::NeuroTrace, idx::Int64) = trace.data_array[:,:,idx]
 #getchannel(trace::NeuroTrace, name::String)
 #getchannel(trace::NeuroTrace, name::Symbol)
+
+#getsweep(trace::NeuroTrace, idx::Int64)
+#getsweep(trace::NeuroTrace, name::String)
+#getsweep(trace::NeuroTrace, name::Symbol)
 """
 This function extracts an ABF file from a path
     - It creates a NeuroTrace object which 
@@ -164,9 +168,7 @@ function extract_abf(abf_path; T = Float64, stim_ch = 3, swps = -1, chs = ["Vm_p
         data_sweeps = trace_file.sweepList
     end
     
-    #Identify channel names
-    chNames = trace_file.adcNames
-    chUnits = trace_file.adcUnits
+
     if isa(chs, Int) && chs != -1 #Pick a channel by index
         data_channels = [chs-1]
         n_data_channels = 1
@@ -179,7 +181,10 @@ function extract_abf(abf_path; T = Float64, stim_ch = 3, swps = -1, chs = ["Vm_p
     else #Choose all channels
         data_channels = trace_file.channelList
     end 
-    
+        #Identify channel names
+    chNames = trace_file.adcNames[data_channels]
+    chUnits = trace_file.adcUnits[data_channels]
+
     #Set up the data array
     t = T.(trace_file.sweepX);
     tUnits = trace_file.sweepUnitsX
