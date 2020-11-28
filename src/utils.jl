@@ -129,10 +129,14 @@ mutable struct NeuroTrace{T}
     stim_ch::Union{String, Int64}
 end
 
-#We can add some indexing options next
+"""
+This gets the channel based on either the name or the index of the channel
+"""
 getchannel(trace::NeuroTrace, idx::Int64) = trace.data_array[:,:,idx]
 getchannel(trace::NeuroTrace, name::String) = getchannel(trace, findall(x -> x==name, trace.chNames)[1])
-
+"""
+This gets the sweep from the data based on the sweep index
+"""
 getsweep(trace::NeuroTrace, idx::Int64) = trace.data_array[idx, :, :]
 
 """
@@ -180,8 +184,8 @@ function extract_abf(abf_path; T = Float64, stim_ch = 3, swps = -1, chs = ["Vm_p
         data_channels = trace_file.channelList
     end 
         #Identify channel names
-    chNames = trace_file.adcNames[(data_channels.+1)...]
-    chUnits = trace_file.adcUnits[(data_channels.+1)...]
+    chNames = trace_file.adcNames[(data_channels.+1)]
+    chUnits = trace_file.adcUnits[(data_channels.+1)]
 
     #Set up the data array
     t = T.(trace_file.sweepX);
