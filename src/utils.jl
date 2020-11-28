@@ -133,11 +133,47 @@ end
 This gets the channel based on either the name or the index of the channel
 """
 getchannel(trace::NeuroTrace, idx::Int64) = trace.data_array[:,:,idx]
+getchannel(trace::NeuroTrace, idx_arr::Array{Int64}) = trace.data_array[:,:,idx_arr]
 getchannel(trace::NeuroTrace, name::String) = getchannel(trace, findall(x -> x==name, trace.chNames)[1])
+
+"""
+This iterates through all of the channels
+"""
+eachchannel(trace) = map(idx -> getchannel(trace, idx), 1:size(trace.data_array,3))
+
 """
 This gets the sweep from the data based on the sweep index
 """
 getsweep(trace::NeuroTrace, idx::Int64) = trace.data_array[idx, :, :]
+getsweep(trace::NeuroTrace, idx_arr::Array{Int64}) = trace.data_array[idx_arr, :, :]
+
+"""
+This iterates through all sweeps
+"""
+eachsweep(trace) = map(idx -> getsweep(trace, idx), 1:size(trace.data_array,1))
+
+
+"""
+This gets the stimulus trace only if it has been set
+"""
+function getstim(trace::NeuroTrace; threshold = 0.2) 
+    if trace.stim_ch != -1 
+        if threshold != nothing
+            return getchannel(trace, trace.stim_ch) .> threshold
+        else
+            return getchannel(trace, trace.stim_ch)
+        end
+    else
+        println("Stim not set")
+    end
+end
+
+"""
+This returns the indexes where the stimulus is occurring
+"""
+findstimRng(trace) = findall(x -> x == true, getstim(trace; threshold = 0.2) |> vec)[[1,end]]
+
+
 
 """
 This function extracts an ABF file from a path
@@ -219,17 +255,11 @@ function extract_abf(abf_path; T = Float64, stim_ch = 3, swps = -1, chs = ["Vm_p
 end
 
 """
-This goes into the extracted data and truncates it by the t_eff and t_cutoff in s
+This function opens the .abf file in clampfit if it is installed
 """
-function truncate_data(t, data::Array{Float64,3}; t_eff = 0.5, t_cutoff = 3.0)
-	dt = t[2] - t[1]
-	x_ch1 = data[1,:,1] 
-	x_ch2 = data[1,:,2] 
-	x_stim = data[1,:,3] .> 0.2
-	t_stim_end = findall(x -> x == true, x_stim)[end]
-	t_start = t_stim_end - (t_eff/dt) |> Int64
-	t_end = t_stim_end + (t_cutoff/dt) |> Int64
-	t[t_start:t_end], data[:,t_start:t_end,:]
+function openABF(path) 
+    pyABF = pyimport("pyabf")
+    pyABF.ABF(path).launchInClampFit()
 end
 
 """
@@ -244,15 +274,6 @@ function stim_intensity(filename; kwargs...)
     stim_i = reshape(stim_i,  (length(stim_i)));
     return stim_t, stim_i
 end
-
-"""
-This function opens the .abf file in clampfit if it is installed
-"""
-function openABF(path) 
-    pyABF = pyimport("pyabf")
-    pyABF.ABF(path).launchInClampFit()
-end
-
 
 """
 Filter functions should be in the form (t,x) -> func(t,x)

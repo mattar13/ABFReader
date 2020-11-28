@@ -10,8 +10,45 @@ function RSQ(poly::Polynomial, x, y)
 end
 
 ####################These functions are for filtering and adjusting the traces################
+"""
+This function adjusts the baseline, similar to how it is done in clampfit. 
+    it can cancel baseline based on: 
+    - The mean of a region
+    - The mean of the whole trace
+    - The slope of a region
+    - The slope of the whole trace
+"""
+function baseline_cancel(trace::NeuroTrace; mode::Symbol = :mean, region = :whole, cust_rng = (1,10))
+    if region == :whole
+        rng_begin = 1
+        rng_end = length(trace.data_array)
+    elseif region == :prestim
+        rng_begin = 1
+        rng_end = findstimRng(trace)[1]
+    elseif region == :custom
+        rng_begin, rng_end = cust_rng
+    end
 
-function drift_cancel(t, x_data::AbstractArray; return_fit = false)
+    if mode == :mean
+        baseline_adjust = sum(x_data[rng_begin:rng_end])/length(x_data[rng_begin:rng_end])
+        x_adj = x_data .- baseline_adjust
+        if return_val
+            return x_adj, baseline_adjust
+        else
+            return x_adj
+        end
+    else
+        pfit = Polynomials.fit(t, x_data[rng_begin:rng_end], 1)
+        x_lin = x_data - pfit.(t)
+        if return_fit
+            return x_lin, pfit
+        else
+            return x_lin
+        end
+    end
+end
+
+function baseline_cancel!(trace::NeuroTrace, t, x_data::AbstractArray; return_fit = false)
     pfit = Polynomials.fit(t, x_data, 1)
     x_lin = x_data - pfit.(t)
     if return_fit
@@ -21,15 +58,21 @@ function drift_cancel(t, x_data::AbstractArray; return_fit = false)
     end
 end
 
-function subtract_baseline(x_data::AbstractArray, subtract_range::Tuple{Int64, Int64}; return_val = false)
-    rng_begin, rng_end = subtract_range
-    baseline_adjust = sum(x_data[rng_begin:rng_end])/length(x_data[rng_begin:rng_end])
-    x_adj = x_data .- baseline_adjust
-    if return_val
-        return x_adj, baseline_adjust
-    else
-        return x_adj
-    end
+
+"""
+This function truncates the data based on the amount of time.
+    It uses the unit of time that the original NeuroTrace file is in. 
+    It returns a new data file versus altering the old data file
+"""
+function truncate_data(t, data::Array{Float64,3}; t_eff = 0.5, t_cutoff = 3.0)
+	dt = t[2] - t[1]
+	x_ch1 = data[1,:,1] 
+	x_ch2 = data[1,:,2] 
+	x_stim = data[1,:,3] .> 0.2
+	t_stim_end = findall(x -> x == true, x_stim)[end]
+	t_start = t_stim_end - (t_eff/dt) |> Int64
+	t_end = t_stim_end + (t_cutoff/dt) |> Int64
+	t[t_start:t_end], data[:,t_start:t_end,:]
 end
 
 function normalize(x_data; negative = true, return_val = true)
