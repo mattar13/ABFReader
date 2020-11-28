@@ -130,7 +130,9 @@ mutable struct NeuroTrace{T}
 end
 
 #We can add some indexing options next
-#getchannel(obj::NeuroTrace, idx)
+#getchannel(trace::NeuroTrace, idx::Int64)
+#getchannel(trace::NeuroTrace, name::String)
+#getchannel(trace::NeuroTrace, name::Symbol)
 """
 This function extracts an ABF file from a path
     - It creates a NeuroTrace object which 
@@ -147,7 +149,7 @@ function extract_abf(abf_path; T = Float64, stim_ch = 3, swps = -1, chs = ["Vm_p
     trace_file = pyABF.ABF(full_path)
 
     #First extract the date collected 
-    date_collected = trace_file
+    date_collected = trace_file.abfDateTime
     n_data_sweeps = n_sweeps = length(trace_file.sweepList)
     n_data_channels = n_channels = length(trace_file.channelList)
     n_data_points = n_points = length(trace_file.sweepX)
