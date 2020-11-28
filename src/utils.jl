@@ -115,6 +115,7 @@ Fields:
     chNames: The names for each of the channels
     chUnits: The units of measurment for the channels
     labels: The labels for [X (Time), Y (Membrane Voltage), Command, DigitalOut]
+    stimulus_ch: If there is a channel to set as the stimulus, this will remember that channel, otherwise, this is set to -1
 """
 mutable struct NeuroTrace{T}
     date_collected::DateTime
@@ -125,6 +126,7 @@ mutable struct NeuroTrace{T}
     chNames::Array{String, 1}
     chUnits::Array{String, 1}
     labels::Array{String, 1}
+    stim_ch::Union{String, Int64}
 end
 
 """
