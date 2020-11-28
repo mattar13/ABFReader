@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.10
+# v0.12.12
 
 using Markdown
 using InteractiveUtils
@@ -15,6 +15,9 @@ using Plots, DSP, StatsPlots
 
 # ╔═╡ 8c373e20-23dc-11eb-01b3-9143dc22e796
 using DataFrames, Query
+
+# ╔═╡ e1d96250-31af-11eb-2719-0ffa95a30d85
+using PyCall
 
 # ╔═╡ e7c07a90-042e-11eb-2565-8f992ddf6aea
 pyplot()
@@ -42,11 +45,14 @@ We can clean the data using the functions
 - Continuous wavelet transform filtering
 "
 
-# ╔═╡ 5dfb2940-042e-11eb-1d71-d3d70aed94e4
+# ╔═╡ a3d6e720-31af-11eb-2a47-85b72bb63cf9
 begin
 	#First open the file
-	t, raw_data = extract_abf(target_path);
-	dt = t[2]-t[1]
+	trace_obj = extract_abf(target_path);
+end
+
+# ╔═╡ 5dfb2940-042e-11eb-1d71-d3d70aed94e4
+begin
 	#data = sum(data, dims = 1)/size(data,1);
 	x_ch1 = raw_data[1,:,1]; x_ch2 = raw_data[1,:,2]; x_stim = raw_data[1,:,3] .> 0.2;
 	p1 = plot(layout = grid(3,1), xlims = (0.0, 10.0),)
@@ -162,10 +168,10 @@ begin
 	plot!(pcwt[2], t, -x_norm2, label = "", title = "",c = :blue,
 		xlabel = "", ylabel = "Response (\$\\mu\$V)"
 	)
-	plot!(pcwt[1], t, -x_cwt1, label = "CWT Filtered", title = "Using CWT filter",
+	plot!(pcwt[1], t, (x_cwt1./maximum(x_cwt1)), label = "CWT Filtered", title = "Using CWT filter",
 		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :red,
 	)
-	plot!(pcwt[2], t, -x_cwt2, label = "", title = "",
+	plot!(pcwt[2], t, (x_cwt2./maximum(x_cwt2)), label = "", title = "",
 		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :red,
 	)
 	plot!(pcwt[3], t, raw_data[1,:,3], label = "", title = "",
@@ -177,24 +183,24 @@ end
 begin
 	#CWT filtering (Probably not ready for CWT filtering )
 	responsetype = Lowpass(25.0; fs = 1/dt); designmethod = Butterworth(8)
-	x_bp1 = filt(digitalfilter(responsetype, designmethod), x_norm1);
+	x_bp1 = filt(digitalfilter(responsetype, designmethod), x_adj1);
 	#Lowpass filtering
 	responsetype = Lowpass(25.0; fs = 1/dt); designmethod = Butterworth(8)
-	x_bp2 = filt(digitalfilter(responsetype, designmethod), x_norm2);
+	x_bp2 = filt(digitalfilter(responsetype, designmethod), x_adj2);
 	
 	pbs = plot(layout = grid(3,1), xlims = (0.0, 10.0))
 
 	#Unfiltered
-	plot!(pbs[1], t, -x_norm1, label = "Normalized",c = :blue,
+	plot!(pbs[1], t, x_adj1.*1000, label = "Normalized",c = :blue,
 		xlabel = "", ylabel = "Response (\$\\mu\$V)"
 	)
-	plot!(pbs[2], t, -x_norm2, label = "", title = "",c = :blue,
+	plot!(pbs[2], t, x_adj2.*1000, label = "", title = "",c = :blue,
 		xlabel = "", ylabel = "Response (\$\\mu\$V)"
 	)
-	plot!(pbs[1], t, -x_bp1, label = "Butterworth Filtered", title = "Using Bandpass filter",
+	plot!(pbs[1], t, x_bp1.*1000, label = "Butterworth Filtered", title = "Using Bandpass filter",
 		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :red,
 	)
-	plot!(pbs[2], t, -x_bp2, label = "", title = "",
+	plot!(pbs[2], t, x_bp2.*1000, label = "", title = "",
 		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :red,
 	)
 	plot!(pbs[3], t, raw_data[1,:,3], label = "", title = "",
@@ -208,13 +214,13 @@ begin
 	stim_points = findall(x -> x>0.0, x_stim)
 	t_start = t[stim_points[1]]-0.5
 	t_end = 4.0
-	p1FF_1 = plot(t, -x_norm1, label = "", c = :blue, 
+	p1FF_1 = plot(t, x_adj1, label = "", c = :blue, 
 		xlabel = "Time (s)", ylabel = "Response (mV)", 
 		title = "Filtering Ch1"
 		) 
-	plot!(p1FF_1, t, -x_cwt1, label = "CWT filtered", 
+	plot!(p1FF_1, t, (x_cwt1./maximum(x_cwt1)), label = "CWT filtered", 
 		c = :red, lw = 2.0);
-	plot!(p1FF_1, t, -x_bp1, label = "BS Filtered", 
+	plot!(p1FF_1, t, x_bp1, label = "BS Filtered", 
 		c = :green, lw  = 2.0, xlims = (t_start,t_end), ylims = (-1.0, 0.5))
 	
 	scatter!(p1FF_1, t[stim_points], [repeat([-1.0], length(stim_points))],  
@@ -240,13 +246,13 @@ begin
 	vspan!(p1FF_2, [59, 61], alpha = 0.5, c = :red, label = "Electrical Noise")
 	p1FF = plot(p1FF_1, p1FF_2, layout = grid(2,1), size = (1000, 800));
 
-	p2FF_1 = plot(t, -x_norm2, label = "", c = :blue, 
+	p2FF_1 = plot(t, x_adj2, label = "", c = :blue, 
 		xlabel = "Time (s)", ylabel = "Response (mV)", 
 		title = "Filtering Ch2"
 		);
 	
-	plot!(p2FF_1, t, -x_cwt2, label = "CWT filtered", c = :red, lw = 2.0);
-	plot!(p2FF_1, t, -x_bp2, label = "BS Filtered", c = :green, lw  = 2.0, 
+	plot!(p2FF_1, t, (x_cwt2./maximum(x_cwt2)), label = "CWT filtered", c = :red, lw = 2.0);
+	plot!(p2FF_1, t, x_bp2, label = "BS Filtered", c = :green, lw  = 2.0, 
 		xlims = (t_start,t_end), ylims = (-1.0, 0.5))
 	
 	scatter!(p2FF_1, t[stim_points], [repeat([-1.0], length(stim_points))],  
@@ -385,17 +391,19 @@ end
 # ╠═eec4b7f2-0426-11eb-1f69-b3fea7ffedb1
 # ╠═7aec9f70-23e6-11eb-293a-8f4e69df4f50
 # ╠═8c373e20-23dc-11eb-01b3-9143dc22e796
+# ╠═e1d96250-31af-11eb-2719-0ffa95a30d85
 # ╟─e7c07a90-042e-11eb-2565-8f992ddf6aea
 # ╟─6aa33000-0426-11eb-3757-d55b61aebc53
 # ╠═e09e64b0-0425-11eb-1a08-8f78d2ceca08
 # ╟─cc74a240-042c-11eb-257c-f969882fcc79
-# ╟─5dfb2940-042e-11eb-1d71-d3d70aed94e4
+# ╠═a3d6e720-31af-11eb-2a47-85b72bb63cf9
+# ╠═5dfb2940-042e-11eb-1d71-d3d70aed94e4
 # ╟─cdb8fba0-2a98-11eb-022e-bdc0a537368d
 # ╟─8e5be320-0430-11eb-2ea2-c9fbd7e40caa
 # ╟─1fcf25b0-0431-11eb-0c6c-2d2204083a98
 # ╟─4aee4550-0431-11eb-2643-29f5e0eb19b5
 # ╟─7dabc5d0-0431-11eb-0ca4-dfbfbc09620d
-# ╠═9e481b70-1e1e-11eb-372b-23f7c5d76b91
+# ╟─9e481b70-1e1e-11eb-372b-23f7c5d76b91
 # ╠═498f2320-0434-11eb-0cc3-f977a71c5196
 # ╟─31814662-1e1e-11eb-3f29-5bccaf4079af
 # ╟─4d825730-1e1b-11eb-3e3a-0b1c0d22971e
@@ -403,6 +411,6 @@ end
 # ╠═f129e1e0-1e21-11eb-060c-b7c6b7444713
 # ╟─b57790e0-1e24-11eb-0b7a-491baff911d1
 # ╠═90e76340-23dd-11eb-0cf7-f12c2da517d8
-# ╠═cc8d9ef0-23dd-11eb-01f4-c562c2d21a14
-# ╠═f4739e80-23db-11eb-1511-59f6bfa6dac6
+# ╟─cc8d9ef0-23dd-11eb-01f4-c562c2d21a14
+# ╟─f4739e80-23db-11eb-1511-59f6bfa6dac6
 # ╟─f67381a0-23e5-11eb-2c5e-55836c165487
