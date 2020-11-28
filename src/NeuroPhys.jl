@@ -11,6 +11,7 @@ using Polynomials, Distributions #Used for polynomial fitting
 using DSP, Wavelets, FFTW #Used for filtering
 using LsqFit #Used for fitting amplification and Intensity Response models
 using DataFrames, XLSX #Used for saving data
+using Dates
 
 #Utility files contain file extraction and abf editing functions
 include("utils.jl")

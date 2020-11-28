@@ -105,80 +105,93 @@ filename_extractor(filename::SubString{String}) = filename_extractor(filename |>
 This file contains the ABF data traces. 
 
 To see all fields of the pyABF data: 
->> PyCall.inspect[:getmembers](exp_data)
+>> PyCall.inspect[:getmembers](trace_file)
 
 Fields: 
     t: the time points contained within the traces
+    tUnits: the measurement of time
     dt: the interval of the timepoints
     data: The trace data organized by [Sweep, Datapoints, Channels]
-    channels: The names for each of the channels
+    chNames: The names for each of the channels
+    chUnits: The units of measurment for the channels
+    labels: The labels for [X (Time), Y (Membrane Voltage), Command, DigitalOut]
 """
 mutable struct NeuroTrace{T}
-    date_collected::
+    date_collected::DateTime
     t::Array{T, 1}
     tUnits::String
     dt::T
-    data::Array{T, 3}
+    data_array::Array{T, 3}
     chNames::Array{String, 1}
     chUnits::Array{String, 1}
-    cmdNames::Array{String,1}
+    labels::Array{String, 1}
 end
 
 """
-This function walks through the directory and locates any .abf file. 
-The extension can be changed with the keyword argument extension
+This function extracts an ABF file from a path
+    - It creates a NeuroTrace object which 
 """
-function extract_abf(abf_path; swps = -1, chs = ["Vm_prime","Vm_prime4", "IN 7"], verbose = false, v_offset = -25.0, sweep_sort = false)
+function extract_abf(abf_path; T = Float64, swps = -1, chs = ["Vm_prime","Vm_prime4", "IN 7"], verbose = false, v_offset = -25.0, sweep_sort = false)
     if length(abf_path |> splitpath) > 1
         full_path = abf_path
     else
         full_path = joinpath(pwd(), abf_path)   
     end
     
-    pyABF = pyimport("pyabf")
     #extract the abf file by using pyABF
-    exp_data = pyABF.ABF(full_path)
-    n_data_sweeps = n_sweeps = length(exp_data.sweepList)
-    n_data_channels = n_channels = length(exp_data.channelList)
-    n_data_points = n_points = length(exp_data.sweepX)
+    pyABF = pyimport("pyabf")
+    trace_file = pyABF.ABF(full_path)
+
+    #First extract the date collected 
+    date_collected = trace_file
+    n_data_sweeps = n_sweeps = length(trace_file.sweepList)
+    n_data_channels = n_channels = length(trace_file.channelList)
+    n_data_points = n_points = length(trace_file.sweepX)
     
-    if isa(swps, Int) && swps != -1
+    if isa(swps, Int) && swps != -1 #Pick a sweep by index
         data_sweeps = [swps-1]
         n_data_sweeps = 1
-    elseif isa(swps, AbstractArray)
+    elseif isa(swps, AbstractArray) #pick a sweep by multiple indexes
         data_sweeps = swps.-1
         n_data_sweeps = length(swps)
-    else
-        data_sweeps = exp_data.sweepList
+    else #choose all channels to extract
+        data_sweeps = trace_file.sweepList
     end
-        
-    if isa(chs, Int) && chs != -1
+    
+    #Identify channel names
+    chNames = trace_file.adcNames
+    chUnits = trace_file.adcUnits
+    if isa(chs, Int) && chs != -1 #Pick a channel by index
         data_channels = [chs-1]
         n_data_channels = 1
-    elseif isa(chs, Array{Int64,1})
+    elseif isa(chs, Array{Int64,1}) #Pick a channel by multiple indexes
         data_channels = chs.-1
         n_data_channels = length(chs)
-    elseif isa(chs, Array{String, 1})
-        data_channels = map(ch_name -> findall(x -> x == ch_name, exp_data.adcNames)[1], chs) .- 1
+    elseif isa(chs, Array{String, 1}) #Pick a channel by multiple names
+        data_channels = map(ch_name -> findall(x -> x == ch_name, trace_file.adcNames)[1], chs) .- 1
         n_data_channels = length(chs)
-    else
-        data_channels = exp_data.channelList
+    else #Choose all channels
+        data_channels = trace_file.channelList
     end 
     
-    data_array = zeros(n_data_sweeps, n_data_points, n_data_channels)
-    
+    #Set up the data array
+    t = T.(trace_file.sweepX);
+    tUnits = trace_file.sweepUnitsX
+    dt = t[2]
+    data_array = zeros(T, n_data_sweeps, n_data_points, n_data_channels)
+    labels = [trace_file.sweepLabelX, trace_file.sweepLabelY, trace_file.sweepLabelC, trace_file.sweepLabelD]
     if verbose 
         print("Data output size will be:")
         println(size(data_array))
-        println("$n_sweeps Sweeps available: $(exp_data.sweepList)")
-        println("$n_channels Channels available: $(exp_data.channelList)")
+        println("$n_sweeps Sweeps available: $(trace_file.sweepList)")
+        println("$n_channels Channels available: $(trace_file.channelList)")
     end
-    t = Float64.(exp_data.sweepX);
-    dt = t[2]
+    
+    
     for (swp_idx, swp) in enumerate(data_sweeps), (ch_idx, ch) in enumerate(data_channels)
-        exp_data.setSweep(sweepNumber = swp, channel = ch);
-        data = Float64.(exp_data.sweepY);
-        t = Float64.(exp_data.sweepX);
+        trace_file.setSweep(sweepNumber = swp, channel = ch);
+        data = Float64.(trace_file.sweepY);
+        t = Float64.(trace_file.sweepX);
         dt = t[2]
         if verbose
             println("Data extracted from $full_path")
@@ -189,7 +202,7 @@ function extract_abf(abf_path; swps = -1, chs = ["Vm_prime","Vm_prime4", "IN 7"]
         end
         data_array[swp_idx, :, ch_idx] = data
     end
-    t, data_array
+    NeuroTrace{T}(date_collected, t, tUnits, dt, data_array, chNames, chUnits, labels)
 end
 
 """
