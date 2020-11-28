@@ -131,12 +131,10 @@ end
 
 #We can add some indexing options next
 getchannel(trace::NeuroTrace, idx::Int64) = trace.data_array[:,:,idx]
-#getchannel(trace::NeuroTrace, name::String)
-#getchannel(trace::NeuroTrace, name::Symbol)
+getchannel(trace::NeuroTrace, name::String) = getchannel(trace, findall(x -> x==name, trace.chNames)[1])
 
-#getsweep(trace::NeuroTrace, idx::Int64)
-#getsweep(trace::NeuroTrace, name::String)
-#getsweep(trace::NeuroTrace, name::Symbol)
+getsweep(trace::NeuroTrace, idx::Int64) = trace.data_array[idx, :, :]
+
 """
 This function extracts an ABF file from a path
     - It creates a NeuroTrace object which 
