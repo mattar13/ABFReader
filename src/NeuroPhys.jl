@@ -23,6 +23,8 @@ export eachchannel, eachsweep
 #functions are anything that alters the existing data
 include("functions.jl") 
 export baseline_cancel, baseline_cancel! 
+export lowpass_filter, lowpass_filter!
+export notch_filter, notch_filter!
 export RSQ
 export curve_fit #curve fitting from LsqFit
 export truncate_data, truncate_data!

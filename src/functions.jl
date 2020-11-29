@@ -78,6 +78,58 @@ function baseline_cancel!(trace::NeuroTrace, t, x_data::AbstractArray; return_fi
     end
 end
 
+function lowpass_filter(trace::NeuroTrace; freq = 40.0, pole = 8)
+    responsetype = Lowpass(freq; fs =  1/trace.dt)
+    designmethod = Butterworth(8)
+    digital_filter = digitalfilter(responsetype, designmethod)
+
+    return NeuroTrace(
+        trace.t, 
+        filt(digital_filter, trace.data_array), #Add the data here 
+        trace.date_collected,
+        trace.tUnits,
+        trace.dt,
+        trace.chNames,
+        trace.chUnits,
+        trace.labels,
+        trace.stim_ch,
+        )	
+end
+
+function lowpass_filter!(trace::NeuroTrace; freq = 40.0, pole = 8)
+    responsetype = Lowpass(freq; fs =  1/trace.dt)
+    designmethod = Butterworth(8)
+    digital_filter = digitalfilter(responsetype, designmethod)
+    trace.data_array = filt(digital_filter, trace.data_array)
+end
+
+lowpass_filter(trace::NeuroTrace, freq; pole = 8) = lowpass_filter(trace; freq = freq, pole = pole)
+
+function notch_filter(trace::NeuroTrace; pole = 8, center = 60.0, std = 0.1)
+	responsetype = Bandstop(center-std, center+std; fs = 1/trace.dt)
+	designmethod = Butterworth(8)
+	digital_filter = digitalfilter(responsetype, designmethod)
+
+    return NeuroTrace(
+        trace.t, 
+        filt(digital_filter, trace.data_array), #Add the data here 
+        trace.date_collected,
+        trace.tUnits,
+        trace.dt,
+        trace.chNames,
+        trace.chUnits,
+        trace.labels,
+        trace.stim_ch,
+        )		
+end
+
+function notch_filter!(trace::NeuroTrace; pole = 8, center = 60.0, std = 0.1)
+    responsetype = Bandstop(center-std, center+std; fs = 1/trace.dt)
+	designmethod = Butterworth(8)
+	digital_filter = digitalfilter(responsetype, designmethod)
+    trace.data_array = filt(digital_filter, trace.data_array)
+end
+
 function normalize(x_data; negative = true, return_val = true)
     if negative 
         norm_factor = minimum(x_data)
@@ -101,27 +153,6 @@ function cwt_filter(x_data; wave = WT.dog2, periods = 1:9, return_cwt = true)
         return vec(x_cwt)
     end
 end
-
-
-function notch_filter(t, x_data; pole = 8, center = 60.0, std = 0.1)
-	dt = t[2]-t[1]
-	fs = 1/dt
-	responsetype = Bandstop(center-std, center+std; fs = fs)
-	designmethod = Butterworth(8)
-	digital_filter = digitalfilter(responsetype, designmethod)
-	filt(digital_filter, x_data)	
-end
-
-function lowpass_filter(t, x_data; pole = 8, center = 40.0)
-	dt = t[2]-t[1]
-	fs = 1/dt
-	responsetype = Lowpass(center; fs = fs)
-	designmethod = Butterworth(8)
-	digital_filter = digitalfilter(responsetype, designmethod)
-	filt(digital_filter, x_data)	
-end
-
-
 
 function fft_spectrum(t, data::Array{T, 1}) where T <: Real
     #FFTW filtering
