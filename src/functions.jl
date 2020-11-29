@@ -30,11 +30,17 @@ function baseline_cancel(trace::NeuroTrace; mode::Symbol = :mean, region = :pres
     end
 
     if mode == :mean
-        baseline_adjust = sum(x_data[rng_begin:rng_end])/length(x_data[rng_begin:rng_end])
-        data = x_data .- baseline_adjust
+        baseline_adjust = sum(trace[:,rng_begin:rng_end,:]; dims = 2)/(rng_end-rng_begin)
+        data = trace.data_array .- baseline_adjust
     elseif mode == :slope
-        pfit = Polynomials.fit(t, x_data[rng_begin:rng_end], 1)
-        data = x_data - pfit.(t)
+		data = similar(trace.data_array)
+		for (i,ch) in enumerate(eachchannel(trace))
+        	pfit = Polynomials.fit(trace.t, ch, 1)
+			println(ch + pfit.(trace.t) |> size)
+        	data[:, :, i] = ch - pfit.(trace.t)
+		end
+	else
+		data = trace.data_array
     end
     return NeuroTrace(
 		trace.t, 
@@ -60,14 +66,16 @@ function baseline_cancel!(trace::NeuroTrace, t, x_data::AbstractArray; return_fi
         rng_begin, rng_end = cust_rng
     end
 
-    if mode == :mean
-        baseline_adjust = sum(x_data[rng_begin:rng_end])/length(x_data[rng_begin:rng_end])
-        trace.data_array = x_data .- baseline_adjust
+     if mode == :mean
+        baseline_adjust = sum(trace[:,rng_begin:rng_end,:]; dims = 2)/(rng_end-rng_begin)
+        trace.data_array = trace.data_array .- baseline_adjust
     elseif mode == :slope
-        pfit = Polynomials.fit(t, x_data[rng_begin:rng_end], 1)
-        trace.data_array = x_data - pfit.(t)
+		for (i,ch) in enumerate(eachchannel(trace))
+        	pfit = Polynomials.fit(trace.t, ch, 1)
+			println(ch + pfit.(trace.t) |> size)
+        	trace[:,rng_begin:rng_end,i] .= ch - pfit.(trace.t)
+		end
     end
-    return trace
 end
 
 function normalize(x_data; negative = true, return_val = true)
