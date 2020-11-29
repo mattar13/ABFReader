@@ -129,6 +129,14 @@ mutable struct NeuroTrace{T}
     stim_ch::Union{String, Int64}
 end
 
+import Base.size
+import Base.length
+
+size(trace::NeuroTrace) = size(trace.data_array)
+size(trace::NeuroTrace, dim::Int64) = size(trace.data_array, dim)
+
+length(trace::NeuroTrace) = size(trace,2)
+    
 """
 This gets the channel based on either the name or the index of the channel
 """
@@ -139,7 +147,7 @@ getchannel(trace::NeuroTrace, name::String) = getchannel(trace, findall(x -> x==
 """
 This iterates through all of the channels
 """
-eachchannel(trace) = map(idx -> getchannel(trace, idx), 1:size(trace.data_array,3))
+eachchannel(trace) = map(idx -> getchannel(trace, idx), 1:size(trace,3))
 
 """
 This gets the sweep from the data based on the sweep index
@@ -150,7 +158,7 @@ getsweep(trace::NeuroTrace, idx_arr::Array{Int64}) = trace.data_array[idx_arr, :
 """
 This iterates through all sweeps
 """
-eachsweep(trace) = map(idx -> getsweep(trace, idx), 1:size(trace.data_array,1))
+eachsweep(trace) = map(idx -> getsweep(trace, idx), 1:size(trace,1))
 
 
 """
@@ -159,9 +167,9 @@ This gets the stimulus trace only if it has been set
 function getstim(trace::NeuroTrace; threshold = 0.2) 
     if trace.stim_ch != -1 
         if threshold != nothing
-            return getchannel(trace, trace.stim_ch) .> threshold
+            return vec(getchannel(trace, trace.stim_ch) .> threshold)
         else
-            return getchannel(trace, trace.stim_ch)
+            return vec(getchannel(trace, trace.stim_ch))
         end
     else
         println("Stim not set")
