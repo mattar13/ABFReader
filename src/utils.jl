@@ -263,7 +263,7 @@ function extract_abf(abf_path; T = Float64, stim_ch = 3, swps = -1, chs = ["Vm_p
         end
         data_array[swp_idx, :, ch_idx] = data
     end
-    NeuroTrace{T}(date_collected, t, tUnits, dt, data_array, chNames, chUnits, labels, stim_ch)
+    NeuroTrace{T}(t, data_array, date_collected, tUnits, dt, chNames, chUnits, labels, stim_ch)
 end
 
 """
