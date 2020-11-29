@@ -84,7 +84,11 @@ function lowpass_filter(trace::NeuroTrace; freq = 40.0, pole = 8)
     digital_filter = digitalfilter(responsetype, designmethod)
     data = similar(trace.data_array)
     for (i,ch) in enumerate(eachchannel(trace))
-        data[:,:,i] .= filt(digital_filter, trace[:,:,i])
+		if i != trace.stim_ch
+        	data[:,:,i] = filt(digital_filter, getchannel(trace,i))
+		else
+			data[:,:,i] = trace[:,:,i]
+		end
     end
     return NeuroTrace(
         trace.t, 
@@ -104,7 +108,11 @@ function lowpass_filter!(trace::NeuroTrace; freq = 40.0, pole = 8)
     designmethod = Butterworth(8)
     digital_filter = digitalfilter(responsetype, designmethod)
     for (i,ch) in enumerate(eachchannel(trace))
-        trace[:,:,i] .= filt(digital_filter, trace[:,:,i])
+        if i != trace.stim_ch
+        	trace[:,:,i] = filt(digital_filter, getchannel(trace,i))
+		else
+			trace[:,:,i] = trace[:,:,i]
+		end
     end
 end
 
