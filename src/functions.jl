@@ -82,10 +82,13 @@ function lowpass_filter(trace::NeuroTrace; freq = 40.0, pole = 8)
     responsetype = Lowpass(freq; fs =  1/trace.dt)
     designmethod = Butterworth(8)
     digital_filter = digitalfilter(responsetype, designmethod)
-
+    data = similar(trace.data_array)
+    for (i,ch) in enumerate(eachchannel(trace))
+        data[:,:,i] .= filt(digital_filter, trace[:,:,i])
+    end
     return NeuroTrace(
         trace.t, 
-        filt(digital_filter, trace.data_array), #Add the data here 
+        data, #Add the data here 
         trace.date_collected,
         trace.tUnits,
         trace.dt,
@@ -100,7 +103,9 @@ function lowpass_filter!(trace::NeuroTrace; freq = 40.0, pole = 8)
     responsetype = Lowpass(freq; fs =  1/trace.dt)
     designmethod = Butterworth(8)
     digital_filter = digitalfilter(responsetype, designmethod)
-    trace.data_array = filt(digital_filter, trace.data_array)
+    for (i,ch) in enumerate(eachchannel(trace))
+        trace[:,:,i] .= filt(digital_filter, trace[:,:,i])
+    end
 end
 
 lowpass_filter(trace::NeuroTrace, freq; pole = 8) = lowpass_filter(trace; freq = freq, pole = pole)
@@ -109,10 +114,12 @@ function notch_filter(trace::NeuroTrace; pole = 8, center = 60.0, std = 0.1)
 	responsetype = Bandstop(center-std, center+std; fs = 1/trace.dt)
 	designmethod = Butterworth(8)
 	digital_filter = digitalfilter(responsetype, designmethod)
-
+    for (i,ch) in enumerate(eachchannel(trace))
+        data[:,:,i] .= filt(digital_filter, trace[:,:,i])
+    end
     return NeuroTrace(
         trace.t, 
-        filt(digital_filter, trace.data_array), #Add the data here 
+        data, #Add the data here 
         trace.date_collected,
         trace.tUnits,
         trace.dt,
@@ -127,7 +134,9 @@ function notch_filter!(trace::NeuroTrace; pole = 8, center = 60.0, std = 0.1)
     responsetype = Bandstop(center-std, center+std; fs = 1/trace.dt)
 	designmethod = Butterworth(8)
 	digital_filter = digitalfilter(responsetype, designmethod)
-    trace.data_array = filt(digital_filter, trace.data_array)
+    for (i,ch) in enumerate(eachchannel(trace))
+        trace[:,:,i] .= filt(digital_filter, trace[:,:,i])
+    end
 end
 
 function normalize(x_data; negative = true, return_val = true)
