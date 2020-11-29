@@ -22,13 +22,14 @@ export eachchannel, eachsweep
 
 #functions are anything that alters the existing data
 include("functions.jl") 
+export baseline_cancel, baseline_cancel! 
 export RSQ
 export curve_fit #curve fitting from LsqFit
 export truncate_data, truncate_data!
 export remove_artifact
 #export filtering functions
 export lowpass_filter
-export drift_cancel, subtract_baseline, normalize, cwt_filter, fft_spectrum, clean_data
+export normalize, cwt_filter, fft_spectrum, clean_data
 export stim_intensity
 
 #Models are anything that is used to create new data
