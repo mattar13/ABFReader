@@ -147,7 +147,7 @@ getchannel(trace::NeuroTrace, name::String) = getchannel(trace, findall(x -> x==
 """
 This iterates through all of the channels
 """
-eachchannel(trace) = map(idx -> getchannel(trace, idx), 1:size(trace,3))
+eachchannel(trace) = Iterators.map(idx -> getchannel(trace, idx), 1:size(trace,3))
 
 """
 This gets the sweep from the data based on the sweep index
@@ -158,7 +158,7 @@ getsweep(trace::NeuroTrace, idx_arr::Array{Int64}) = trace.data_array[idx_arr, :
 """
 This iterates through all sweeps
 """
-eachsweep(trace) = map(idx -> getsweep(trace, idx), 1:size(trace,1))
+eachsweep(trace) = Iterators.map(idx -> getsweep(trace, idx), 1:size(trace,1))
 
 
 """
