@@ -118,11 +118,11 @@ Fields:
     stimulus_ch: If there is a channel to set as the stimulus, this will remember that channel, otherwise, this is set to -1
 """
 mutable struct NeuroTrace{T}
-    date_collected::DateTime
     t::Array{T, 1}
+    data_array::Array{T, 3}
+    date_collected::DateTime
     tUnits::String
     dt::T
-    data_array::Array{T, 3}
     chNames::Array{String, 1}
     chUnits::Array{String, 1}
     labels::Array{String, 1}
@@ -183,7 +183,7 @@ end
 """
 This returns the indexes where the stimulus is occurring
 """
-findstimRng(trace) = findall(x -> x == true, getstim(trace; threshold = 0.2) |> vec)[[1,end]]
+findstimRng(trace::NeuroTrace) = findall(x -> x == true, getstim(trace; threshold = 0.2) |> vec)[[1,end]]
 
 
 
@@ -264,6 +264,22 @@ function extract_abf(abf_path; T = Float64, stim_ch = 3, swps = -1, chs = ["Vm_p
         data_array[swp_idx, :, ch_idx] = data
     end
     NeuroTrace{T}(date_collected, t, tUnits, dt, data_array, chNames, chUnits, labels, stim_ch)
+end
+
+"""
+This function truncates the data based on the amount of time.
+    It uses the unit of time that the original NeuroTrace file is in. 
+    It returns a new data file versus altering the old data file
+"""
+function truncate_data(trace; t_eff = 0.5, t_cutoff = 3.0)
+	dt = trace.dt
+	x_ch1 = data[1,:,1] 
+	x_ch2 = data[1,:,2] 
+	x_stim = data[1,:,3] .> 0.2
+	t_stim_end = findall(x -> x == true, x_stim)[end]
+	t_start = t_stim_end - (t_eff/dt) |> Int64
+	t_end = t_stim_end + (t_cutoff/dt) |> Int64
+	t[t_start:t_end], data[:,t_start:t_end,:]
 end
 
 """
