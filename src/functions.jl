@@ -21,7 +21,7 @@ This function adjusts the baseline, similar to how it is done in clampfit.
 function baseline_cancel(trace::NeuroTrace; mode::Symbol = :mean, region = :whole, cust_rng = (1,10))
     if region == :whole
         rng_begin = 1
-        rng_end = length(trace.data_array)
+        rng_end = length(trace)
     elseif region == :prestim
         rng_begin = 1
         rng_end = findstimRng(trace)[1]
@@ -56,23 +56,6 @@ function baseline_cancel!(trace::NeuroTrace, t, x_data::AbstractArray; return_fi
     else
         return x_lin
     end
-end
-
-
-"""
-This function truncates the data based on the amount of time.
-    It uses the unit of time that the original NeuroTrace file is in. 
-    It returns a new data file versus altering the old data file
-"""
-function truncate_data(t, data::Array{Float64,3}; t_eff = 0.5, t_cutoff = 3.0)
-	dt = t[2] - t[1]
-	x_ch1 = data[1,:,1] 
-	x_ch2 = data[1,:,2] 
-	x_stim = data[1,:,3] .> 0.2
-	t_stim_end = findall(x -> x == true, x_stim)[end]
-	t_start = t_stim_end - (t_eff/dt) |> Int64
-	t_end = t_stim_end + (t_cutoff/dt) |> Int64
-	t[t_start:t_end], data[:,t_start:t_end,:]
 end
 
 function normalize(x_data; negative = true, return_val = true)
