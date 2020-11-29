@@ -271,15 +271,25 @@ This function truncates the data based on the amount of time.
     It uses the unit of time that the original NeuroTrace file is in. 
     It returns a new data file versus altering the old data file
 """
-function truncate_data(trace; t_eff = 0.5, t_cutoff = 3.0)
+function truncate_data(trace::NeuroTrace; t_eff = 0.5, t_cutoff = 3.0)
 	dt = trace.dt
-	x_ch1 = data[1,:,1] 
-	x_ch2 = data[1,:,2] 
-	x_stim = data[1,:,3] .> 0.2
-	t_stim_end = findall(x -> x == true, x_stim)[end]
+	x_ch1 = getchannel(trace,1); 
+	x_ch2 = getchannel(trace,2); 
+	x_stim = getstim(trace);
+	t_stim_start, t_stim_end = findstimRng(trace)
 	t_start = t_stim_end - (t_eff/dt) |> Int64
 	t_end = t_stim_end + (t_cutoff/dt) |> Int64
-	t[t_start:t_end], data[:,t_start:t_end,:]
+	return NeuroTrace(
+		trace.t, 
+		trace.data_array[:, t_start:t_end, :], 
+		trace.date_collected,
+		trace.tUnits,
+		trace.dt,
+		trace.chNames,
+		trace.chUnits,
+		trace.labels,
+		trace.stim_ch,
+		)
 end
 
 """
