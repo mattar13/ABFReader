@@ -18,7 +18,7 @@ This function adjusts the baseline, similar to how it is done in clampfit.
     - The slope of a region
     - The slope of the whole trace
 """
-function baseline_cancel(trace::NeuroTrace; mode::Symbol = :mean, region = :whole, cust_rng = (1,10))
+function baseline_cancel(trace::NeuroTrace; mode::Symbol = :mean, region = :prestim, cust_rng = (1,10))
     if region == :whole
         rng_begin = 1
         rng_end = length(trace)
@@ -31,31 +31,43 @@ function baseline_cancel(trace::NeuroTrace; mode::Symbol = :mean, region = :whol
 
     if mode == :mean
         baseline_adjust = sum(x_data[rng_begin:rng_end])/length(x_data[rng_begin:rng_end])
-        x_adj = x_data .- baseline_adjust
-        if return_val
-            return x_adj, baseline_adjust
-        else
-            return x_adj
-        end
-    else
+        data = x_data .- baseline_adjust
+    elseif mode == :slope
         pfit = Polynomials.fit(t, x_data[rng_begin:rng_end], 1)
-        x_lin = x_data - pfit.(t)
-        if return_fit
-            return x_lin, pfit
-        else
-            return x_lin
-        end
+        data = x_data - pfit.(t)
     end
+    return NeuroTrace(
+		trace.t, 
+		data #Add the data here 
+		trace.date_collected,
+		trace.tUnits,
+		trace.dt,
+		trace.chNames,
+		trace.chUnits,
+		trace.labels,
+		trace.stim_ch,
+		)
 end
 
 function baseline_cancel!(trace::NeuroTrace, t, x_data::AbstractArray; return_fit = false)
-    pfit = Polynomials.fit(t, x_data, 1)
-    x_lin = x_data - pfit.(t)
-    if return_fit
-        return x_lin, pfit
-    else
-        return x_lin
+   if region == :whole
+        rng_begin = 1
+        rng_end = length(trace)
+    elseif region == :prestim
+        rng_begin = 1
+        rng_end = findstimRng(trace)[1]
+    elseif region == :custom
+        rng_begin, rng_end = cust_rng
     end
+
+    if mode == :mean
+        baseline_adjust = sum(x_data[rng_begin:rng_end])/length(x_data[rng_begin:rng_end])
+        trace.data_array = x_data .- baseline_adjust
+    elseif mode == :slope
+        pfit = Polynomials.fit(t, x_data[rng_begin:rng_end], 1)
+        trace.data_array = x_data - pfit.(t)
+    end
+    return trace
 end
 
 function normalize(x_data; negative = true, return_val = true)
