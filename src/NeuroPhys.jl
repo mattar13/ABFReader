@@ -17,12 +17,13 @@ using Dates
 include("utils.jl")
 export NeuroTrace, getchannel, getsweep, getstim, findstimRng
 export parse_abf, extract_abf, number_extractor, concat, filename_extractor
-export truncate_data
+
 
 #functions are anything that alters the existing data
 include("functions.jl") 
 export RSQ
 export curve_fit #curve fitting from LsqFit
+export truncate_data, truncate_data!
 export remove_artifact
 #export filtering functions
 export lowpass_filter

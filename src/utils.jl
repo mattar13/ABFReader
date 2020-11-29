@@ -273,14 +273,11 @@ This function truncates the data based on the amount of time.
 """
 function truncate_data(trace::NeuroTrace; t_eff = 0.5, t_cutoff = 3.0)
 	dt = trace.dt
-	x_ch1 = getchannel(trace,1); 
-	x_ch2 = getchannel(trace,2); 
-	x_stim = getstim(trace);
 	t_stim_start, t_stim_end = findstimRng(trace)
 	t_start = t_stim_end - (t_eff/dt) |> Int64
 	t_end = t_stim_end + (t_cutoff/dt) |> Int64
 	return NeuroTrace(
-		trace.t, 
+		trace.t[t_start:t_end], 
 		trace.data_array[:, t_start:t_end, :], 
 		trace.date_collected,
 		trace.tUnits,
@@ -290,6 +287,16 @@ function truncate_data(trace::NeuroTrace; t_eff = 0.5, t_cutoff = 3.0)
 		trace.labels,
 		trace.stim_ch,
 		)
+end
+
+function truncate_data!(trace::NeuroTrace; t_eff = 0.5, t_cutoff = 3.0)
+	dt = trace.dt
+	t_stim_start, t_stim_end = findstimRng(trace)
+	t_start = t_stim_end - (t_eff/dt) |> Int64
+	t_end = t_stim_end + (t_cutoff/dt) |> Int64
+	trace.t = trace.t[t_start:t_end]
+	trace.data_array = trace[:, t_start:t_end, :]
+	return trace
 end
 
 """
