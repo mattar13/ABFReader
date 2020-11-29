@@ -38,7 +38,7 @@ function baseline_cancel(trace::NeuroTrace; mode::Symbol = :mean, region = :pres
     end
     return NeuroTrace(
 		trace.t, 
-		data #Add the data here 
+		data, #Add the data here 
 		trace.date_collected,
 		trace.tUnits,
 		trace.dt,
