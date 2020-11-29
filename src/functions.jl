@@ -123,7 +123,11 @@ function notch_filter(trace::NeuroTrace; pole = 8, center = 60.0, std = 0.1)
 	designmethod = Butterworth(8)
 	digital_filter = digitalfilter(responsetype, designmethod)
     for (i,ch) in enumerate(eachchannel(trace))
-        data[:,:,i] .= filt(digital_filter, trace[:,:,i])
+		if i != trace.stim_ch
+        	data[:,:,i] = filt(digital_filter, getchannel(trace,i))
+		else
+			data[:,:,i] = trace[:,:,i]
+		end
     end
     return NeuroTrace(
         trace.t, 
@@ -143,8 +147,38 @@ function notch_filter!(trace::NeuroTrace; pole = 8, center = 60.0, std = 0.1)
 	designmethod = Butterworth(8)
 	digital_filter = digitalfilter(responsetype, designmethod)
     for (i,ch) in enumerate(eachchannel(trace))
-        trace[:,:,i] .= filt(digital_filter, trace[:,:,i])
+        if i != trace.stim_ch
+        	trace[:,:,i] = filt(digital_filter, getchannel(trace,i))
+		else
+			trace[:,:,i] = trace[:,:,i]
+		end
     end
+end
+
+function cwt_filter(trace::NeuroTrace; wave = WT.dog2, periods = 1:9, return_cwt = true)
+    data = similar(trace.data_array)
+    for (i,ch) in enumerate(eachchannel(trace))
+        y = cwt(ch, wavelet(wave))
+        x_cwt = sum(real.(y[:,periods]), dims = 2)/size(y, 2);
+    return NeuroTrace(
+        trace.t, 
+        data, #Add the data here 
+        trace.date_collected,
+        trace.tUnits,
+        trace.dt,
+        trace.chNames,
+        trace.chUnits,
+        trace.labels,
+        trace.stim_ch,
+        )
+end
+
+function cwt_filter!(trace::NeuroTrace; wave = WT.dog2, periods = 1:9)
+    data = similar(trace.data_array)
+	for (i,ch) in enumerate(eachchannel(trace))
+        y = cwt(ch, wavelet(wave))
+        trace[:,:,i] = sum(real.(y[:,periods]), dims = 2)/size(y, 2);
+	end
 end
 
 function normalize(x_data; negative = true, return_val = true)
@@ -158,16 +192,6 @@ function normalize(x_data; negative = true, return_val = true)
         return x_norm, norm_factor
     else
         return x_norm
-    end
-end
-
-function cwt_filter(x_data; wave = WT.dog2, periods = 1:9, return_cwt = true)
-    y = cwt(x_data, wavelet(wave))
-    x_cwt = sum(real.(y[:,periods]), dims = 2)/size(y, 2);
-    if return_cwt
-        return vec(x_cwt), y
-    else
-        return vec(x_cwt)
     end
 end
 
