@@ -17,6 +17,7 @@ using Dates
 include("utils.jl")
 export NeuroTrace, getchannel, getsweep, getstim, findstimRng
 export parse_abf, extract_abf, number_extractor, concat, filename_extractor
+export eachchannel
 
 
 #functions are anything that alters the existing data

@@ -144,7 +144,7 @@ setindex(trace::NeuroTrace, v, I...) = trace.data_array[I...] .= v
 """
 This gets the channel based on either the name or the index of the channel
 """
-getchannel(trace::NeuroTrace, idx::Int64) = trace.data_array[:,:,idx]
+getchannel(trace::NeuroTrace, idx::Int64) = trace.data_array[:,:,idx] |> vec
 getchannel(trace::NeuroTrace, idx_arr::Array{Int64}) = trace.data_array[:,:,idx_arr]
 getchannel(trace::NeuroTrace, name::String) = getchannel(trace, findall(x -> x==name, trace.chNames)[1])
 
