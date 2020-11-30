@@ -1,7 +1,6 @@
 #%% Test to see if the importing works
 using Revise
 using NeuroPhys
-using Plots
 println("Package properly exported")
 
 #%% Test the exporting and filtering of .abf files
@@ -19,6 +18,13 @@ cwt_trace = cwt_filter(baseline_trace) #Use a continuous wavelet transform to re
 #%%
 plot(trace, plotby = :channel, display_stim = :include, c = :blue)
 #%% Test the analysis of .abf files
-
+fieldnames(NeuroTrace)
 #%% Building and testing analysis
-println(sum(trace, dims = 1))
+import Base.copy
+"""
+If the traces contain multiple runs, then this file averages the data
+"""
+copy(nt::NeuroTrace)=NeuroTrace([getfield(nt, fn) for fn in fieldnames(nt |> typeof)]...)
+ 
+
+copy(trace)
