@@ -48,23 +48,20 @@ We can clean the data using the functions
 # ╔═╡ a3d6e720-31af-11eb-2a47-85b72bb63cf9
 begin
 	#First open the file
-	trace_obj = extract_abf(target_path);
+	trace = extract_abf(target_path);
 end
 
-# ╔═╡ 5dfb2940-042e-11eb-1d71-d3d70aed94e4
+# ╔═╡ 76b8eb6e-31c9-11eb-3a02-3b5f312dc1c8
 begin
-	#data = sum(data, dims = 1)/size(data,1);
-	x_ch1 = raw_data[1,:,1]; x_ch2 = raw_data[1,:,2]; x_stim = raw_data[1,:,3] .> 0.2;
-	p1 = plot(layout = grid(3,1), xlims = (0.0, 10.0),)
-	plot!(p1[1], t, x_ch1, label = "", title = "Unfiltered Data",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :blue
+	p1 = plot(layout = grid(3,1), 
+		title = ["Unfiltered_data" "" ""], 
+		xlabel = ["" "" "Time (s)"], 
+		ylabel = ["Response (\$\\mu\$V)" "Response (\$\\mu\$V)" "Stimulus"]
 	)
-	plot!(p1[2], t, x_ch2, label = "", title = "",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :blue
-	)
-	plot!(p1[3], t, x_stim, label = "", title = "",
-		xlabel = "Time (s)", ylabel = "Stimulus"
-	)
+	for (i, ch) in enumerate(NeuroPhys.eachchannel(trace))
+		plot!(p1[i], trace.t, ch |> vec, label = "", c = :blue)
+	end
+	p1
 end
 
 # ╔═╡ cdb8fba0-2a98-11eb-022e-bdc0a537368d
@@ -72,60 +69,63 @@ md"
 ### Adjusting baseline and normalization
 "
 
-# ╔═╡ 8e5be320-0430-11eb-2ea2-c9fbd7e40caa
+# ╔═╡ f30e86ae-3275-11eb-059c-43cea4921771
 begin
-	#First open the file
-	#Cancelling drift
-	x_lin1 = NeuroPhys.drift_cancel(t, x_ch1);
-	x_lin2 = NeuroPhys.drift_cancel(t, x_ch2);
-	pdrift = plot(layout = grid(3,1), xlims = (0.0, 10.0))
-	plot!(pdrift[1], t, x_lin1, label = "Drift Cancelled Data", 
-		title = "Drift Cancelled",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :red
+	drift_trace = baseline_cancel(trace; mode = :slope, region = :prestim)
+	p2 = plot(layout = grid(3,1), 
+		title = ["Adjusting Drift" "" ""], 
+		xlabel = ["" "" "Time (s)"], 
+		ylabel = ["Response (\$\\mu\$V)" "Response (\$\\mu\$V)" "Stimulus"]
 	)
-	plot!(pdrift[2], t, x_lin2, label = "", title = "",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :red
-	)
-	#Unfiltered data
-	plot!(pdrift[1], t, x_ch1, label = "Unfiltered data",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :blue
-	)
-	plot!(pdrift[2], t, x_ch2, label = "", title = "",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :blue
-	)
-	
-	
-	plot!(pdrift[3], t, raw_data[1,:,3], label = "", title = "",
-		xlabel = "Time (s)", ylabel = "Stimulus"
-	)
+	for (i, ch) in enumerate(eachchannel(drift_trace))
+		plot!(p2[i], trace.t, getchannel(trace,i), label = "Unfiltered", c = :red)
+		plot!(p2[i], drift_trace.t, ch |> vec, label = "Filtered", c = :blue)
+	end
+	p2
 end
 
 # ╔═╡ 1fcf25b0-0431-11eb-0c6c-2d2204083a98
 begin
-	#Baseline subtraction
-	stim_idxs = findall(x -> x == true, x_stim) #Stimulus is same for both channels
-	x_adj1 = NeuroPhys.subtract_baseline(x_lin1, (1, stim_idxs[1]));
-	x_adj2 = NeuroPhys.subtract_baseline(x_lin2, (1, stim_idxs[1]));
-	pbase = plot(layout = grid(3,1), xlims = (0.0, 10.0))
-	plot!(pbase[1], t, x_adj1, label = "Baseline subtracted", 
-		title = "Baseline subtracted",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :blue
+	baseline_trace = baseline_cancel(drift_trace; mode = :mean, region = :prestim)
+	p3 = plot(layout = grid(3,1), 
+		title = ["Adjusting Baseline" "" ""], 
+		xlabel = ["" "" "Time (s)"], 
+		ylabel = ["Response (\$\\mu\$V)" "Response (\$\\mu\$V)" "Stimulus"]
 	)
-	plot!(pbase[2], t, x_adj2, label = "", title = "",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :blue
+	for (i, ch) in enumerate(eachchannel(baseline_trace))
+		plot!(p3[i], trace.t, getchannel(drift_trace,i), label = "Unfiltered", c = :red)
+		plot!(p3[i], trace.t, ch |> vec, label = "Filtered", c = :blue)
+	end
+	p3
+end
+
+# ╔═╡ c1b43420-327f-11eb-0a0d-c7a01291ec64
+begin
+	filter_trace = lowpass_filter(baseline_trace)
+	p4 = plot(layout = grid(3,1), 
+		title = ["Lowpass Filter" "" ""], 
+		xlabel = ["" "" "Time (s)"], 
+		ylabel = ["Response (\$\\mu\$V)" "Response (\$\\mu\$V)" "Stimulus"]
 	)
-	
-	#Drift cancelled data
-	plot!(pbase[1], t, x_lin1, label = "Drift Cancelled Data", 
-		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :red
+	for (i, ch) in enumerate(eachchannel(filter_trace))
+		plot!(p4[i], trace.t, getchannel(baseline_trace,i), label = "Unfiltered", c = :red)
+		plot!(p4[i], trace.t, ch, label = "Filtered", c = :blue)
+	end
+	p4
+end
+
+# ╔═╡ 3a38a790-3286-11eb-1c8c-fff9c46bbe7e
+begin
+	cwt_trace = cwt_filter(baseline_trace)
+	p5 = plot(layout = grid(3,1), 
+		title = ["CWT Filter" "" ""], 
+		xlabel = ["" "" "Time (s)"], 
+		ylabel = ["Response (\$\\mu\$V)" "Response (\$\\mu\$V)" "Stimulus"]
 	)
-	plot!(pbase[2], t, x_lin2, label = "", title = "",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :red
-	)
-	
-	plot!(pbase[3], t, raw_data[1,:,3], label = "", title = "",
-		xlabel = "Time (s)", ylabel = "Stimulus"
-	)
+	for (i, ch) in enumerate(eachchannel(cwt_trace))
+		plot!(p5[i], trace.t, ch, label = "Filtered", c = :blue)
+	end
+	p5
 end
 
 # ╔═╡ 4aee4550-0431-11eb-2643-29f5e0eb19b5
@@ -149,61 +149,6 @@ begin
 	)
 	
 	plot!(pnorm[3], t, raw_data[1,:,3], label = "", title = "",
-		xlabel = "Time (s)", ylabel = "Stimulus"
-	)
-end
-
-# ╔═╡ 7dabc5d0-0431-11eb-0ca4-dfbfbc09620d
-
-begin
-	#CWT filtering (Probably not ready for CWT filtering )
-	x_cwt1, cwt1_raster = NeuroPhys.cwt_filter(x_norm1, periods = 2:10);
-	x_cwt2, cwt2_raster = NeuroPhys.cwt_filter(x_norm2, periods = 2:11);
-	pcwt = plot(layout = grid(3,1), xlims = (0.0, 10.0))
-
-	#Unfiltered
-	plot!(pcwt[1], t, -x_norm1, label = "Normalized",c = :blue,
-		xlabel = "", ylabel = "Response (\$\\mu\$V)"
-	)
-	plot!(pcwt[2], t, -x_norm2, label = "", title = "",c = :blue,
-		xlabel = "", ylabel = "Response (\$\\mu\$V)"
-	)
-	plot!(pcwt[1], t, (x_cwt1./maximum(x_cwt1)), label = "CWT Filtered", title = "Using CWT filter",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :red,
-	)
-	plot!(pcwt[2], t, (x_cwt2./maximum(x_cwt2)), label = "", title = "",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :red,
-	)
-	plot!(pcwt[3], t, raw_data[1,:,3], label = "", title = "",
-		xlabel = "Time (s)", ylabel = "Stimulus"
-	)
-end
-
-# ╔═╡ 9e481b70-1e1e-11eb-372b-23f7c5d76b91
-begin
-	#CWT filtering (Probably not ready for CWT filtering )
-	responsetype = Lowpass(25.0; fs = 1/dt); designmethod = Butterworth(8)
-	x_bp1 = filt(digitalfilter(responsetype, designmethod), x_adj1);
-	#Lowpass filtering
-	responsetype = Lowpass(25.0; fs = 1/dt); designmethod = Butterworth(8)
-	x_bp2 = filt(digitalfilter(responsetype, designmethod), x_adj2);
-	
-	pbs = plot(layout = grid(3,1), xlims = (0.0, 10.0))
-
-	#Unfiltered
-	plot!(pbs[1], t, x_adj1.*1000, label = "Normalized",c = :blue,
-		xlabel = "", ylabel = "Response (\$\\mu\$V)"
-	)
-	plot!(pbs[2], t, x_adj2.*1000, label = "", title = "",c = :blue,
-		xlabel = "", ylabel = "Response (\$\\mu\$V)"
-	)
-	plot!(pbs[1], t, x_bp1.*1000, label = "Butterworth Filtered", title = "Using Bandpass filter",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :red,
-	)
-	plot!(pbs[2], t, x_bp2.*1000, label = "", title = "",
-		xlabel = "", ylabel = "Response (\$\\mu\$V)", c = :red,
-	)
-	plot!(pbs[3], t, raw_data[1,:,3], label = "", title = "",
 		xlabel = "Time (s)", ylabel = "Stimulus"
 	)
 end
@@ -396,14 +341,14 @@ end
 # ╟─6aa33000-0426-11eb-3757-d55b61aebc53
 # ╠═e09e64b0-0425-11eb-1a08-8f78d2ceca08
 # ╟─cc74a240-042c-11eb-257c-f969882fcc79
-# ╠═a3d6e720-31af-11eb-2a47-85b72bb63cf9
-# ╠═5dfb2940-042e-11eb-1d71-d3d70aed94e4
+# ╟─a3d6e720-31af-11eb-2a47-85b72bb63cf9
+# ╠═76b8eb6e-31c9-11eb-3a02-3b5f312dc1c8
 # ╟─cdb8fba0-2a98-11eb-022e-bdc0a537368d
-# ╟─8e5be320-0430-11eb-2ea2-c9fbd7e40caa
+# ╟─f30e86ae-3275-11eb-059c-43cea4921771
 # ╟─1fcf25b0-0431-11eb-0c6c-2d2204083a98
-# ╟─4aee4550-0431-11eb-2643-29f5e0eb19b5
-# ╟─7dabc5d0-0431-11eb-0ca4-dfbfbc09620d
-# ╟─9e481b70-1e1e-11eb-372b-23f7c5d76b91
+# ╟─c1b43420-327f-11eb-0a0d-c7a01291ec64
+# ╟─3a38a790-3286-11eb-1c8c-fff9c46bbe7e
+# ╠═4aee4550-0431-11eb-2643-29f5e0eb19b5
 # ╠═498f2320-0434-11eb-0cc3-f977a71c5196
 # ╟─31814662-1e1e-11eb-3f29-5bccaf4079af
 # ╟─4d825730-1e1b-11eb-3e3a-0b1c0d22971e

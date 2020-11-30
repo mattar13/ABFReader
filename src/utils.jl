@@ -129,7 +129,7 @@ mutable struct NeuroTrace{T}
     stim_ch::Union{String, Int64}
 end
 
-import Base: size, length, getindex, setindex
+import Base: size, length, getindex, setindex, print, display
 
 #Extending for NeuroTrace
 size(trace::NeuroTrace) = size(trace.data_array)
