@@ -36,7 +36,7 @@ function baseline_cancel(trace::NeuroTrace; mode::Symbol = :mean, region = :pres
 		data = similar(trace.data_array)
 		for (i,ch) in enumerate(eachchannel(trace))
         	pfit = Polynomials.fit(trace.t, ch, 1)
-			println(ch + pfit.(trace.t) |> size)
+			#println(ch + pfit.(trace.t) |> size)
         	data[:, :, i] = ch - pfit.(trace.t)
 		end
 	else
@@ -72,7 +72,7 @@ function baseline_cancel!(trace::NeuroTrace, t, x_data::AbstractArray; return_fi
     elseif mode == :slope
 		for (i,ch) in enumerate(eachchannel(trace))
         	pfit = Polynomials.fit(trace.t, ch, 1)
-			println(ch + pfit.(trace.t) |> size)
+			#println(ch + pfit.(trace.t) |> size)
         	trace[:,rng_begin:rng_end,i] .= ch - pfit.(trace.t)
 		end
     end
