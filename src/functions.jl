@@ -188,7 +188,16 @@ end
 """
 If the traces contain multiple runs, then this file averages the data
 """
-average_runs(data::Array{Float64,3}) = sum(data, dims = 1)/size(data,1)
+function average_sweeps(nt::NeuroTrace)
+    data = sum(nt, dims = 1)/size(nt,1)
+    new_obj = copy(nt)
+    new_obj.data_array = data
+    return new_obj
+end
+
+average_sweeps!(nt::NeuroTrace) = nt.data_array = sum(nt, dims = 1)/size(nt,1)
+
+
 
 
 function normalize(x_data; negative = true, return_val = true)
