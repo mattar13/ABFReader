@@ -78,6 +78,9 @@ function baseline_cancel!(trace::NeuroTrace, t, x_data::AbstractArray; return_fi
     end
 end
 
+"""
+This function applies a n-pole lowpass filter
+"""
 function lowpass_filter(trace::NeuroTrace; freq = 40.0, pole = 8)
     responsetype = Lowpass(freq; fs =  1/trace.dt)
     designmethod = Butterworth(8)

@@ -2,7 +2,7 @@
 @recipe function f(nt::NeuroTrace; plotby = :channel)
     grid := false
     if plotby == :channel
-        layout := (size(nt,3), 2)
+        layout := (size(nt,3), 1)
         for (i,ch) in enumerate(eachchannel(nt))
             @series begin
                 subplot := i
