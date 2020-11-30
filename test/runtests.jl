@@ -13,18 +13,15 @@ drift_trace = baseline_cancel(trace; mode = :slope, region = :prestim) #Cancel d
 baseline_trace = baseline_cancel(drift_trace; mode = :mean, region = :prestim) #Baseline data
 filter_trace = lowpass_filter(baseline_trace) #Lowpass filter using a 40hz 8-pole filter
 cwt_trace = cwt_filter(baseline_trace) #Use a continuous wavelet transform to remove noise, but keep time series info
+avg_trace = average_sweeps(baseline_trace)
+norm_trace = normalize(baseline_trace)
 #%%
 
 #%%
 plot(trace, plotby = :channel, display_stim = :include, c = :blue)
 #%% Test the analysis of .abf files
-fieldnames(NeuroTrace)
-#%% Building and testing analysis
-import Base.copy
-"""
-If the traces contain multiple runs, then this file averages the data
-"""
-copy(nt::NeuroTrace)=NeuroTrace([getfield(nt, fn) for fn in fieldnames(nt |> typeof)]...)
- 
 
-copy(trace)
+#%% Building and testing analysis
+
+#%%
+norm_trace
