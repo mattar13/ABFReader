@@ -159,7 +159,7 @@ function cwt_filter(trace::NeuroTrace; wave = WT.dog2, periods = 1:9, return_cwt
     data = similar(trace.data_array)
     for (i,ch) in enumerate(eachchannel(trace))
         y = cwt(ch, wavelet(wave))
-        x_cwt = sum(real.(y[:,periods]), dims = 2)/size(y, 2);
+        data[:,:,i] = sum(real.(y[:,periods]), dims = 2)/size(y, 2);
     end
     return NeuroTrace(
         trace.t, 
