@@ -4,7 +4,7 @@ is_working() = print("Yes is working!")
 
 #TODO: Next I want to make the data analysis in one succinct folder
 
-#Imports
+#Import
 using PyCall
 using StatsBase, DataFrames, XLSX
 using Polynomials, Distributions #Used for polynomial fitting
@@ -25,12 +25,12 @@ include("functions.jl")
 export baseline_cancel, baseline_cancel! 
 export lowpass_filter, lowpass_filter!
 export notch_filter, notch_filter!
+export cwt_filter, cwt_filter!
 export RSQ
 export curve_fit #curve fitting from LsqFit
 export truncate_data, truncate_data!
 export remove_artifact
 #export filtering functions
-export lowpass_filter
 export normalize, cwt_filter, fft_spectrum, clean_data
 export stim_intensity
 
@@ -40,5 +40,8 @@ include("models.jl")
 export photons, Transferrance, stimulus_model
 #Export the Amplification and IR models
 export IR, IR_dev, AMP
+
+using Plots
+include("plotting.jl")
 
 end # module
