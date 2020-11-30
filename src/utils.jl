@@ -129,7 +129,7 @@ mutable struct NeuroTrace{T}
     stim_ch::Union{String, Int64}
 end
 
-import Base: size, length, getindex, setindex, print, display, sum
+import Base: size, length, getindex, setindex, print, display, sum, copy
 
 #Extending for NeuroTrace
 size(trace::NeuroTrace) = size(trace.data_array)
@@ -143,6 +143,9 @@ setindex(trace::NeuroTrace, v, I...) = trace.data_array[I...] .= v
 
 sum(trace::NeuroTrace) = sum(trace.data_array)
 sum(trace::NeuroTrace; dims::Int64) = sum(trace.data_array, dims = dims)
+
+copy(nt::NeuroTrace) = NeuroTrace([getfield(nt, fn) for fn in fieldnames(nt |> typeof)]...)
+
 """
 This gets the channel based on either the name or the index of the channel
 """

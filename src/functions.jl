@@ -185,6 +185,12 @@ function cwt_filter!(trace::NeuroTrace; wave = WT.dog2, periods = 1:9)
 	end
 end
 
+"""
+If the traces contain multiple runs, then this file averages the data
+"""
+average_runs(data::Array{Float64,3}) = sum(data, dims = 1)/size(data,1)
+
+
 function normalize(x_data; negative = true, return_val = true)
     if negative 
         norm_factor = minimum(x_data)
