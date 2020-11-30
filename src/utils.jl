@@ -141,7 +141,6 @@ length(trace::NeuroTrace) = size(trace,2)
 getindex(trace::NeuroTrace, I...) = trace.data_array[I...]
 setindex(trace::NeuroTrace, v, I...) = trace.data_array[I...] .= v
 
-sum(trace::NeuroTrace) = sum(trace.data_array)
 sum(trace::NeuroTrace; dims::Int64) = sum(trace.data_array, dims = dims)
 
 copy(nt::NeuroTrace) = NeuroTrace([getfield(nt, fn) for fn in fieldnames(nt |> typeof)]...)
