@@ -20,8 +20,3 @@ norm_trace = normalize(baseline_trace)
 #%%
 plot(trace, plotby = :channel, display_stim = :include, c = :blue)
 #%% Test the analysis of .abf files
-
-#%% Building and testing analysis
-
-#%%
-norm_trace
