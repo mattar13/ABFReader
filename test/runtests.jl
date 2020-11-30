@@ -19,3 +19,6 @@ cwt_trace = cwt_filter(baseline_trace) #Use a continuous wavelet transform to re
 #%%
 plot(trace, plotby = :channel, display_stim = :include, c = :blue)
 #%% Test the analysis of .abf files
+
+#%% Building and testing analysis
+println(sum(trace, dims = 1))
