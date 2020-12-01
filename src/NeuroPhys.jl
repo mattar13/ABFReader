@@ -32,6 +32,7 @@ export normalize, normalize!
 #Analysis functions return a single number or numbers related to the NeuroTrace
 include("analysis.jl")
 export RSQ
+export calculate_basic_stats
 export curve_fit #curve fitting from LsqFit
 #export filtering functions
 
