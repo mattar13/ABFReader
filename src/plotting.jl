@@ -8,7 +8,6 @@ This function plots by channel. This is the most basic functionality of the trac
         for (i,ch) in enumerate(eachchannel(nt; include_stim = false))
             @series begin
                 subplot := i
-                #c := c
                 x := nt.t
                 if i == size(nt,3)
                     xguide := "Time ($(nt.tUnits))" 
@@ -20,7 +19,7 @@ This function plots by channel. This is the most basic functionality of the trac
             @series begin
                 t_stim_start, t_stim_end = findstimRng(nt)
                 subplot := i
-                color = :yellow
+                seriescolor = :yellow
                 seriestype := :vline
                 label := "Stimulus"
                 y := [nt.t[t_stim_end]]
