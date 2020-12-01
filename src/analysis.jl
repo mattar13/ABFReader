@@ -26,3 +26,5 @@ function calculate_basic_stats(data::NeuroTrace)
             push!(stds, std(pre_stim[i_swp, :, i_ch]))
         end
     end
+    return mins, maxes, means, stds
+end
