@@ -155,7 +155,14 @@ getchannel(trace::NeuroTrace, name::String) = getchannel(trace, findall(x -> x==
 """
 This iterates through all of the channels
 """
-eachchannel(trace) = Iterators.map(idx -> getchannel(trace, idx), 1:size(trace,3))
+function eachchannel(trace::NeuroTrace; include_stim = true) 
+    if include_stim == true
+        return Iterators.map(idx -> getchannel(trace, idx), 1:size(trace,3))
+    else
+        idxs = findall(x -> x != trace.stim_ch, 1:size(trace,3))
+        return Iterators.map(idx -> getchannel(trace, idx), idxs)
+    end
+end
 
 """
 This gets the sweep from the data based on the sweep index
