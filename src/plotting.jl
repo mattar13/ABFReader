@@ -1,7 +1,6 @@
-#These are plotting recipes. The mose basic plots the 
-@recipe function f(nt::NeuroTrace; plotby = :channel)
-    grid := false
-    if plotby == :channel
+function plot_by_channel(nt::NeuroTrace; stim_plot = :sublot)
+    println("Functional interface working")
+    if stim_plot == :subplot
         layout := (size(nt,3), 1)
         for (i,ch) in enumerate(eachchannel(nt))
             @series begin
@@ -15,6 +14,16 @@
                 ()
             end
         end
+    else
+        println("Not implemented yet")    
+    end
+end
+
+#These are plotting recipes. The mose basic plots the 
+@recipe function f(nt::NeuroTrace; plotby = :channel, stim_plot = :subplot)
+    grid := false
+    if plotby == :channel
+        plot_by_channel(nt, stim_plot)
     elseif plotby == :sweep
         layout := (size(nt,1), 1)
         for (i,swp) in enumerate(eachsweep(nt))
