@@ -1,7 +1,7 @@
 """
 This function plots by channel. This is the most basic functionality of the trace plot
 """
-@recipe function f(nt::NeuroTrace; stim_plot = :subplot)
+@recipe function f(nt::NeuroTrace; stim_plot = :include)
     grid := false    
     if stim_plot == :include
         layout := (size(nt,3)-1, 1)
