@@ -12,8 +12,8 @@ end
 function calculate_basic_stats(data::NeuroTrace)
     stim_begin, stim_end = findstimRng(data)
     ch_idxs = findall(x -> x!=data.stim_ch, 1:size(data,3))
-    pre_stim = data[:, 1:stim_end, idxs]
-    post_stim = data[:, stim_end:end, idxs]
+    pre_stim = data[:, 1:stim_end, ch_idxs]
+    post_stim = data[:, stim_end:end, ch_idxs]
     mins = zeros(size(data,1), size(data,3))
     maxes = zeros(size(data,1), size(data,3))
     means = zeros(size(data,1), size(data,3))
