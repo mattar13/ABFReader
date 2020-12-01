@@ -6,12 +6,13 @@ This function plots by channel. This is the most basic functionality of the trac
     if stim_plot == :include
         layout := (size(nt,3)-1, 1)
         for (i,ch) in enumerate(eachchannel(nt; include_stim = false))
+            xguide = "Time"
             @series begin
                 subplot := i
                 x := nt.t
-                if i == size(nt,3)
-                    xguide := "Time ($(nt.tUnits))" 
-                end
+                #if i == size(nt,3)
+                    #xguide := "Time ($(nt.tUnits))" 
+                #end
                 y := ch
                 yguide := "$(nt.chNames[i])($(nt.chUnits[i]))"
                 ()
