@@ -7,7 +7,6 @@ println("Package properly exported")
 target_path = "test\\to_filter.abf"
 #%%
 trace = extract_abf(target_path); #Extract the data
-println(trace.data_array |> size)
 #%%
 drift_trace = baseline_cancel(trace; mode = :slope, region = :prestim) #Cancel drift
 baseline_trace = baseline_cancel(drift_trace; mode = :mean, region = :prestim) #Baseline data
@@ -19,5 +18,5 @@ println("All filtering functions work")
 #%%
 
 #%%
-plot(trace, plotby = :channel, display_stim = :include, c = :blue)
+plot(trace, stim_plot = :include, c = :blue)
 #%% Test the analysis of .abf files
