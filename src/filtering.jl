@@ -23,7 +23,7 @@ function baseline_cancel(trace::NeuroTrace; mode::Symbol = :mean, region = :pres
     if mode == :mean
         data = similar(trace.data_array)
         for (i,ch) in enumerate(eachchannel(trace; include_stim = false))
-            baseline_adjust = sum(trace[:,rng_begin:rng_end,:]; dims = 2)/(rng_end-rng_begin)
+            baseline_adjust = sum(trace[:,rng_begin:rng_end,i]; dims = 2)/(rng_end-rng_begin)
             data[:,:, i] = trace.data_array[:,:,i] .- baseline_adjust
         end
         #never adjust the stim
