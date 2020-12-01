@@ -23,7 +23,7 @@ This function plots by channel. This is the most basic functionality of the trac
                 seriestype := :vline
                 c = :yellow
                 label := "Stimulus"
-                y := [t[t_stim_end]]
+                y := [nt.t[t_stim_end]]
             end
         end
     else
