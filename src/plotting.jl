@@ -21,8 +21,9 @@ This function plots by channel. This is the most basic functionality of the trac
                 t_stim_start, t_stim_end = findstimRng(nt)
                 subplot := i
                 seriestype := :vline
+                c = :yellow
                 label := "Stimulus"
-                y := [t_stim_end]
+                y := [t[t_stim_end]]
             end
         end
     else
