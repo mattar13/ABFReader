@@ -4,7 +4,7 @@ This function plots by channel. This is the most basic functionality of the trac
 @recipe function f(nt::NeuroTrace; stim_plot = :subplot)
     grid := false
     layout := (size(nt,3), 1)
-    if stim_plot == :iclude
+    if stim_plot == :include
         layout := (size(nt,3)-1, 1)
         for (i,ch) in enumerate(eachchannel(nt; include_stim = false))
             @series begin
