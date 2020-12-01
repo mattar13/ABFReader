@@ -34,11 +34,13 @@ function baseline_cancel(trace::NeuroTrace; mode::Symbol = :mean, region = :pres
         data = trace.data_array .- baseline_adjust
     elseif mode == :slope
 		data = similar(trace.data_array)
-		for (i,ch) in enumerate(eachchannel(trace))
+		for (i,ch) in enumerate(eachchannel(trace; include_stim = false))
         	pfit = Polynomials.fit(trace.t, ch, 1)
 			#println(ch + pfit.(trace.t) |> size)
         	data[:, :, i] = ch - pfit.(trace.t)
-		end
+        end
+        #never adjust the stim
+        data[:,:,trace.stim_ch] = trace[:,:,trace.stim_ch]
 	else
 		data = trace.data_array
     end
@@ -70,7 +72,7 @@ function baseline_cancel!(trace::NeuroTrace, t, x_data::AbstractArray; return_fi
         baseline_adjust = sum(trace[:,rng_begin:rng_end,:]; dims = 2)/(rng_end-rng_begin)
         trace.data_array = trace.data_array .- baseline_adjust
     elseif mode == :slope
-		for (i,ch) in enumerate(eachchannel(trace))
+		for (i,ch) in enumerate(eachchannel(trace; include_stim = false))
         	pfit = Polynomials.fit(trace.t, ch, 1)
 			#println(ch + pfit.(trace.t) |> size)
         	trace[:,rng_begin:rng_end,i] .= ch - pfit.(trace.t)
@@ -86,13 +88,15 @@ function lowpass_filter(trace::NeuroTrace; freq = 40.0, pole = 8)
     designmethod = Butterworth(8)
     digital_filter = digitalfilter(responsetype, designmethod)
     data = similar(trace.data_array)
-    for (i,ch) in enumerate(eachchannel(trace))
+    for (i,ch) in enumerate(eachchannel(trace; include_stim = false))
 		if i != trace.stim_ch
         	data[:,:,i] = filt(digital_filter, getchannel(trace,i))
 		else
 			data[:,:,i] = trace[:,:,i]
 		end
     end
+    #never adjust the stim
+    data[:,:,trace.stim_ch] = trace[:,:,trace.stim_ch]
     return NeuroTrace(
         trace.t, 
         data, #Add the data here 
@@ -110,7 +114,7 @@ function lowpass_filter!(trace::NeuroTrace; freq = 40.0, pole = 8)
     responsetype = Lowpass(freq; fs =  1/trace.dt)
     designmethod = Butterworth(8)
     digital_filter = digitalfilter(responsetype, designmethod)
-    for (i,ch) in enumerate(eachchannel(trace))
+    for (i,ch) in enumerate(eachchannel(trace; include_stim = false))
         if i != trace.stim_ch
         	trace[:,:,i] = filt(digital_filter, getchannel(trace,i))
 		else
@@ -125,13 +129,16 @@ function notch_filter(trace::NeuroTrace; pole = 8, center = 60.0, std = 0.1)
 	responsetype = Bandstop(center-std, center+std; fs = 1/trace.dt)
 	designmethod = Butterworth(8)
 	digital_filter = digitalfilter(responsetype, designmethod)
-    for (i,ch) in enumerate(eachchannel(trace))
+    data = similar(trace.data_array)
+    for (i,ch) in enumerate(eachchannel(trace; include_stim = false))
 		if i != trace.stim_ch
         	data[:,:,i] = filt(digital_filter, getchannel(trace,i))
 		else
 			data[:,:,i] = trace[:,:,i]
 		end
     end
+    #never adjust the stim
+    data[:,:,trace.stim_ch] = trace[:,:,trace.stim_ch]
     return NeuroTrace(
         trace.t, 
         data, #Add the data here 
@@ -149,7 +156,7 @@ function notch_filter!(trace::NeuroTrace; pole = 8, center = 60.0, std = 0.1)
     responsetype = Bandstop(center-std, center+std; fs = 1/trace.dt)
 	designmethod = Butterworth(8)
 	digital_filter = digitalfilter(responsetype, designmethod)
-    for (i,ch) in enumerate(eachchannel(trace))
+    for (i,ch) in enumerate(eachchannel(trace; include_stim = false))
         if i != trace.stim_ch
         	trace[:,:,i] = filt(digital_filter, getchannel(trace,i))
 		else
@@ -160,10 +167,12 @@ end
 
 function cwt_filter(trace::NeuroTrace; wave = WT.dog2, periods = 1:9, return_cwt = true)
     data = similar(trace.data_array)
-    for (i,ch) in enumerate(eachchannel(trace))
+    for (i,ch) in enumerate(eachchannel(trace; include_stim = false))
         y = cwt(ch, wavelet(wave))
         data[:,:,i] = sum(real.(y[:,periods]), dims = 2)/size(y, 2);
     end
+    #never adjust the stim
+    data[:,:,trace.stim_ch] = trace[:,:,trace.stim_ch]
     return NeuroTrace(
         trace.t, 
         data, #Add the data here 
@@ -179,7 +188,7 @@ end
 
 function cwt_filter!(trace::NeuroTrace; wave = WT.dog2, periods = 1:9)
     data = similar(trace.data_array)
-	for (i,ch) in enumerate(eachchannel(trace))
+	for (i,ch) in enumerate(eachchannel(trace; include_stim = false))
         y = cwt(ch, wavelet(wave))
         trace[:,:,i] = sum(real.(y[:,periods]), dims = 2)/size(y, 2);
 	end
@@ -198,7 +207,7 @@ end
 average_sweeps!(nt::NeuroTrace) = nt.data_array = sum(nt, dims = 1)/size(nt,1)
 
 function normalize(trace::NeuroTrace; rng = (-1,0))
-    x = trace.data_array
+    x = trace.data_array[]
     z = (x .- minimum(x))/(maximum(x) - minimum(x))*(rng[2] - rng[1]) .+ rng[1]
     new_obj = copy(trace)
     new_obj.data_array = z
@@ -217,26 +226,6 @@ function fft_spectrum(t, data::Array{T, 1}) where T <: Real
     freqs = FFTW.fftfreq(length(t), 1.0/dt) |> fftshift
     over_0 = findall(freqs .> 0);
     return freqs[over_0], x_fft[over_0] 
-end
-
-#A single filtering pipeline
-function clean_data_cwt(t, data; negative = true, wave = WT.dog2, cutoff_octave = 9)
-    x_ch1 = data[1,:,1]; x_ch2 = data[1,:,2]; x_stim = data[1,:,3] .> 0.2;
-    #Cancelling drift
-    x_lin1 = drift_cancel(t, x_ch1);
-    x_lin2 = drift_cancel(t, x_ch2);
-    #Baseline subtraction
-    stim_idxs = findall(x -> x == true, x_stim) #Stimulus is same for both channels
-    x_adj1 = subtract_baseline(x_lin1, (1, stim_idxs[1]));
-    x_adj2 = subtract_baseline(x_lin2, (1, stim_idxs[1]));
-    #Normalization
-    x_norm1, norm_factor1 = normalize(x_adj1);
-    x_norm2, norm_factor2 = normalize(x_adj2);
-    #CWT filtering (Probably not ready for CWT filtering )
-    x_cwt1, cwt1_raster = cwt_filter(x_norm1, periods = 1:cutoff_octave);
-    x_cwt2, cwt2_raster = cwt_filter(x_norm2, periods = 1:cutoff_octave);
-    return x_cwt1.*norm_factor1, x_cwt2.*norm_factor2, x_stim
-    #return x_cwt1, x_cwt2, x_stim
 end
 
 #A single filtering pipeline

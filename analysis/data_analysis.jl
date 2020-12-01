@@ -34,9 +34,6 @@ target_folder = "D:\\Data\\ERG\\Gnat\\"
 # ╔═╡ 3b5a45c0-2444-11eb-2178-31a7fdadc071
 paths = (target_folder |> parse_abf)[65:333]
 
-# ╔═╡ 39af208e-2f36-11eb-10d5-afc626d7c73b
-#Populate the dataframe according to Pauls naming convention
-
 # ╔═╡ 2986b392-2a86-11eb-2a64-e968374322f9
 md" 
 ## [A] Extracting all paths and quantifying Photons
@@ -593,7 +590,6 @@ end
 # ╠═d8d401a0-246d-11eb-257b-f741c3fe3a86
 # ╠═1b648280-2444-11eb-2064-f16e658562b7
 # ╠═3b5a45c0-2444-11eb-2178-31a7fdadc071
-# ╠═39af208e-2f36-11eb-10d5-afc626d7c73b
 # ╟─2986b392-2a86-11eb-2a64-e968374322f9
 # ╟─21b33c70-2445-11eb-2715-ab18a8967399
 # ╟─77a2bb50-25f9-11eb-155f-8d54ae0dcf70
@@ -602,7 +598,7 @@ end
 # ╟─ca6b8f60-2919-11eb-3bd0-693dd363f6cc
 # ╟─908726a0-2a87-11eb-232e-953797cdc39a
 # ╟─58db7bb0-2a88-11eb-2526-414479104779
-# ╟─6082ef32-2a86-11eb-13b6-794bff1e7309
+# ╠═6082ef32-2a86-11eb-13b6-794bff1e7309
 # ╟─cd205ec0-2a90-11eb-0c32-41f2104b1fe1
 # ╟─e21f4750-2a90-11eb-040f-056d3c744df5
 # ╟─cd93d6d0-244a-11eb-2823-012c0ff9da58

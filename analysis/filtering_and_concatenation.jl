@@ -11,7 +11,7 @@ using PlutoUI
 using NeuroPhys
 
 # ╔═╡ 7aec9f70-23e6-11eb-293a-8f4e69df4f50
-using Plots, DSP, StatsPlots
+using DSP, StatsPlots
 
 # ╔═╡ 8c373e20-23dc-11eb-01b3-9143dc22e796
 using DataFrames, Query
@@ -51,81 +51,64 @@ begin
 	trace = extract_abf(target_path);
 end
 
-# ╔═╡ 76b8eb6e-31c9-11eb-3a02-3b5f312dc1c8
-begin
-	p1 = plot(layout = grid(3,1), 
-		title = ["Unfiltered_data" "" ""], 
-		xlabel = ["" "" "Time (s)"], 
-		ylabel = ["Response (\$\\mu\$V)" "Response (\$\\mu\$V)" "Stimulus"]
-	)
-	for (i, ch) in enumerate(NeuroPhys.eachchannel(trace))
-		plot!(p1[i], trace.t, ch |> vec, label = "", c = :blue)
-	end
-	p1
-end
+# ╔═╡ ba7ef540-3343-11eb-2276-5d0f82721c23
+plot(trace; c = :blue, plotby = :channel,		
+	title = ["Unfiltered_data" "" ""], 
+	xlabel = ["" "" "Time (s)"],
+	label = ""
+)
 
 # ╔═╡ cdb8fba0-2a98-11eb-022e-bdc0a537368d
 md"
 ### Adjusting baseline and normalization
 "
 
-# ╔═╡ f30e86ae-3275-11eb-059c-43cea4921771
+# ╔═╡ 532f8cf0-3344-11eb-2d92-0d6a4323ef26
 begin
+	#Filter traces
 	drift_trace = baseline_cancel(trace; mode = :slope, region = :prestim)
-	p2 = plot(layout = grid(3,1), 
+	baseline_trace = baseline_cancel(drift_trace; mode = :mean, region = :prestim)
+	filter_trace = lowpass_filter(baseline_trace)
+	cwt_trace = cwt_filter(baseline_trace)
+end
+
+# ╔═╡ 06265422-3344-11eb-0d85-eb33a2883ae0
+begin	
+	plot(trace; c = :red,		
 		title = ["Adjusting Drift" "" ""], 
 		xlabel = ["" "" "Time (s)"], 
-		ylabel = ["Response (\$\\mu\$V)" "Response (\$\\mu\$V)" "Stimulus"]
+		label = "Unadjusted"
 	)
-	for (i, ch) in enumerate(eachchannel(drift_trace))
-		plot!(p2[i], trace.t, getchannel(trace,i), label = "Unfiltered", c = :red)
-		plot!(p2[i], drift_trace.t, ch |> vec, label = "Filtered", c = :blue)
-	end
-	p2
+	plot!(drift_trace; label = "Adjusted", c = :blue)
 end
 
-# ╔═╡ 1fcf25b0-0431-11eb-0c6c-2d2204083a98
-begin
-	baseline_trace = baseline_cancel(drift_trace; mode = :mean, region = :prestim)
-	p3 = plot(layout = grid(3,1), 
+# ╔═╡ 895fed10-3344-11eb-0ffa-4bedd0179b04
+begin	
+	plot(drift_trace; c = :red,		
 		title = ["Adjusting Baseline" "" ""], 
 		xlabel = ["" "" "Time (s)"], 
-		ylabel = ["Response (\$\\mu\$V)" "Response (\$\\mu\$V)" "Stimulus"]
+		label = "Unadjusted"
 	)
-	for (i, ch) in enumerate(eachchannel(baseline_trace))
-		plot!(p3[i], trace.t, getchannel(drift_trace,i), label = "Unfiltered", c = :red)
-		plot!(p3[i], trace.t, ch |> vec, label = "Filtered", c = :blue)
-	end
-	p3
+	plot!(baseline_trace; label = "Adjusted", c = :blue)
 end
 
-# ╔═╡ c1b43420-327f-11eb-0a0d-c7a01291ec64
-begin
-	filter_trace = lowpass_filter(baseline_trace)
-	p4 = plot(layout = grid(3,1), 
-		title = ["Lowpass Filter" "" ""], 
+# ╔═╡ 9ba88f40-3344-11eb-2993-fd386b52bda2
+begin	
+	plot(baseline_trace; c = :red,		
+		title = ["40hz Lowpass Filter" "" ""], 
 		xlabel = ["" "" "Time (s)"], 
-		ylabel = ["Response (\$\\mu\$V)" "Response (\$\\mu\$V)" "Stimulus"]
+		label = "Unfiltered"
 	)
-	for (i, ch) in enumerate(eachchannel(filter_trace))
-		plot!(p4[i], trace.t, getchannel(baseline_trace,i), label = "Unfiltered", c = :red)
-		plot!(p4[i], trace.t, ch, label = "Filtered", c = :blue)
-	end
-	p4
+	plot!(filter_trace; label = "filtered", c = :blue)
 end
 
-# ╔═╡ 3a38a790-3286-11eb-1c8c-fff9c46bbe7e
-begin
-	cwt_trace = cwt_filter(baseline_trace)
-	p5 = plot(layout = grid(3,1), 
+# ╔═╡ 18ab6da0-3345-11eb-3f11-3be3c4fb508d
+begin	
+	plot(cwt_trace; 		
 		title = ["CWT Filter" "" ""], 
 		xlabel = ["" "" "Time (s)"], 
-		ylabel = ["Response (\$\\mu\$V)" "Response (\$\\mu\$V)" "Stimulus"]
+		label = "filtered", c = :blue
 	)
-	for (i, ch) in enumerate(eachchannel(cwt_trace))
-		plot!(p5[i], trace.t, ch, label = "Filtered", c = :blue)
-	end
-	p5
 end
 
 # ╔═╡ 4aee4550-0431-11eb-2643-29f5e0eb19b5
@@ -342,12 +325,13 @@ end
 # ╠═e09e64b0-0425-11eb-1a08-8f78d2ceca08
 # ╟─cc74a240-042c-11eb-257c-f969882fcc79
 # ╟─a3d6e720-31af-11eb-2a47-85b72bb63cf9
-# ╠═76b8eb6e-31c9-11eb-3a02-3b5f312dc1c8
+# ╟─ba7ef540-3343-11eb-2276-5d0f82721c23
 # ╟─cdb8fba0-2a98-11eb-022e-bdc0a537368d
-# ╟─f30e86ae-3275-11eb-059c-43cea4921771
-# ╟─1fcf25b0-0431-11eb-0c6c-2d2204083a98
-# ╟─c1b43420-327f-11eb-0a0d-c7a01291ec64
-# ╟─3a38a790-3286-11eb-1c8c-fff9c46bbe7e
+# ╟─532f8cf0-3344-11eb-2d92-0d6a4323ef26
+# ╟─06265422-3344-11eb-0d85-eb33a2883ae0
+# ╟─895fed10-3344-11eb-0ffa-4bedd0179b04
+# ╟─9ba88f40-3344-11eb-2993-fd386b52bda2
+# ╟─18ab6da0-3345-11eb-3f11-3be3c4fb508d
 # ╠═4aee4550-0431-11eb-2643-29f5e0eb19b5
 # ╠═498f2320-0434-11eb-0cc3-f977a71c5196
 # ╟─31814662-1e1e-11eb-3f29-5bccaf4079af
