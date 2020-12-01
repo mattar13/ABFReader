@@ -194,6 +194,7 @@ function average_sweeps(nt::NeuroTrace)
         data[:,:,i] .= sum(nt, dims = 1)/size(nt,1)
     end
     data[:,:,nt.stim_ch] = trace[:,:,nt.stim_ch]
+    
     new_obj = copy(nt)
     new_obj.data_array = data
     return new_obj
