@@ -2,9 +2,7 @@
 This function plots by channel. This is the most basic functionality of the trace plot
 """
 @recipe function f(nt::NeuroTrace; stim_plot = :subplot)
-    grid := false
-    layout := (size(nt,3), 1)
-    
+    grid := false    
     if stim_plot == :include
         layout := (size(nt,3)-1, 1)
         for (i,ch) in enumerate(eachchannel(nt; include_stim = false))
@@ -26,7 +24,7 @@ This function plots by channel. This is the most basic functionality of the trac
                 seriestype := :vline
                 label := "Stimulus"
                 y := [nt.t[t_stim_end]]
-                yguide := "$(nt.chNames[i])($(nt.chUnits[i]))"
+                #yguide := "$(nt.chNames[i])($(nt.chUnits[i]))"
             end
         end
     else
