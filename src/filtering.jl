@@ -1,13 +1,4 @@
-"""
-This function is for computing the R-squared of a polynomial
-"""
-function RSQ(poly::Polynomial, x, y)
-	ŷ = poly.(x)
-	ȳ = sum(ŷ)/length(ŷ)
-	SSE = sum((y-ŷ).^2)
-	SST = sum((y.-ȳ).^2)
-	1-SSE/SST
-end
+
 
 ####################These functions are for filtering and adjusting the traces################
 """
@@ -57,7 +48,7 @@ function baseline_cancel(trace::NeuroTrace; mode::Symbol = :mean, region = :pres
 		)
 end
 
-function baseline_cancel!(trace::NeuroTrace, t, x_data::AbstractArray; return_fit = false)
+function baseline_cancel!(trace::NeuroTrace; mode::Symbol = :mean, region = :prestim, cust_rng = (1,10))
    if region == :whole
         rng_begin = 1
         rng_end = length(trace)

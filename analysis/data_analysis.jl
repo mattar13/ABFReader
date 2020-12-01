@@ -187,24 +187,26 @@ teff = 0.5
 begin
 	for (i, exper) in enumerate(eachrow(all_files))
 		#First we can extract every .abf file using extract_abf()
-		t, data = extract_abf(exper[:Path]);
+		data = extract_abf(exper[:Path]);
 		#If the file has multiple runs, then we can average them together
 		if size(data,1) > 1
-			data = data |> average_runs
+			data = data |> average_sweeps
 		end
 		
-		t, data = truncate_data(t, data; t_eff = teff, t_cutoff = 1.0);
-		t, data = remove_artifact(t, data);
-		ch1, ch2, stim = clean_data(t, data)
-		stim_idx = findlast(x -> x == true, stim)
-		pre_ch1 = ch1[1:stim_idx]
-		pre_ch2 = ch2[1:stim_idx]
+		#begin the data cleaning pipeline
+		data = data |> 
+			average_sweeps |>  
+			x -> truncate_data!(x; t_eff = teff, t_cutoff = 1.0) |> 
+			x -> baseline_cancel!(x; mode = :slope) |> 
+			x -> baseline_cancel!(x; mode = :mean) |> 
+			lowpass_filter!
 		
-		a_ch1 = ch1[stim_idx:end]
-		a_ch2 = ch2[stim_idx:end]
+		println(data |> size)
+		
+		stim_begin, stim_end = findstimRng(data)
+		pre_stim = data[:, 1:stim_end, 1:2]
+		post_stim = data[:, stim_end:end, 1:2]
 		#Lowpass filtering for the responses
-		filt_ch1 = lowpass_filter(t, ch1; center = 25.0)
-		filt_ch2 = lowpass_filter(t, ch2; center = 25.0)	
 				
 		all_files[i, :Ch1_Baseline] = abs(sum(pre_ch1)/length(pre_ch1))*1000
 		all_files[i, :Ch2_Baseline] = abs(sum(pre_ch2)/length(pre_ch2))*1000
@@ -589,7 +591,7 @@ end
 # ╠═97ec41d0-2462-11eb-099a-7358626c4718
 # ╠═d8d401a0-246d-11eb-257b-f741c3fe3a86
 # ╠═1b648280-2444-11eb-2064-f16e658562b7
-# ╠═3b5a45c0-2444-11eb-2178-31a7fdadc071
+# ╟─3b5a45c0-2444-11eb-2178-31a7fdadc071
 # ╟─2986b392-2a86-11eb-2a64-e968374322f9
 # ╟─21b33c70-2445-11eb-2715-ab18a8967399
 # ╟─77a2bb50-25f9-11eb-155f-8d54ae0dcf70
