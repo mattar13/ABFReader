@@ -189,7 +189,11 @@ end
 If the traces contain multiple runs, then this file averages the data
 """
 function average_sweeps(nt::NeuroTrace)
-    data = sum(nt, dims = 1)/size(nt,1)
+    data = similar(nt.data_array)
+    for (i, ch) in enumerate(eachchannel(nt; include_stim = false))
+        data[:,:,i] .= sum(nt, dims = 1)/size(nt,1)
+    end
+    data[:,:,nt.stim_ch] = trace[:,:,nt.stim_ch]
     new_obj = copy(nt)
     new_obj.data_array = data
     return new_obj
