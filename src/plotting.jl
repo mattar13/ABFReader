@@ -20,7 +20,7 @@ This function plots by channel. This is the most basic functionality of the trac
             @series begin
                 t_stim_start, t_stim_end = findstimRng(nt)
                 subplot := i
-                seriescolor = :yellow
+                color = :yellow
                 seriestype := :vline
                 label := "Stimulus"
                 y := [nt.t[t_stim_end]]
