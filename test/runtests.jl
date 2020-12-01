@@ -15,6 +15,7 @@ filter_trace = lowpass_filter(baseline_trace) #Lowpass filter using a 40hz 8-pol
 cwt_trace = cwt_filter(baseline_trace) #Use a continuous wavelet transform to remove noise, but keep time series info
 avg_trace = average_sweeps(baseline_trace)
 norm_trace = normalize(baseline_trace)
+println("All filtering functions work")
 #%%
 
 #%%
