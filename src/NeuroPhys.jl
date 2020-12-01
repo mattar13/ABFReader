@@ -45,5 +45,6 @@ export IR, IR_dev, AMP
 
 using Plots
 include("plotting.jl")
+export plot
 
 end # module
