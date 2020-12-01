@@ -18,7 +18,7 @@ This function plots by channel. This is the most basic functionality of the trac
                 ()
             end
             @series begin
-                t_stim_start, t_stim_end = findstimRng(trace)
+                t_stim_start, t_stim_end = findstimRng(nt)
                 subplot := i
                 seriestype := :vline
                 label := "Stimulus"
