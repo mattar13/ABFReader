@@ -18,5 +18,7 @@ println("All filtering functions work")
 #%%
 
 #%%
-plot(trace, stim_plot = :include, c = :blue)
+plot(trace, stim_plot = :include)
 #%% Test the analysis of .abf files
+mins, maxes, means, stds = calculate_basic_stats(trace)
+println("Channel $(trace.chNames[1]) : $(mins[1])")

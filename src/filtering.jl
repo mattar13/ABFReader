@@ -163,9 +163,11 @@ end
 
 function cwt_filter(trace::NeuroTrace; wave = WT.dog2, periods = 1:9, return_cwt = true)
     data = similar(trace.data_array)
+    stim_begin, stim_end = findstimRng(trace)
     for (i,ch) in enumerate(eachchannel(trace; include_stim = false))
         y = cwt(ch, wavelet(wave))
         data[:,:,i] = sum(real.(y[:,periods]), dims = 2)/size(y, 2);
+        data[:, 1:stim_begin, i] .= 0.0
     end
     #never adjust the stim
     data[:,:,trace.stim_ch] = trace[:,:,trace.stim_ch]

@@ -192,30 +192,23 @@ begin
 		if size(data,1) > 1
 			data = data |> average_sweeps
 		end
-		
 		#begin the data cleaning pipeline
-		data = data |> 
-			average_sweeps |>  
-			x -> truncate_data!(x; t_eff = teff, t_cutoff = 1.0) |> 
-			x -> baseline_cancel!(x; mode = :slope) |> 
-			x -> baseline_cancel!(x; mode = :mean) |> 
-			lowpass_filter!
-		
-		println(data |> size)
-		
-		stim_begin, stim_end = findstimRng(data)
-		pre_stim = data[:, 1:stim_end, 1:2]
-		post_stim = data[:, stim_end:end, 1:2]
-		#Lowpass filtering for the responses
-				
-		all_files[i, :Ch1_Baseline] = abs(sum(pre_ch1)/length(pre_ch1))*1000
-		all_files[i, :Ch2_Baseline] = abs(sum(pre_ch2)/length(pre_ch2))*1000
-		all_files[i, :Ch1_STD] = std(a_ch1)*1000
-		all_files[i, :Ch2_STD] = std(a_ch2)*1000
-		all_files[i, :Ch1_Max] = maximum(filt_ch1)*1000
-		all_files[i, :Ch2_Max] = maximum(filt_ch2)*1000
-		all_files[i, :Ch1_Min] = minimum(filt_ch1)*1000
-		all_files[i, :Ch2_Min] = minimum(filt_ch2)*1000
+		data = data |> average_sweeps 
+		truncate_data!(data; t_eff = teff, t_cutoff = 1.0) 
+		data = baseline_cancel(data; mode = :slope) 
+		data = baseline_cancel(data; mode = :mean) 
+		data = lowpass_filter(data)
+
+		#Extract the mins, maxes, means, and stds
+		mins, maxes, means, stds = calculate_basic_stats(data)
+		all_files[i, :Ch1_Baseline] = means[1]*1000
+		all_files[i, :Ch2_Baseline] = means[2]*1000
+		all_files[i, :Ch1_STD] = stds[1]*1000
+		all_files[i, :Ch2_STD] = stds[2]*1000
+		all_files[i, :Ch1_Max] = maxes[1]*1000
+		all_files[i, :Ch2_Max] = maxes[2]*1000
+		all_files[i, :Ch1_Min] = mins[1]*1000
+		all_files[i, :Ch2_Min] = mins[2]*1000
 		println("$(i)/$(size(all_files, 1)) suceeded")
 	end
 	println("Basic Stats completed")
@@ -266,83 +259,45 @@ begin
 		#Use this to scale the graphs
 		max_response = max(maximum(q_rmax[:,:Ch1_Resp]), maximum(q_rmax[:,:Ch2_Resp]))
 		max_photons = maximum(q_rmax[:,:Photons])
-		p_rec = plot(layout = grid(2,3), cbar = false, 
-			title = ["$title" "" "" ""], size = (1200, 800)
-			)
 		t_peak1 = 0.0
 		t_peak2 = 0.0
+		p_sect1 = plot(layout = grid(2,1)); p_sect2 = plot(); p_sect3 = plot();
 		for (idx, recording) in enumerate(eachrow(q_exp))
 			#Extract the initial data
-			t, data = extract_abf(recording[:Path]);
-			t, data = truncate_data(t, data; t_eff = teff, t_cutoff = 1.0);
-			ch1, ch2, stim = clean_data(t, data)
-			#Extract the end of the stimulus
-			stim_begin = findall(x -> x == true, stim)[end]
-			#Filter the responses for amplitude stats
-			x_filt1 = lowpass_filter(t, ch1; center = 25.0)
-			x_filt2 = lowpass_filter(t, ch2; center = 25.0)
-			
-			
-			#Plot the filtered responses
-			plot!(p_rec[1], t .- (t[1]+teff), x_filt1.*1000, label = "", 
-				c = :inferno, line_z = log(10, recording[:Photons]), lw = 3.0, 
-				#ylims = (-max_response, 5.0), 
-				xlabel = "Time", ylabel = "Response (uV)"
+			data = extract_abf(recording[:Path]);
+			#If the file has multiple runs, then we can average them together
+			if size(data,1) > 1
+				data = data |> average_sweeps
+			end
+			#begin the data cleaning pipeline
+			data = truncate_data(data; t_eff = teff, t_cutoff = 1.0) 
+			data = baseline_cancel(data; mode = :slope) 
+			data = baseline_cancel(data; mode = :mean) 
+			filter_data = lowpass_filter(data)
+			filter_data.data_array .*= 1000
+			plot!(p_sect1, filter_data, 
+				c = :inferno, line_z = log(10, recording[:Photons]), legend = :false
 			)
-			plot!(p_rec[4], t .- (t[1]+teff), x_filt2.*1000, label = "", 
-				c = :inferno, line_z = log(10, recording[:Photons]), lw = 3.0, 
-				#ylims = (-max_response, 5.0), 
-				xlabel = "Time", ylabel = "Response (uV)"
-			)		
-			
-			#Plot the stimulus line
-			vline!(p_rec[1], [t[stim_begin].-(t[1]+teff)], label = "", 
-				c = :black, lw = 2.0)
-			vline!(p_rec[4], [t[stim_begin].-(t[1]+teff)], label = "", 
-				c = :black, lw = 2.0)
-			#Filter the responses for time to peak only on the highest intensity
 			if idx == 1
-				x_cwt1 = cwt_filter(ch1; periods = 1:5, return_cwt = false)
-				x_cwt2 = cwt_filter(ch2; periods = 1:5, return_cwt = false)
-				#Set all areas before the stimulus to zero
-				x_cwt1[1:stim_begin] .= 0.0
-				x_cwt2[1:stim_begin] .= 0.0
-				#Set all regions underneath 0 to 0 (no negatives)
-				x_cwt1[x_cwt1 .< 0.0] .= 0.0
-				x_cwt2[x_cwt2 .< 0.0] .= 0.0
-
-				t_peak1 = (t[argmax(x_cwt1)] - (t[1]+teff))
-				t_peak2 = (t[argmax(x_cwt2)] - (t[1]+teff))
-				plot!(p_rec[3], t .- (t[1]+teff), x_cwt1./maximum(x_cwt1), label = "", 
-					c = :inferno, lw = 3.0, 
-					#line_z = log(10, recording[:Photons]), 
-					#ylims = (-max_response, 5.0), 
-					xlabel = "Time", ylabel = "Response (uV)"
-				)
-				plot!(p_rec[6], t .- (t[1]+teff), x_cwt2./maximum(x_cwt2), label = "", 
-					c = :inferno, lw = 3.0, 
-					#line_z = log(10, recording[:Photons]), 
-					#ylims = (-max_response, 5.0), 
-					xlabel = "Time", ylabel = "Response (uV)"
-				)
+				cwt_data = cwt_filter(data)
+				t_peak1 = data.t[argmax(getchannel(data,1))] #- (data.t[1]+teff))
+				t_peak2 = data.t[argmax(getchannel(data,2))] #- (data.t[1]+teff))
+				p_sect2 = plot(cwt_data)
 				#Plot the time to peaks
-				vline!(p_rec[3], [t_peak1], label = "", c = :red)
-				vline!(p_rec[6], [t_peak2], label = "", c = :red)
-				vline!(p_rec[3], [t[stim_begin].-(t[1]+teff)], label = "", 
-					c = :black, lw = 2.0)
-				vline!(p_rec[6], [t[stim_begin].-(t[1]+teff)], label = "", 
-					c = :black, lw = 2.0)
+				vline!(p_sect2[1], [t_peak1], label = "", c = :red)
+				vline!(p_sect2[2], [t_peak2], label = "", c = :red)
 			end
 
 		end
-		hline!(p_rec[1], [-q_rmax[1, :Ch1_Resp]], c = :red, label = "")
-		hline!(p_rec[4], [-q_rmax[1, :Ch2_Resp]], c = :red, label = "")
+		hline!(p_sect1[1], [-q_rmax[1, :Ch1_Resp]], c = :red, label = "")
+		hline!(p_sect1[2], [-q_rmax[1, :Ch2_Resp]], c = :red, label = "")
 		
-		@df q_rmax plot!(p_rec[2], :Photons, :Ch1_Resp, seriestype = :scatter,
+		p_sect3 = plot(layout = grid(2,1))
+		@df q_rmax plot!(p_sect3[1], :Photons, :Ch1_Resp, seriestype = :scatter,
 			xaxis = :log, ylims = (0.0, Inf), label = "", 
 			xlabel = "Photons", ylabel = ""
 		)
-		@df q_rmax plot!(p_rec[5], :Photons, :Ch2_Resp, seriestype = :scatter,
+		@df q_rmax plot!(p_sect3[2], :Photons, :Ch2_Resp, seriestype = :scatter,
 			xaxis = :log, ylims = (0.0, Inf), label = "", 
 			xlabel = "Photons", ylabel = ""
 		)
@@ -364,11 +319,11 @@ begin
 			xdata, ch2_y, 
 			p0, lower=lb, upper=ub
 		)
-		plot!(p_rec[2], x -> fit_func(x, ch1_fit.param), 
+		plot!(p_sect3[1], x -> fit_func(x, ch1_fit.param), 
 			minimum(xdata), maximum(xdata), 
 			c = :red, lw = 2.0, label = "fit"
 		)
-		plot!(p_rec[5], x -> fit_func(x, ch2_fit.param),  
+		plot!(p_sect3[2], x -> fit_func(x, ch2_fit.param),  
 			minimum(xdata), maximum(xdata), 
 			c = :red, lw = 2.0, label = "fit"
 		)
@@ -391,11 +346,14 @@ begin
 		
 		all_experiments[i, :Ch1_T_Peak] = t_peak1 * 1000
 		all_experiments[i, :Ch2_T_Peak] = t_peak2 * 1000
-		
+		p_rec = plot(p_sect1, p_sect2, p_sect3, layout = (1,3), size = (1200,800))
 		savefig(p_rec, joinpath(target_folder, "$(title).png"))
 	end
 	all_experiments
 end
+
+# ╔═╡ c4a35b50-3420-11eb-0cfa-d1a15fb0dbec
+
 
 # ╔═╡ cd93d6d0-244a-11eb-2823-012c0ff9da58
 md"
@@ -603,9 +561,10 @@ end
 # ╠═6082ef32-2a86-11eb-13b6-794bff1e7309
 # ╟─cd205ec0-2a90-11eb-0c32-41f2104b1fe1
 # ╟─e21f4750-2a90-11eb-040f-056d3c744df5
+# ╠═c4a35b50-3420-11eb-0cfa-d1a15fb0dbec
 # ╟─cd93d6d0-244a-11eb-2823-012c0ff9da58
 # ╟─696855a0-277e-11eb-2870-47aa6d808716
 # ╠═fe5970f0-29c6-11eb-179f-3d2c84c3faef
 # ╟─f7b8cdd0-29c2-11eb-289c-6f16cb2722bd
-# ╠═13b18ee0-2f1e-11eb-002a-59f73c5ccd0b
-# ╠═1c3a2b8e-2450-11eb-3ab7-69721b2ab1a4
+# ╟─13b18ee0-2f1e-11eb-002a-59f73c5ccd0b
+# ╟─1c3a2b8e-2450-11eb-3ab7-69721b2ab1a4
