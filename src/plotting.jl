@@ -6,7 +6,7 @@ This function plots by channel. This is the most basic functionality of the trac
     if stim_plot == :include
         layout := (size(nt,3)-1, 1)
         for (i,ch) in enumerate(eachchannel(nt; include_stim = false))
-            xlabels = repeat(["";], size(nt,3)-1)
+            xlabels = reshape(repeat([""], size(trace,3)-1), (1, size(trace,3)-1))
             xlabels[end] = "Time ($(nt.tUnits))"
             xguide := xlabels
             @series begin
