@@ -14,14 +14,12 @@ function calculate_basic_stats(data::NeuroTrace)
     ch_idxs = findall(x -> x!=data.stim_ch, 1:size(data,3))
     pre_stim = data[:, 1:stim_end, ch_idxs]
     post_stim = data[:, stim_end:end, ch_idxs]
-    mins = zeros(size(data,1), size(data,3))
-    maxes = zeros(size(data,1), size(data,3))
+    mins = minimum(trace.data_array[:, :, :], dims = 2)[1,1,1:2]
+    maxes = maximum(trace.data_array[:, :, :], dims = 2)[1,1,1:2]
     means = zeros(size(data,1), size(data,3))
     stds = zeros(size(data,1), size(data,3))
     for i_swp in 1:size(data,1)
         for i_ch in ch_idxs
-            push!(mins, miniumum(trace[i_swp, :, i_ch]))
-            push!(maxes, maximum(trace[i_swp, :, i_ch]))
             push!(means, sum(pre_stim[i_swp, :, i_ch])/size(pre_stim,2))
             push!(stds, std(pre_stim[i_swp, :, i_ch]))
         end
