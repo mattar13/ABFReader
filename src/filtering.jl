@@ -21,8 +21,13 @@ function baseline_cancel(trace::NeuroTrace; mode::Symbol = :mean, region = :pres
     end
 
     if mode == :mean
-        baseline_adjust = sum(trace[:,rng_begin:rng_end,:]; dims = 2)/(rng_end-rng_begin)
-        data = trace.data_array .- baseline_adjust
+        data = similar(trace.data_array)
+        for (i,ch) in enumerate(eachchannel(trace; include_stim = false))
+            baseline_adjust = sum(trace[:,rng_begin:rng_end,:]; dims = 2)/(rng_end-rng_begin)
+            data[:,:, i] = trace.data_array[:,:,i] .- baseline_adjust
+        end
+        #never adjust the stim
+        data[:,:,trace.stim_ch] = trace[:,:,trace.stim_ch]
     elseif mode == :slope
 		data = similar(trace.data_array)
 		for (i,ch) in enumerate(eachchannel(trace; include_stim = false))
@@ -190,11 +195,8 @@ If the traces contain multiple runs, then this file averages the data
 """
 function average_sweeps(nt::NeuroTrace)
     data = similar(nt.data_array)
-    for (i, ch) in enumerate(eachchannel(nt; include_stim = false))
-        data[:,:,i] .= sum(nt, dims = 1)/size(nt,1)
-    end
-    data[:,:,nt.stim_ch] = trace[:,:,nt.stim_ch]
-    
+	data[:,:,1:2] .= (sum(nt, dims = 1)/size(nt,1))[:,:,1:2]
+    data[:,:,nt.stim_ch] .= nt[:,:,nt.stim_ch]
     new_obj = copy(nt)
     new_obj.data_array = data
     return new_obj
