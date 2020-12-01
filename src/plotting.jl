@@ -1,4 +1,4 @@
-@recipe function plot_by_channel(nt::NeuroTrace; stim_plot = :sublot)
+@recipe function f(nt::NeuroTrace, stim_plot)
     println("Functional interface working")
     if stim_plot == :subplot
         layout := (size(nt,3), 1)
@@ -23,7 +23,7 @@ end
 @recipe function f(nt::NeuroTrace; plotby = :channel, stim_plot = :subplot)
     grid := false
     if plotby == :channel
-        plot_by_channel(nt; stim_plot = stim_plot)
+        plot(nt, stim_plot)
     elseif plotby == :sweep
         layout := (size(nt,1), 1)
         for (i,swp) in enumerate(eachsweep(nt))
