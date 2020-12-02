@@ -6,7 +6,7 @@ is_working() = print("Yes is working!")
 
 #Import
 using PyCall
-using StatsBase, DataFrames, XLSX
+using StatsBase
 using Polynomials, Distributions #Used for polynomial fitting
 using DSP, Wavelets, FFTW #Used for filtering
 using LsqFit #Used for fitting amplification and Intensity Response models
