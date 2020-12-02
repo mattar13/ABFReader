@@ -9,33 +9,6 @@ function RSQ(poly::Polynomial, x, y)
 	1-SSE/SST
 end
 
-function rolling_mean(x::AbstractArray; window = 10)
-    data_array = Float64[]
-    for i = 1:length(x)-window
-        push!(data_array, sum(x[i:i+window])/window)
-    end
-    data_array
-end
-
-function peak_finder(x::AbstractArray; change_thresh = 10)
-    peak = Bool[]
-    for i = 1:length(x)
-        if i == 1
-            push!(peak, false)
-        elseif i == length(x)
-            push!(peak, false)
-        else
-            if (x[i-1]-x[i]) < -change_thresh && (x[i+1]-x[i]) > change_thresh
-                #This indicates a peak
-                push!(peak, true)
-            else
-                push!(peak, false)
-            end
-        end
-    end
-    peak
-end
-
 """
 This function uses a histogram method to find the Rmax. 
 """
