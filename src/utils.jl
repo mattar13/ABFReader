@@ -194,7 +194,19 @@ end
 """
 This returns the indexes where the stimulus is occurring
 """
-findstimRng(trace::NeuroTrace) = findall(x -> x == true, getstim(trace; threshold = 0.2) |> vec)[[1,end]]
+function findstimRng(trace::NeuroTrace) 
+    if trace.stim_ch == -1
+        println("Stim not set")
+        return (0.0, 0.0)
+    else
+        stim_points = findall(x -> x == true, getstim(trace; threshold = 0.2))
+        if any(stim_points)
+            return (stim_points[1], stim_points[end])
+        else
+            return (0.0, 0.0)
+        end
+    end
+end
 
 
 
@@ -202,7 +214,7 @@ findstimRng(trace::NeuroTrace) = findall(x -> x == true, getstim(trace; threshol
 This function extracts an ABF file from a path
     - It creates a NeuroTrace object which 
 """
-function extract_abf(abf_path; T = Float64, stim_ch = 3, swps = -1, chs = ["Vm_prime","Vm_prime4", "IN 7"], verbose = false, v_offset = -25.0, sweep_sort = false)
+function extract_abf(abf_path; T = Float64, stim_ch = 3, swps = -1, chs = ["Vm_prime","Vm_prime4", "IN 7"], verbose = false)
     if length(abf_path |> splitpath) > 1
         full_path = abf_path
     else
@@ -281,14 +293,16 @@ end
 This function truncates the data based on the amount of time.
     It uses the unit of time that the original NeuroTrace file is in. 
     It returns a new data file versus altering the old data file
+TODO: we need to add a section in here for changing the tscale
 """
 function truncate_data(trace::NeuroTrace; t_eff = 0.5, t_cutoff = 3.0)
-	dt = trace.dt
-	t_stim_start, t_stim_end = findstimRng(trace)
-	t_start = t_stim_end - (t_eff/dt) |> Int64
+    dt = trace.dt
+    #Search for the stimulus. if there is no stimulus, then just set the stim to 0.0
+    t_stim_start, t_stim_end = findstimRng(trace)
+	t_start = t_stim_start > t_eff ? t_stim_end - (t_eff/dt) |> Int64 : 0.0
 	t_end = t_stim_end + (t_cutoff/dt) |> Int64
 	return NeuroTrace(
-		trace.t[t_start:t_end], 
+		trace.t[t_start:t_end].- trace.t[1], 
 		trace.data_array[:, t_start:t_end, :], 
 		trace.date_collected,
 		trace.tUnits,
@@ -303,9 +317,9 @@ end
 function truncate_data!(trace::NeuroTrace; t_eff = 0.5, t_cutoff = 3.0)
 	dt = trace.dt
 	t_stim_start, t_stim_end = findstimRng(trace)
-	t_start = t_stim_end - (t_eff/dt) |> Int64
+	t_start = t_stim_start > t_eff ? t_stim_end - (t_eff/dt) |> Int64 : 0.0
 	t_end = t_stim_end + (t_cutoff/dt) |> Int64
-	trace.t = trace.t[t_start:t_end]
+	trace.t = trace.t[t_start:t_end] .- trace.t[1]
 	trace.data_array = trace[:, t_start:t_end, :]
 	return trace
 end
