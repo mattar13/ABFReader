@@ -221,8 +221,9 @@ function findstimRng(trace::NeuroTrace)
         println("Stim not set")
         return (0, 1)
     else
-        stim_points = findall(x -> x == true, getstim(trace; threshold = 0.2))
-        if any(stim_points)
+        stim_trace = getstim(trace; threshold = 0.2)
+        stim_points = findall(x -> x == true, stim_trace)
+        if any(stim_trace) 
             return (stim_points[1], stim_points[end])
         else
             return (0, 1)
