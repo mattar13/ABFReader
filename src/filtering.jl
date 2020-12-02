@@ -207,7 +207,7 @@ end
 average_sweeps!(nt::NeuroTrace) = nt.data_array = sum(nt, dims = 1)/size(nt,1)
 
 function normalize(trace::NeuroTrace; rng = (-1,0))
-    x = trace.data_array[]
+    x = trace.data_array
     z = (x .- minimum(x))/(maximum(x) - minimum(x))*(rng[2] - rng[1]) .+ rng[1]
     new_obj = copy(trace)
     new_obj.data_array = z
