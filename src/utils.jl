@@ -218,7 +218,7 @@ This returns the indexes where the stimulus is occurring
 """
 function findstimRng(trace::NeuroTrace) 
     if trace.stim_ch == -1
-        println("Stim not set")
+        #println("Stim not set")
         return (0, 1)
     else
         stim_trace = getstim(trace; threshold = 0.2)
