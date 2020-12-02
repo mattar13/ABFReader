@@ -189,7 +189,7 @@ end
 """
 This gets the sweep from the data based on the sweep index
 """
-getsweep(trace::NeuroTrace, idx::Int64) = trace.data_array[idx, :, :]
+getsweep(trace::NeuroTrace, idx::Int64) = trace.data_array[idx, :, :] |> vec
 getsweep(trace::NeuroTrace, idx_arr::Array{Int64}) = trace.data_array[idx_arr, :, :]
 
 """
