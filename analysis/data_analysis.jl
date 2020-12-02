@@ -17,7 +17,7 @@ using DataFrames, Query, XLSX
 using Plots, StatsPlots, LsqFit
 
 # ╔═╡ d8d401a0-246d-11eb-257b-f741c3fe3a86
-using Statistics, Changepoints, Distributions
+using Statistics, Distributions
 
 # ╔═╡ c3ae7050-2443-11eb-09ea-7f7e4929e64d
 md"
@@ -25,11 +25,10 @@ md"
 "
 
 # ╔═╡ 45723550-2448-11eb-0818-f7f3280a8310
-import NeuroPhys: number_seperator, average_runs
+import NeuroPhys: number_seperator
 
 # ╔═╡ 1b648280-2444-11eb-2064-f16e658562b7
 target_folder = "D:\\Data\\ERG\\Gnat\\"
-#target_folder = "E:\\Pauls_Data\\"
 
 # ╔═╡ 3b5a45c0-2444-11eb-2178-31a7fdadc071
 paths = (target_folder |> parse_abf)[65:333]
@@ -549,7 +548,7 @@ end
 # ╠═97ec41d0-2462-11eb-099a-7358626c4718
 # ╠═d8d401a0-246d-11eb-257b-f741c3fe3a86
 # ╠═1b648280-2444-11eb-2064-f16e658562b7
-# ╟─3b5a45c0-2444-11eb-2178-31a7fdadc071
+# ╠═3b5a45c0-2444-11eb-2178-31a7fdadc071
 # ╟─2986b392-2a86-11eb-2a64-e968374322f9
 # ╟─21b33c70-2445-11eb-2715-ab18a8967399
 # ╟─77a2bb50-25f9-11eb-155f-8d54ae0dcf70
