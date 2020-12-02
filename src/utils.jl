@@ -197,13 +197,13 @@ This returns the indexes where the stimulus is occurring
 function findstimRng(trace::NeuroTrace) 
     if trace.stim_ch == -1
         println("Stim not set")
-        return (0, 0)
+        return (0, 1)
     else
         stim_points = findall(x -> x == true, getstim(trace; threshold = 0.2))
         if any(stim_points)
             return (stim_points[1], stim_points[end])
         else
-            return (0, 0)
+            return (0, 1)
         end
     end
 end
@@ -317,7 +317,7 @@ end
 function truncate_data!(trace::NeuroTrace; t_eff = 0.5, t_cutoff = 3.0)
 	dt = trace.dt
 	t_stim_start, t_stim_end = findstimRng(trace)
-	t_start = t_stim_start > t_eff ? t_stim_end - (t_eff/dt) |> Int64 : 0
+	t_start = t_stim_start > t_eff ? t_stim_end - (t_eff/dt) |> Int64 : 1
 	t_end = (t_stim_end  + (t_cutoff/dt)) |> Int64
 	trace.t = trace.t[t_start:t_end] .- trace.t[1]
 	trace.data_array = trace[:, t_start:t_end, :]
