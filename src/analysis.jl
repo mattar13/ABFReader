@@ -49,7 +49,10 @@ function rmax_no_nose(nt::NeuroTrace;  precision = 500, window = 25, change_thre
         smoothed = rolling_mean(weights; window = window)
         smoothed_edges = edges[1+window:end]
         peaks = peak_finder(smoothed; change_thresh = change_thresh)
-        push!(rmaxs, mode(smoothed_edges[peaks]))
+        if any(peaks)
+            push!(rmaxs, mode(smoothed_edges[peaks]))
+        else
+            push!(rmaxs, 0)
     end
     rmaxs
 end
