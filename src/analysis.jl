@@ -39,23 +39,20 @@ end
 """
 This function uses a histogram method to find the Rmax. 
 """
-function rmax_no_nose(nt::NeuroTrace;  precision = 500, window = 25, change_thresh = 25)
+function rmax_no_nose(nt::NeuroTrace; precision = 500)
     rmaxs = zeros(size(nt,1), size(nt,3))
     for swp in 1:size(nt, 1)
         for ch in 1:size(nt,3)
             trace = nt[swp, :, ch]
-            bins = LinRange(minimum(trace), maximum(trace), precision)
+            #We can assume the mean will be between the two peaks, therefore this is a good cutoff
+            means = sum(trace)/length(trace)
+            bins = LinRange(minimum(trace), means, precision)
             h = Distributions.fit(Histogram, trace, bins)
-            edges = collect(h.edges...)[2:end] 
-            weights = h.weights 
-            smoothed = rolling_mean(weights; window = window)
-            smoothed_edges = edges[1+window:end]
-            peaks = peak_finder(smoothed; change_thresh = change_thresh)
-            if any(peaks)
-                rmaxs[swp, ch] = mode(smoothed_edges[peaks])
-            else
-                rmaxs[swp, ch] = 0
-            end
+            edges = collect(h.edges...)
+			weights = h.weights
+			peaks = edges[argmax(weights)]
+            #return edges, weights, peaks, means
+            rmaxs[swp, ch] = peaks
         end
     end
     rmaxs

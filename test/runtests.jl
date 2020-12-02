@@ -39,5 +39,6 @@ paths = (target_folder |> parse_abf)
 #Extract data from the first path
 data = extract_abf(paths[1]; stim_ch = -1, swps = -1, chs = -1)
 truncate_data!(data)
-#%% In order to find the Rmax we would rather find the most common baseline valule versus the maximum value#%%
-peaks = minimum(rmax_no_nose(data))
+
+#%%
+peaks = rmax_no_nose(data)
