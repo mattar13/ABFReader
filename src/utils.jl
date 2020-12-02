@@ -129,7 +129,7 @@ mutable struct NeuroTrace{T}
     stim_ch::Union{String, Int64}
 end
 
-import Base: size, length, getindex, setindex, print, display, sum, copy
+import Base: size, length, getindex, setindex, sum, copy, maximum, minimum
 
 #Extending for NeuroTrace
 size(trace::NeuroTrace) = size(trace.data_array)
@@ -141,7 +141,29 @@ length(trace::NeuroTrace) = size(trace,2)
 getindex(trace::NeuroTrace, I...) = trace.data_array[I...]
 setindex(trace::NeuroTrace, v, I...) = trace.data_array[I...] .= v
 
-sum(trace::NeuroTrace; dims::Int64) = sum(trace.data_array, dims = dims)
+function minimum(nt::NeuroTrace; dims::Int64 = -1)
+    if dims == -1
+        return maximum(nt.data_array)
+    else
+        return maximum(nt.data_array, dims = dims)
+    end
+end
+
+function maximum(nt::NeuroTrace; dims::Int64 = -1)
+    if dims == -1
+        return maximum(nt.data_array)
+    else
+        return maximum(nt.data_array, dims = dims)
+    end
+end
+
+function sum(nt::NeuroTrace; dims::Int64 = -1) 
+    if dims == -1
+        return sum(nt.data_array)
+    else
+        return sum(nt.data_array, dims = dims)
+    end
+end
 
 copy(nt::NeuroTrace) = NeuroTrace([getfield(nt, fn) for fn in fieldnames(nt |> typeof)]...)
 
