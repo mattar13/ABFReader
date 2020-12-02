@@ -2,43 +2,52 @@
 This function plots by channel. This is the most basic functionality of the trace plot
 """
 @recipe function f(nt::NeuroTrace; stim_plot = :include)
-    grid := false    
+    grid := false
+    if nt.stim_ch == -1
+        #If there is no stimulus, always use the subplot
+        stim_plot = :subplot
+    end
+
     if stim_plot == :include
         layout := (size(nt,3)-1, 1)
-        for (i,ch) in enumerate(eachchannel(nt; include_stim = false))
-            xlabels = reshape(repeat([""], size(nt,3)-1), (1, size(nt,3)-1))
-            xlabels[end] = "Time ($(nt.tUnits))"
-            xguide := xlabels
-            @series begin
-                subplot := i
-                x := nt.t
-                y := ch
-                yguide := "$(nt.chNames[i])($(nt.chUnits[i]))"
-                ()
-            end
-            @series begin
-                t_stim_start, t_stim_end = findstimRng(nt)
-                subplot := i
-                seriescolor := :yellow
-                linewidth := 4.0
-                seriestype := :vline
-                label := "Stimulus"
-                y := [nt.t[t_stim_end]]
-                ()
+        for swp in 1:size(nt,1)
+            for ch in 1:size(nt,3)-1
+                xlabels = reshape(repeat([""], size(nt,3)-1), (1, size(nt,3)-1))
+                xlabels[end] = "Time ($(nt.tUnits))"
+                xguide := xlabels
+                @series begin
+                    subplot := ch
+                    x := nt.t
+                    y := nt[swp, :, ch]
+                    yguide := "$(nt.chNames[ch])($(nt.chUnits[ch]))"
+                    ()
+                end
+                @series begin
+                    t_stim_start, t_stim_end = findstimRng(nt)
+                    subplot := ch
+                    seriescolor := :yellow
+                    linewidth := 4.0
+                    seriestype := :vline
+                    label := "Stimulus"
+                    y := [nt.t[t_stim_end]]
+                    ()
+                end
             end
         end
     else
         layout := (size(nt,3), 1)
-        for (i,ch) in enumerate(eachchannel(nt))
-            xlabels = reshape(repeat([""], size(nt,3)), (1, size(nt,3)))
-            xlabels[end] = "Time ($(nt.tUnits))"
-            xguide := "Time ($(nt.tUnits))" 
-            @series begin
-                subplot := i
-                x := nt.t
-                y := ch
-                yguide := "$(nt.chNames[i])($(nt.chUnits[i]))"
-                ()
+        for swp in 1:size(nt,1)
+            for ch in 1:size(nt,3)
+                xlabels = reshape(repeat([""], size(nt,3)), (1, size(nt,3)))
+                xlabels[end] = "Time ($(nt.tUnits))"
+                xguide := "Time ($(nt.tUnits))" 
+                @series begin
+                    subplot := ch
+                    x := nt.t
+                    y := nt[swp, :, ch]
+                    yguide := "$(nt.chNames[ch])($(nt.chUnits[ch]))"
+                    ()
+                end
             end
         end
     end
