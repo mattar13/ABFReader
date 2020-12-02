@@ -18,6 +18,7 @@ println("All filtering functions work")
 
 #%% Test inline filtering functions
 trace = extract_abf(target_path); #Extract the data
+#TODO: Function here not working. Look into it
 baseline_cancel!(trace; mode = :slope, region = :prestim) #Cancel drift
 baseline_cancel!(trace; mode = :mean, region = :prestim) #Baseline data
 lowpass_filter!(trace) #Lowpass filter using a 40hz 8-pole filter
@@ -29,14 +30,6 @@ println("All inline filtering functions work")
 #%% Test the plotting of the trace file
 plot(trace, stim_plot = :include)
 
-#%% Test min, max, and sum functions
-sum(trace) |> println
-maximum(trace) |> println
-minimum(trace) |> println
-
-sum(trace; dims = 2) |> println
-maximum(trace; dims = 2) |> println
-minimum(trace; dims = 2) |> println
 #%% Test the analysis of .abf files
 mins, maxes, means, stds = calculate_basic_stats(trace)
 #%% Test the analysis of Pauls files
@@ -45,5 +38,6 @@ target_folder = "D:\\Data\\ERG\\Data from paul\\"
 paths = (target_folder |> parse_abf)
 #Extract data from the first path
 data = extract_abf(paths[1]; stim_ch = -1, swps = -1, chs = -1)
-#truncate the data
 truncate_data!(data)
+#%% In order to find the Rmax we would rather find the most common baseline valule versus the maximum value#%%
+peaks = minimum(rmax_no_nose(data))

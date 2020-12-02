@@ -43,7 +43,7 @@ function rmax_no_nose(nt::NeuroTrace;  precision = 500, window = 25, change_thre
     rmaxs = Float64[]
     for (i, swp) in enumerate(eachsweep(nt))
         bins = LinRange(minimum(swp), maximum(swp), precision)
-        h = fit(Histogram, swp, bins)
+        h = Distributions.fit(Histogram, swp, bins)
         edges = collect(h.edges...)[2:end] 
         weights = h.weights 
         smoothed = rolling_mean(weights; window = window)
