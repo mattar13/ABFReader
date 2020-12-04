@@ -127,6 +127,7 @@ mutable struct NeuroTrace{T}
     chUnits::Array{String, 1}
     labels::Array{String, 1}
     stim_ch::Union{String, Int64}
+    filename::String
 end
 
 import Base: size, length, getindex, setindex, sum, copy, maximum, minimum
@@ -309,7 +310,7 @@ function extract_abf(abf_path; T = Float64, stim_ch = 3, swps = -1, chs = ["Vm_p
         end
         data_array[swp_idx, :, ch_idx] = data
     end
-    NeuroTrace{T}(t, data_array, date_collected, tUnits, dt, chNames, chUnits, labels, stim_ch)
+    NeuroTrace{T}(t, data_array, date_collected, tUnits, dt, chNames, chUnits, labels, stim_ch, full_path)
 end
 
 """
@@ -324,17 +325,10 @@ function truncate_data(trace::NeuroTrace; t_eff = 0.5, t_cutoff = 3.0)
     t_stim_start, t_stim_end = findstimRng(trace)
 	t_start = t_stim_start > t_eff ? t_stim_end - (t_eff/dt) |> Int64 : 0.0
 	t_end = t_stim_end + (t_cutoff/dt) |> Int64
-	return NeuroTrace(
-		trace.t[t_start:t_end].- trace.t[1], 
-		trace.data_array[:, t_start:t_end, :], 
-		trace.date_collected,
-		trace.tUnits,
-		trace.dt,
-		trace.chNames,
-		trace.chUnits,
-		trace.labels,
-		trace.stim_ch,
-		)
+    new_obj = copy(trace)
+    new_obj.t = trace.t[t_start:t_end].- trace.t[1] 
+    new_obj.data_array = trace.data_array[:, t_start:t_end, :] 
+    return new_obj
 end
 
 function truncate_data!(trace::NeuroTrace; t_eff = 0.5, t_cutoff = 3.0)
