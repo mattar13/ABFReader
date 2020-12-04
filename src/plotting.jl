@@ -33,6 +33,7 @@ This function plots by channel. This is the most basic functionality of the trac
                     subplot := ch
                     seriescolor := :yellow
                     linewidth := 4.0
+                    linecolor = :yellow
                     seriestype := :vspan
                     label := "Stimulus"
                     y := [stim_duration, 0.0]
