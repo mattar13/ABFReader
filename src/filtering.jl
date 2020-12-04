@@ -96,9 +96,9 @@ function lowpass_filter!(trace::NeuroTrace; freq = 40.0, pole = 8)
     digital_filter = digitalfilter(responsetype, designmethod)
     for (i,ch) in enumerate(eachchannel(trace; include_stim = false))
         if i != trace.stim_ch
-        	trace[:,:,i] = filt(digital_filter, getchannel(trace,i))
+        	trace.data_array[:,:,i] = filt(digital_filter, getchannel(trace,i))
 		else
-			trace[:,:,i] = trace[:,:,i]
+			trace.data_array[:,:,i] = trace[:,:,i]
 		end
     end
 end
@@ -130,9 +130,9 @@ function notch_filter!(trace::NeuroTrace; pole = 8, center = 60.0, std = 0.1)
 	digital_filter = digitalfilter(responsetype, designmethod)
     for (i,ch) in enumerate(eachchannel(trace; include_stim = false))
         if i != trace.stim_ch
-        	trace[:,:,i] = filt(digital_filter, getchannel(trace,i))
+        	trace.data_array[:,:,i] = filt(digital_filter, getchannel(trace,i))
 		else
-			trace[:,:,i] = trace[:,:,i]
+			trace.data_array[:,:,i] = trace[:,:,i]
 		end
     end
 end
@@ -156,7 +156,7 @@ function cwt_filter!(trace::NeuroTrace; wave = WT.dog2, periods = 1:9)
     data = similar(trace.data_array)
 	for (i,ch) in enumerate(eachchannel(trace; include_stim = false))
         y = cwt(ch, wavelet(wave))
-        trace[:,:,i] = sum(real.(y[:,periods]), dims = 2)/size(y, 2);
+        trace.data_array[:,:,i] = sum(real.(y[:,periods]), dims = 2)/size(y, 2);
 	end
 end
 
