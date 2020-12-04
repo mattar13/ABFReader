@@ -175,16 +175,19 @@ end
 average_sweeps!(nt::NeuroTrace) = nt.data_array = sum(nt, dims = 1)/size(nt,1)
 
 function normalize(trace::NeuroTrace; rng = (-1,0))
-    x = trace.data_array
-    z = (x .- minimum(x))/(maximum(x) - minimum(x))*(rng[2] - rng[1]) .+ rng[1]
+    not_stim = findall(x -> x != data3.stim_ch, 1:size(data3,3))
+    x = trace.data_array[:,:,not_stim]
+    x = (x ./ minimum(x, dims = 2))
     new_obj = copy(trace)
-    new_obj.data_array = z
+    new_obj.data_array = x
     return new_obj
 end
 
 function normalize!(trace::NeuroTrace; rng = (-1,0))
-    x = trace.data_array
-    trace.data_array = (x .- minimum(x))/(maximum(x) - minimum(x))*(rng[2] - rng[1]) .+ rng[1]
+    not_stim = findall(x -> x != data3.stim_ch, 1:size(data3,3))
+    x = trace.data_array[:,:,not_stim]
+    x = (x ./ minimum(x, dims = 2))
+    trace.data_array[:,:,not_stim] = -x
 end
 
 function fft_spectrum(t, data::Array{T, 1}) where T <: Real
