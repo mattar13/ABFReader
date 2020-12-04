@@ -46,6 +46,7 @@ export IR, IR_dev, AMP
 
 using Plots
 include("plotting.jl")
-export plot, plot!
+export plot, plot!, vline!, hline!
+export Plots
 
 end # module
