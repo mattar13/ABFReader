@@ -33,7 +33,7 @@ export normalize, normalize!
 include("analysis.jl")
 export RSQ
 export calculate_basic_stats
-export rmax_no_nose
+export saturated_response
 export curve_fit #curve fitting from LsqFit
 #export filtering functions
 
