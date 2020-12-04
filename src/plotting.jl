@@ -29,13 +29,13 @@ This function plots by channel. This is the most basic functionality of the trac
                 end
                 @series begin
                     trng = findstimRng(nt) .* nt.dt
-                    stim_duration = (trng...)
+                    stim_duration = -(trng...)
                     subplot := ch
                     seriescolor := :yellow
                     linewidth := 1.0
                     seriestype := :vspan
                     label := "Stimulus"
-                    y := [-stim_duration, 0.0]
+                    y := [stim_duration, 0.0]
                     ()
                 end
             end
