@@ -1,7 +1,7 @@
 """
 This function plots by channel. This is the most basic functionality of the trace plot
 """
-@recipe function f(nt::NeuroTrace; stim_plot = :include)
+@recipe function f(nt::NeuroTrace; stim_plot = :include, time_adjusted = true)
     grid := false
     if nt.stim_ch == -1
         #If there is no stimulus, always use the subplot
@@ -17,7 +17,11 @@ This function plots by channel. This is the most basic functionality of the trac
                 xguide := xlabels
                 @series begin
                     subplot := ch
-                    x := nt.t
+                    if time_adjusted 
+                        x := nt.t .- nt.t[findstimRng(nt)[end]]
+                    else
+                        x := nt.t
+                    end
                     y := nt[swp, :, ch]
                     yguide := "$(nt.chNames[ch])($(nt.chUnits[ch]))"
                     ()
@@ -43,7 +47,11 @@ This function plots by channel. This is the most basic functionality of the trac
                 xguide := "Time ($(nt.tUnits))" 
                 @series begin
                     subplot := ch
-                    x := nt.t
+                    if time_adjusted 
+                        x := nt.t .- nt.t[findstimRng(nt)[end]]
+                    else
+                        x := nt.t
+                    end
                     y := nt[swp, :, ch]
                     yguide := "$(nt.chNames[ch])($(nt.chUnits[ch]))"
                     ()
