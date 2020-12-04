@@ -63,7 +63,7 @@ function baseline_cancel!(trace::NeuroTrace; mode::Symbol = :mean, region = :pre
 		for (i,ch) in enumerate(eachchannel(trace; include_stim = false))
         	pfit = Polynomials.fit(trace.t, ch, 1)
 			#println(ch + pfit.(trace.t) |> size)
-        	trace[:,:,i] .= ch - pfit.(trace.t)
+        	trace[:,:,i] = ch - pfit.(trace.t)
 		end
     end
 end
