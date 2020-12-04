@@ -40,17 +40,9 @@ function baseline_cancel(trace::NeuroTrace; mode::Symbol = :mean, region = :pres
 	else
 		data = trace.data_array
     end
-    return NeuroTrace(
-		trace.t, 
-		data, #Add the data here 
-		trace.date_collected,
-		trace.tUnits,
-		trace.dt,
-		trace.chNames,
-		trace.chUnits,
-		trace.labels,
-		trace.stim_ch,
-		)
+    new_obj = copy(trace)
+    new_obj.data_array = data
+    return new_obj
 end
 
 function baseline_cancel!(trace::NeuroTrace; mode::Symbol = :mean, region = :prestim, cust_rng = (1,10))
@@ -93,17 +85,9 @@ function lowpass_filter(trace::NeuroTrace; freq = 40.0, pole = 8)
     end
     #never adjust the stim
     data[:,:,trace.stim_ch] = trace[:,:,trace.stim_ch]
-    return NeuroTrace(
-        trace.t, 
-        data, #Add the data here 
-        trace.date_collected,
-        trace.tUnits,
-        trace.dt,
-        trace.chNames,
-        trace.chUnits,
-        trace.labels,
-        trace.stim_ch,
-        )	
+    new_obj = copy(trace)
+    new_obj.data_array = data
+    return new_obj
 end
 
 function lowpass_filter!(trace::NeuroTrace; freq = 40.0, pole = 8)
@@ -135,17 +119,9 @@ function notch_filter(trace::NeuroTrace; pole = 8, center = 60.0, std = 0.1)
     end
     #never adjust the stim
     data[:,:,trace.stim_ch] = trace[:,:,trace.stim_ch]
-    return NeuroTrace(
-        trace.t, 
-        data, #Add the data here 
-        trace.date_collected,
-        trace.tUnits,
-        trace.dt,
-        trace.chNames,
-        trace.chUnits,
-        trace.labels,
-        trace.stim_ch,
-        )		
+    new_obj = copy(trace)
+    new_obj.data_array = data
+    return new_obj	
 end
 
 function notch_filter!(trace::NeuroTrace; pole = 8, center = 60.0, std = 0.1)
@@ -171,17 +147,9 @@ function cwt_filter(trace::NeuroTrace; wave = WT.dog2, periods = 1:9, return_cwt
     end
     #never adjust the stim
     data[:,:,trace.stim_ch] = trace[:,:,trace.stim_ch]
-    return NeuroTrace(
-        trace.t, 
-        data, #Add the data here 
-        trace.date_collected,
-        trace.tUnits,
-        trace.dt,
-        trace.chNames,
-        trace.chUnits,
-        trace.labels,
-        trace.stim_ch,
-        )
+    new_obj = copy(trace)
+    new_obj.data_array = data
+    return new_obj
 end
 
 function cwt_filter!(trace::NeuroTrace; wave = WT.dog2, periods = 1:9)
