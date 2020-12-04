@@ -29,7 +29,7 @@ This function plots by channel. This is the most basic functionality of the trac
                 end
                 @series begin
                     trng = findstimRng(nt) .* nt.dt
-                    stim_duration = -(trng...)
+                    stim_duration = -(trng...) * 1000
                     subplot := ch
                     seriescolor := :yellow
                     linewidth := 1.0
