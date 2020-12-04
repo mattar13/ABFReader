@@ -10,9 +10,11 @@ function RSQ(poly::Polynomial, x, y)
 end
 
 """
-This function uses a histogram method to find the Rmax. 
+This function uses a histogram method to find the saturation point. 
+    - In ERG traces, a short nose component is usually present in saturated values
+    # - Does this same function work for the Rmax of nonsaturated responses?
 """
-function rmax_no_nose(nt::NeuroTrace; precision = 500)
+function saturated_response(nt::NeuroTrace; precision = 500)
     rmaxs = zeros(size(nt,1), size(nt,3))
     for swp in 1:size(nt, 1)
         for ch in 1:size(nt,3)

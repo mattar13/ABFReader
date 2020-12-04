@@ -30,7 +30,7 @@ println("All inline filtering functions work")
 #%% Test the plotting of the trace file
 plot(trace, stim_plot = :include)
 
-#%% Test the analysis of .abf files
+#%% Test the rmax analysis of .abf files
 mins, maxes, means, stds = calculate_basic_stats(trace)
 #%% Test the analysis of Pauls files
 target_folder = "D:\\Data\\ERG\\Data from paul\\"
@@ -39,6 +39,17 @@ paths = (target_folder |> parse_abf)
 #Extract data from the first path
 data = extract_abf(paths[1]; stim_ch = -1, swps = -1, chs = -1)
 truncate_data!(data)
-
+#Here we extract
+rmaxes= minimum(rmax_no_nose(data), dims = 2)
+max_vals = minimum(data.data_array, dims = 2)
 #%%
-peaks = rmax_no_nose(data)
+#what flashes fall under the rdim threshold?
+
+#%% We need to change the way plotting is done for concatenated files
+p = plot(data, c = :inferno, label = "")
+hline!(p[1], [bright_flashes1], c = :red)
+hline!(p[2], [bright_flashes2], c = :red)
+#hline!(p[1], [rmaxes[1]])
+#hline!(p[2], [rmaxes[2]])
+hline!(p[1], [rdims[1]])
+hline!(p[2], [rdims[2]])
