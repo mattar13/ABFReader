@@ -144,9 +144,9 @@ setindex(trace::NeuroTrace, v, I...) = trace.data_array[I...] .= v
 
 function minimum(nt::NeuroTrace; dims::Int64 = -1)
     if dims == -1
-        return maximum(nt.data_array)
+        return minimum(nt.data_array)
     else
-        return maximum(nt.data_array, dims = dims)
+        return minimum(nt.data_array, dims = dims)
     end
 end
 
