@@ -175,7 +175,7 @@ end
 average_sweeps!(nt::NeuroTrace) = nt.data_array = sum(nt, dims = 1)/size(nt,1)
 
 function normalize(trace::NeuroTrace; rng = (-1,0))
-    not_stim = findall(x -> x != trace.stim_ch, 1:size(data3,3))
+    not_stim = findall(x -> x != trace.stim_ch, 1:size(trace,3))
     x = trace.data_array[:,:,not_stim]
     x = (x ./ minimum(x, dims = 2))
     new_obj = copy(trace)
@@ -184,7 +184,7 @@ function normalize(trace::NeuroTrace; rng = (-1,0))
 end
 
 function normalize!(trace::NeuroTrace; rng = (-1,0))
-    not_stim = findall(x -> x != trace.stim_ch, 1:size(data3,3))
+    not_stim = findall(x -> x != trace.stim_ch, 1:size(trace,3))
     x = trace.data_array[:,:,not_stim]
     x = (x ./ minimum(x, dims = 2))
     trace.data_array[:,:,not_stim] = -x
