@@ -45,7 +45,7 @@ function saturated_response(nt::NeuroTrace; precision = 500, z = 2)
             trace = nt[swp, :, ch]
             idxs = findall(x -> x < sum(trace)/length(trace)-(z*std(trace)), trace)
             #Essentially we want the mode to be the 
-            if !empty(idxs)
+            if !isempty(idxs)
                 rmaxs[swp, ch] = mode(trace[idxs])
             else
                 rmaxs[swp,ch] = 0.0
