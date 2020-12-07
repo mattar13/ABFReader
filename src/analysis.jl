@@ -44,13 +44,23 @@ function saturated_response(nt::NeuroTrace; precision = 500)
         for ch in 1:size(nt,3)
             trace = nt[swp, :, ch]
             #We can assume the mean will be between the two peaks, therefore this is a good cutoff
-            means = sum(trace)/length(trace)
-            bins = LinRange(minimum(trace), means, precision)
+            bins = LinRange(minimum(trace), sum(trace)/length(trace)-1.5std(trace), 500)
             h = Distributions.fit(Histogram, trace, bins)
-            edges = collect(h.edges...)
-			weights = h.weights./length(h.weights) #this represents a weight more evenly distributed
-			peaks = edges[argmax(weights)]
-            #return edges, weights, peaks, means
+            edges = collect(h.edges...)[2:end]
+            weights = h.weights./maximum(h.weights) #this represents a weight more evenly distributed
+            #This section is adjusting the weight by it's distance from the median
+            median_edge = (edges[1] + edges[end])/2
+            edge_distance = abs.(edges .- median_edge)
+            edge_distance ./= maximum(edge_distance)
+            adjusted_weights = (weights .- edge_distance) #this represents a weight more evenly distributed
+            
+            if any(adjusted_weights .> 0.5)
+                #There is saturation and a nose component
+                peaks = edges[argmax(weights)] 
+            else
+                #There is no saturation, pick the maximum point
+                peaks = minimum(trace)
+            end
             rmaxs[swp, ch] = peaks
         end
     end

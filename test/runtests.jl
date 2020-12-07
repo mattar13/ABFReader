@@ -1,56 +1,50 @@
 #%% Test to see if the importing works
 using Revise
 using NeuroPhys
+import NeuroPhys: rolling_mean
+using Distributions, StatsBase, StatsPlots, Polynomials
 println("Package properly exported")
-#target_path = "test\\to_filter.abf"
+#%% begin testing
 target_path = "test\\to_filter.abf"
-#%% Test the exporting and filtering of .abf files
-trace = extract_abf(target_path); #Extract the data
-
-#%% Test filtering functions that are not inline
-drift_trace = baseline_cancel(trace; mode = :slope) #Cancel drift
-baseline_trace = baseline_cancel(drift_trace; mode = :mean) #Baseline data
-filter_trace = lowpass_filter(baseline_trace) #Lowpass filter using a 40hz 8-pole filter
-cwt_trace = cwt_filter(baseline_trace) #Use a continuous wavelet transform to remove noise, but keep time series info
-avg_trace = average_sweeps(baseline_trace)
-norm_trace = normalize(baseline_trace)
+# Test the exporting and filtering of .abf files
+data1 = extract_abf(target_path); #Extract the data
+# Test filtering functions that are not inline
+drift_data1 = baseline_cancel(data1; mode = :slope) #Cancel drift
+baseline_data1 = baseline_cancel(drift_data1; mode = :mean) #Baseline data
+filter_data1 = lowpass_filter(baseline_data1) #Lowpass filter using a 40hz 8-pole filter
+cwt_data1 = cwt_filter(baseline_data1) #Use a continuous wavelet transform to remove noise, but keep time series info
+avg_data1 = average_sweeps(baseline_data1)
+norm_data1 = normalize(baseline_data1)
 println("All filtering functions work")
-
 #%% Test inline filtering functions
-trace = extract_abf(target_path); #Extract the data
-#TODO: Function here not working. Look into it
-baseline_cancel!(trace; mode = :slope, region = :prestim) #Cancel drift
-baseline_cancel!(trace; mode = :mean, region = :prestim) #Baseline data
-lowpass_filter!(trace) #Lowpass filter using a 40hz 8-pole filter
-cwt_filter!(trace) #Use a continuous wavelet transform to remove noise, but keep time series info
-average_sweeps!(trace)
-normalize!(trace)
+data2 = extract_abf(target_path); #Extract the data
+baseline_cancel!(data2; mode = :slope, region = :prestim) #Cancel drift
+baseline_cancel!(data2; mode = :mean, region = :prestim) #Baseline data
+lowpass_filter!(data2) #Lowpass filter using a 40hz 8-pole filter
+cwt_filter!(data2) #Use a continuous wavelet transform to remove noise, but keep time series info
+average_sweeps!(data2)
+normalize!(data2)
 println("All inline filtering functions work")
+# Test the plotting of the trace file
+plot(data2, stim_plot = :include)
+println("Plotting works")
+# Test the rmax analysis of .abf files
+mins, maxes, means, stds = calculate_basic_stats(data2);
+println("Data analysis works")
 
-#%% Test the plotting of the trace file
-plot(trace, stim_plot = :include)
-
-#%% Test the rmax analysis of .abf files
-mins, maxes, means, stds = calculate_basic_stats(trace)
 #%% Test the analysis of Pauls files
 #target_folder = "D:\\Data\\ERG\\Data from paul\\"
-target_folder = "D:\\Data\\ERG\\Gnat\\2020_08_16_ERG\\Mouse1_P10_KO\\Drugs\\365UV\\"
-#Extract the paths
-paths = (target_folder |> parse_abf)
-#Extract data from the first path
-data = extract_abf(paths[1]; stim_ch = -1, swps = -1, chs = -1)
-truncate_data!(data)
-#%% Run the rmax calculation
-rmaxes= minimum(saturated_response(data), dims = 2)
-max_vals = minimum(data.data_array, dims = 2)
-#%%
-#what flashes fall under the rdim threshold?
+#paths = (target_folder |> parse_abf)
+target_path = "D:\\Data\\ERG\\Gnat\\2020_08_16_ERG\\Mouse1_P10_KO\\NoDrugs\\365UV\\nd0_100p_16ms.abf"
+#Extract the data
+data3 = extract_abf(target_path)#; stim_ch = -1, swps = -1, chs = -1)
+truncate_data!(data3);
+baseline_cancel!(data3);
+lowpass_filter!(data3);
+rmaxes = saturated_response(data3)
 
-#%% We need to change the way plotting is done for concatenated files
-p = plot(data, c = :inferno, label = "")
+#%%
+p = plot(data3, label = "", c = :inferno)
 hline!(p[1], [rmaxes[1]])
 hline!(p[2], [rmaxes[2]])
-#hline!(p[1], [rdims[1]])
-#hline!(p[2], [rdims[2]])
-#hline!(p[1], [bright_flashes1], c = :red)
-#hline!(p[2], [bright_flashes2], c = :red)
+plot(data2)
