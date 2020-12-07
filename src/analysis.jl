@@ -30,7 +30,9 @@ function calculate_basic_stats(data::NeuroTrace)
     end
     return mins, maxes, means, stds
 end
+
 rolling_mean(arr::AbstractArray; radius = 5) = [sum(arr[i:i+radius])/radius for i = 1:length(arr)-radius]
+
 """
 This function uses a histogram method to find the saturation point. 
     - In ERG traces, a short nose component is usually present in saturated values
