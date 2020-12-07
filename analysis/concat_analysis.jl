@@ -45,7 +45,7 @@ begin
 		println(path)
 		data = extract_abf(path; stim_ch = -1, swps = -1, chs = -1)
 		truncate_data!(data)
-		rmaxes = minimum(rmax_no_nose(data), dims = 1) .*1000
+		rmaxes = minimum(saturated_response(data), dims = 1) .*1000
 		rdims = (rmaxes .* 0.20)
 		push!(P14_Green_rmaxs, rmaxes...)
 		push!(P14_Green_rdims, rdims...)
@@ -71,7 +71,7 @@ begin
 	for path in P30_Green_paths
 		data = extract_abf(path; stim_ch = -1, swps = -1, chs = -1)
 		truncate_data!(data)
-		rmaxes = minimum(rmax_no_nose(data), dims = 1) .*1000
+		rmaxes = minimum(saturated_response(data), dims = 1) .*1000
 		rdims = (rmaxes .* 0.20)
 		push!(P30_Green_rmaxs, rmaxes...)
 		push!(P30_Green_rdims, rdims...)
@@ -81,6 +81,9 @@ begin
 	P30_green_mean_rmax = sum(P30_Green_rmaxs)/length(P30_Green_rmaxs)
 	P30_green_sem_rmax = std(P30_Green_rmaxs)/(sqrt(length(P30_Green_rmaxs)))
 end;
+
+# ╔═╡ 2faab7d0-38dc-11eb-0866-47c1055caba8
+P30_Green_rmaxs
 
 # ╔═╡ 219050c0-34d0-11eb-35a9-23bd92e19a1b
 md" 
@@ -97,7 +100,7 @@ begin
 	for path in P30_UV_paths
 		data = extract_abf(path; stim_ch = -1, swps = -1, chs = -1)
 		truncate_data!(data)
-		rmaxes = minimum(rmax_no_nose(data), dims = 1) .*1000
+		rmaxes = minimum(saturated_response(data), dims = 1) .*1000
 		rdims = (rmaxes .* 0.20)
 		push!(P30_UV_rmaxs, rmaxes...)
 		push!(P30_UV_rdims, rdims...)
@@ -123,10 +126,11 @@ Mean Rmax = $(-P30_UV_mean_rmax) +- $P30_UV_sem_rmax
 # ╠═cebf8940-3427-11eb-0b10-210fe9e4ce7e
 # ╠═cec10fe0-3427-11eb-20a0-3b01c33d4284
 # ╠═d194c94e-3427-11eb-20d0-33898e117d26
-# ╟─7c0eb970-34ca-11eb-0fc2-9dd946348bd1
+# ╠═7c0eb970-34ca-11eb-0fc2-9dd946348bd1
 # ╠═29bd3d5e-34cd-11eb-3731-a7f3347fdc37
 # ╟─02d99d30-34d0-11eb-168d-e561fe4c9753
 # ╠═0c91b030-3429-11eb-0eb1-7ffa6013aff4
+# ╠═2faab7d0-38dc-11eb-0866-47c1055caba8
 # ╟─219050c0-34d0-11eb-35a9-23bd92e19a1b
 # ╠═0e664c0e-34cc-11eb-0302-8fb5e1da67c6
 # ╟─a30b70d0-34d0-11eb-17cd-011214c716cc
