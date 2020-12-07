@@ -48,7 +48,7 @@ function saturated_response(nt::NeuroTrace; precision = 500, z = 1/exp(1))
             if !isempty(idxs)
                 rmaxs[swp, ch] = mode(trace[idxs])
             else
-                rmaxs[swp,ch] = 0.0
+                rmaxs[swp,ch] = minimum(trace)
             end
         end
     end
