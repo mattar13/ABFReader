@@ -21,9 +21,12 @@ data2 = extract_abf(target_path); #Extract the data
 baseline_cancel!(data2; mode = :slope, region = :prestim) #Cancel drift
 baseline_cancel!(data2; mode = :mean, region = :prestim) #Baseline data
 lowpass_filter!(data2) #Lowpass filter using a 40hz 8-pole filter
-#cwt_filter!(data2) #Use a continuous wavelet transform to remove noise, but keep time series info
-#average_sweeps!(data2)
-#normalize!(data2)
+rmaxes = saturated_response(data2)
+println("Rmax calculation works")
+
+cwt_filter!(data2) #Use a continuous wavelet transform to remove noise, but keep time series info
+average_sweeps!(data2)
+normalize!(data2)
 println("All inline filtering functions work")
 # Test the plotting of the trace file
 plot(data2, stim_plot = :include)
@@ -33,21 +36,19 @@ mins, maxes, means, stds = calculate_basic_stats(data2);
 println("Data analysis works")
 
 #%% Test the analysis of Pauls files
-#target_folder = "D:\\Data\\ERG\\Data from paul\\"
-#paths = (target_folder |> parse_abf)
 target_path = "D:\\Data\\ERG\\Gnat\\2020_08_16_ERG\\Mouse1_P10_KO\\NoDrugs\\365UV\\nd0_100p_16ms.abf"
 #Extract the data
 data3 = extract_abf(target_path)#; stim_ch = -1, swps = -1, chs = -1)
 truncate_data!(data3);
 baseline_cancel!(data3);
 lowpass_filter!(data3);
-rmaxes = saturated_response(data3)
+rmaxes3 = saturated_response(data3);
 
 #%%
 p1 = plot(data3, label = "", c = :inferno)
-hline!(p[1], [rmaxes[1]])
-hline!(p[2], [rmaxes[2]])
-#%%
+hline!(p1[1], [rmaxes3[1]])
+hline!(p1[2], [rmaxes3[2]])
 p2 = plot(data2, label = "", c = :inferno)
-#hline!(p[1], [rmaxes[1]])
-#hline!(p[2], [rmaxes[2]])
+hline!(p2[1], [rmaxes2[1]])
+hline!(p2[2], [rmaxes2[2]])
+plot(p1, p2, layout = grid(1,2))
