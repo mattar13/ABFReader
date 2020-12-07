@@ -56,7 +56,7 @@ function saturated_response(nt::NeuroTrace; precision = 500)
             
             if any(adjusted_weights .> 0.5)
                 #There is saturation and a nose component
-                peaks = edges[argmax(weights)] 
+                peaks = edges[argmax(adjusted_weights)] 
             else
                 #There is no saturation, pick the maximum point
                 peaks = minimum(trace)

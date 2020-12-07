@@ -21,9 +21,9 @@ data2 = extract_abf(target_path); #Extract the data
 baseline_cancel!(data2; mode = :slope, region = :prestim) #Cancel drift
 baseline_cancel!(data2; mode = :mean, region = :prestim) #Baseline data
 lowpass_filter!(data2) #Lowpass filter using a 40hz 8-pole filter
-cwt_filter!(data2) #Use a continuous wavelet transform to remove noise, but keep time series info
-average_sweeps!(data2)
-normalize!(data2)
+#cwt_filter!(data2) #Use a continuous wavelet transform to remove noise, but keep time series info
+#average_sweeps!(data2)
+#normalize!(data2)
 println("All inline filtering functions work")
 # Test the plotting of the trace file
 plot(data2, stim_plot = :include)
@@ -44,7 +44,10 @@ lowpass_filter!(data3);
 rmaxes = saturated_response(data3)
 
 #%%
-p = plot(data3, label = "", c = :inferno)
+p1 = plot(data3, label = "", c = :inferno)
 hline!(p[1], [rmaxes[1]])
 hline!(p[2], [rmaxes[2]])
-plot(data2)
+#%%
+p2 = plot(data2, label = "", c = :inferno)
+#hline!(p[1], [rmaxes[1]])
+#hline!(p[2], [rmaxes[2]])
