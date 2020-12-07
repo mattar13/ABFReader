@@ -9,29 +9,6 @@ function RSQ(poly::Polynomial, x, y)
 	1-SSE/SST
 end
 
-"""
-This function uses a histogram method to find the saturation point. 
-    - In ERG traces, a short nose component is usually present in saturated values
-    # - Does this same function work for the Rmax of nonsaturated responses?
-"""
-function saturated_response(nt::NeuroTrace; precision = 500)
-    rmaxs = zeros(size(nt,1), size(nt,3))
-    for swp in 1:size(nt, 1)
-        for ch in 1:size(nt,3)
-            trace = nt[swp, :, ch]
-            #We can assume the mean will be between the two peaks, therefore this is a good cutoff
-            means = sum(trace)/length(trace)
-            bins = LinRange(minimum(trace), means, precision)
-            h = Distributions.fit(Histogram, trace, bins)
-            edges = collect(h.edges...)
-			weights = h.weights
-			peaks = edges[argmax(weights)]
-            #return edges, weights, peaks, means
-            rmaxs[swp, ch] = peaks
-        end
-    end
-    rmaxs
-end
 
 """
 This function calculates the min, max, mean, and std of each trace
@@ -53,5 +30,28 @@ function calculate_basic_stats(data::NeuroTrace)
     end
     return mins, maxes, means, stds
 end
-
+rolling_mean(arr::AbstractArray; radius = 5) = [sum(arr[i:i+radius])/radius for i = 1:length(arr)-radius]
+"""
+This function uses a histogram method to find the saturation point. 
+    - In ERG traces, a short nose component is usually present in saturated values
+    - Does this same function work for the Rmax of nonsaturated responses?
+"""
+function saturated_response(nt::NeuroTrace; precision = 500)
+    rmaxs = zeros(size(nt,1), size(nt,3))
+    for swp in 1:size(nt, 1)
+        for ch in 1:size(nt,3)
+            trace = nt[swp, :, ch]
+            #We can assume the mean will be between the two peaks, therefore this is a good cutoff
+            means = sum(trace)/length(trace)
+            bins = LinRange(minimum(trace), means, precision)
+            h = Distributions.fit(Histogram, trace, bins)
+            edges = collect(h.edges...)
+			weights = h.weights./length(h.weights) #this represents a weight more evenly distributed
+			peaks = edges[argmax(weights)]
+            #return edges, weights, peaks, means
+            rmaxs[swp, ch] = peaks
+        end
+    end
+    rmaxs
+end
 
