@@ -38,17 +38,20 @@ This function uses a histogram method to find the saturation point.
     - In ERG traces, a short nose component is usually present in saturated values
     - Does this same function work for the Rmax of nonsaturated responses?
 """
-function saturated_response(nt::NeuroTrace; precision = 500, z = 1/exp(1))
+function saturated_response(nt::NeuroTrace; precision = 500, z = 0.0, diff_threshold = 0.01)
     rmaxs = zeros(size(nt,1), size(nt,3))
     for swp in 1:size(nt, 1)
         for ch in 1:size(nt,3)
             trace = nt[swp, :, ch]
             idxs = findall(x -> x < sum(trace)/length(trace)-(z*std(trace)), trace)
             #Essentially we want the mode to be the 
-            if !isempty(idxs)
-                rmaxs[swp, ch] = mode(trace[idxs])
+            rmax = mode(trace[idxs])
+            minima = minimum(trace[idxs])
+            if abs(rmax - minima) > 0.01 && !isempty(idxs)
+                #The maximal response is the global minima, and no nose component is contained
+                rmaxs[swp, ch] = rmax
             else
-                rmaxs[swp,ch] = minimum(trace)
+                rmaxs[swp,ch] = minima
             end
         end
     end
