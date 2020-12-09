@@ -78,11 +78,14 @@ function dim_response(nt::NeuroTrace{T}, rmaxes::Array{T, 2}; rdim_percent = 0.1
         minima = minimum(nt, dims = 2)[:,1,:]
         #Check to see which global minimas are over the rdim threshold
         over_rdim = ((minima .> rdims_thresh).* -Inf)
-        rdim = maximum(minima .+ over_rdim, dims = 1)
-        if any(rdim == -Inf)
+        rdims = minima .+ over_rdim
+        for i = 1:size(nt,3)
+            dim_idx[i] = argmax(rdims)[1]
+        end
+        if !any(rdims .!= -Inf)
             throw(ErrorException("There seems to be no response under minima"))
         else
-            return rdim
+            return maximum(rdims, dims = 1)
         end
     end
 end

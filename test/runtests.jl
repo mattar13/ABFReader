@@ -81,9 +81,8 @@ p1 = plot(data3, label = "",
 
 hline!(p1[1], [rmaxes[1]], c = :green, label = "Rmax")
 hline!(p1[2], [rmaxes[2]], c = :green, label = "Rmax")
-rdims_thresh = rmaxes .* 0.15
-hline!(p1[1], [rdims_thresh[1]], c = :red, label = "Rdim Threshold")
-hline!(p1[2], [rdims_thresh[2]], c = :red, label = "Rdim Threshold")
+hline!(p1[1], [rdims[1]], c = :red, label = "Rdim")
+hline!(p1[2], [rdims[2]], c = :red, label = "Rdim")
 #%%
 
 
