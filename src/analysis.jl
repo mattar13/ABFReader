@@ -45,7 +45,7 @@ This function uses a histogram method to find the saturation point.
     - In ERG traces, a short nose component is usually present in saturated values
     - Does this same function work for the Rmax of nonsaturated responses?
 """
-function saturated_response(nt::NeuroTrace; precision = 500, z = 2.0)
+function saturated_response(nt::NeuroTrace; precision = 500, z = 0.0)
     rmaxs = zeros(size(nt,1), size(nt,3))
     for swp in 1:size(nt, 1)
         for ch in 1:size(nt,3)
@@ -60,6 +60,33 @@ function saturated_response(nt::NeuroTrace; precision = 500, z = 2.0)
             rmaxs[swp, ch] = edges[argmax(weights)]
         end
     end
-    rmaxs
+    minimum(rmaxs, dims = 1)
 end
+
+"""
+This function only works on concatenated files with more than one trace
+    Rmax argument should have the same number of sweeps and channels as the 
+"""
+function dim_response(nt::NeuroTrace{T}, rmaxes::Array{T, 2}; rdim_percent = 0.15) where T
+    #We need
+    if size(nt,1) == 1
+        throw(ErrorException("There is no sweeps to this file, and Rdim will not work"))
+    elseif size(nt,3) != size(rmaxes,2)
+        throw(ErrorException("The number of rmaxes is not equal to the channels of the dataset"))
+    else
+        rdims_thresh = rmaxes .* rdim_percent
+        minima = minimum(nt, dims = 2)[:,1,:]
+        #Check to see which global minimas are over the rdim threshold
+        over_rdim = ((minima .> rdims_thresh).* -Inf)
+        rdim = maximum(minima .+ over_rdim, dims = 1)
+        if any(rdim == -Inf)
+            throw(ErrorException("There seems to be no response under minima"))
+        else
+            return rdim
+        end
+    end
+end
+
+#This dispatch is for if there has been no rmax provided. 
+dim_response(nt::NeuroTrace; z = 0.0, rdim_percent = 0.15) = dim_response(nt, saturated_response(nt; z = z), rdim_percent = rdim_percent)
 

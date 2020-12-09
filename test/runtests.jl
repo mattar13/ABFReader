@@ -25,9 +25,9 @@ baseline_cancel!(data2; mode = :mean, region = :prestim) #Baseline data
 lowpass_filter!(data2) #Lowpass filter using a 40hz 8-pole filter
 rmaxes = saturated_response(data2)
 println("Test 3: Rmax calculation works")
-cwt_filter!(data2) #Use a continuous wavelet transform to remove noise, but keep time series info
-average_sweeps!(data2)
-normalize!(data2)
+#cwt_filter!(data2) #Use a continuous wavelet transform to remove noise, but keep time series info
+#average_sweeps!(data2)
+#normalize!(data2)
 println("Test 4: All inline filtering functions work")
 
 # Test the plotting of the trace file
@@ -41,23 +41,54 @@ println("Test 6: Data analysis works")
 
 #%% For now, rmax calculations can be done as the function is, 
 #eventually I will need to fix for non-nose components
-#Rdim is just ~20-20% of the Rmax
+#Rdim is just ~20-30% of the Rmax
 
-println(rmaxes)
+rmaxes = saturated_response(data2)
+rmaxes * 0.20
 
 #%% Sandbox area
+P30_Green_I = [
+    0.3141322
+    0.628264399
+    1.256528798
+    2.094214663
+    4.188429327
+    8.376858654
+    18.16731221
+    72.66924882
+    107.3023238
+    214.6046476
+    429.2092953
+    1112.813317
+    2225.626634
+    4451.253267
+    7489.958744
+    14979.91749
+    29959.83498	
+    ]
+        
+
 target_path = "D:\\Data\\ERG\\Data from Paul\\Adult (NR) rods_14\\Green\\a-waves"
 path = (target_path |> parse_abf)[1]
 #Extract the data
 data3 = extract_abf(path; stim_ch = -1, swps = -1, chs = -1)
 truncate_data!(data3)
-rmaxes = saturated_response(data3)
-minima = minimum(data3, dims = 2)[:,1,:]
+rmaxes = saturated_response(data3; z = 0.0)
+rdims = dim_response(data3, rmaxes)
+p1 = plot(data3, label = "",
+    line_z = log.(P30_Green_I[1:size(data3,1)])', c = :inferno
+    )
 
-p1 = plot(data3, c = :inferno, label = "")
-hline!(p1[1], [rmaxes[:,1]], c = :jet)
-hline!(p1[2], [rmaxes[:,2]], c = :jet)
+hline!(p1[1], [rmaxes[1]], c = :green, label = "Rmax")
+hline!(p1[2], [rmaxes[2]], c = :green, label = "Rmax")
+rdims_thresh = rmaxes .* 0.15
+hline!(p1[1], [rdims_thresh[1]], c = :red, label = "Rdim Threshold")
+hline!(p1[2], [rdims_thresh[2]], c = :red, label = "Rdim Threshold")
+#%%
 
+
+
+#%% Analyzing a file with no nose component
 path = "D:\\Data\\ERG\\Gnat\\2020_08_16_ERG\\Mouse1_P10_KO\\NoDrugs\\365UV\\nd0_100p_8ms.abf"
 data3 = extract_abf(path)
 truncate_data!(data3)
