@@ -1,11 +1,9 @@
 module NeuroPhys
 
 is_working() = print("Yes is working!") 
-
-#TODO: Next I want to make the data analysis in one succinct folder
-
-#Import
+#Imports
 using PyCall
+using Plots
 using StatsBase
 using Polynomials, Distributions #Used for polynomial fitting
 using DSP, Wavelets, FFTW #Used for filtering
@@ -44,7 +42,6 @@ export photons, Transferrance, stimulus_model
 #Export the Amplification and IR models
 export IR, IR_dev, AMP
 
-using Plots
 include("plotting.jl")
 export plot, plot!, vline!, hline!
 export Plots

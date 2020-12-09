@@ -1,13 +1,9 @@
 #%% Test to see if the importing works
-try
-    using Revise
-    using NeuroPhys
-    import NeuroPhys: rolling_mean
-    using Distributions, StatsBase, StatsPlots, Polynomials
-    println("Test 1: Package properly exported")
-catch
-    println("Test 1: Package exporting failed")
-end
+using Revise
+using NeuroPhys
+import NeuroPhys: rolling_mean
+using Distributions, StatsBase, StatsPlots, Polynomials
+println("Test 1: Package properly exported")
 
 # begin testing
 target_path = "test\\to_filter.abf"
@@ -42,16 +38,39 @@ println("Test 5: Plotting works")
 mins, maxes, means, stds = calculate_basic_stats(data2);
 println("Test 6: Data analysis works")
 
+
+#%% For now, rmax calculations can be done as the function is, 
+#eventually I will need to fix for non-nose components
+#Rdim is just ~20-20% of the Rmax
+
+println(rmaxes)
+
 #%% Sandbox area
 target_path = "D:\\Data\\ERG\\Data from Paul\\Adult (NR) rods_14\\Green\\a-waves"
-paths = target_path |> parse_abf
+path = (target_path |> parse_abf)[1]
 #Extract the data
-data3 = extract_abf(paths[1]; stim_ch = -1, swps = -1, chs = -1)
+data3 = extract_abf(path; stim_ch = -1, swps = -1, chs = -1)
 truncate_data!(data3)
 rmaxes = saturated_response(data3)
-#%%
-minima = minimum(data3, dims = 2)
-p = plot(data3)
-hline!(p[1], rmaxes[:,1])
-hline!(p[2], rmaxes[:,2])
-#%%
+minima = minimum(data3, dims = 2)[:,1,:]
+
+p1 = plot(data3, c = :inferno, label = "")
+hline!(p1[1], [rmaxes[:,1]], c = :jet)
+hline!(p1[2], [rmaxes[:,2]], c = :jet)
+
+path = "D:\\Data\\ERG\\Gnat\\2020_08_16_ERG\\Mouse1_P10_KO\\NoDrugs\\365UV\\nd0_100p_8ms.abf"
+data3 = extract_abf(path)
+truncate_data!(data3)
+baseline_cancel!(data3)
+lowpass_filter!(data3)
+rmaxes = saturated_response(data3)
+minima = minimum(data3, dims = 2)[:,1,:]
+
+
+p2 = plot(data3, c = :inferno)
+hline!(p2[1], rmaxes[:,1], c = :green)
+hline!(p2[2], rmaxes[:,2], c = :green)
+hline!(p2[1], minima[:,1], c = :red)
+hline!(p2[2], minima[:,2], c = :red)
+
+plot(p1,p2, layout = grid(1,2))

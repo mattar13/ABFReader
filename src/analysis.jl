@@ -9,6 +9,13 @@ function RSQ(poly::Polynomial, x, y)
 	1-SSE/SST
 end
 
+function RSQ(ŷ, y)
+	ȳ = sum(ŷ)/length(ŷ)
+	SSE = sum((y-ŷ).^2)
+	SST = sum((y.-ȳ).^2)
+	1-SSE/SST
+end
+
 
 """
 This function calculates the min, max, mean, and std of each trace
@@ -43,16 +50,12 @@ function saturated_response(nt::NeuroTrace; precision = 500, z = 0.0, diff_thres
     for swp in 1:size(nt, 1)
         for ch in 1:size(nt,3)
             trace = nt[swp, :, ch]
-            idxs = findall(x -> x < sum(trace)/length(trace)-(z*std(trace)), trace)
+            bins = LinRange(minimum(trace), sum(trace)/length(trace)-(z*std(trace)), precision)
+            h = Distributions.fit(Histogram, trace)
+            edges = collect(h.edges...)[2:end]
+            weights = h.weights
             #Essentially we want the mode to be the 
-            rmax = mode(trace[idxs])
-            minima = minimum(trace[idxs])
-            if abs(rmax - minima) > 0.01 && !isempty(idxs)
-                #The maximal response is the global minima, and no nose component is contained
-                rmaxs[swp, ch] = rmax
-            else
-                rmaxs[swp,ch] = minima
-            end
+            rmaxs[swp, ch] = edges[argmin(weights)]
         end
     end
     rmaxs
