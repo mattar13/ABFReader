@@ -101,7 +101,7 @@ function get_response(nt::NeuroTrace, rmaxes::Array{T,1}) where T
     minima = minimum(nt, dims = 2)[:,1,:]
     responses = zeros(size(minima))
     for swp in 1:size(nt,1), ch in 1:size(nt,3)
-        minima = minimum(data3[swp, :, ch]) 
+        minima = minimum(nt[swp, :, ch]) 
         responses[swp, ch] = minima < rmaxes[ch] ? rmaxes[ch] : minima
     end
     responses 
