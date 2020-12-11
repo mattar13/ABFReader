@@ -24,7 +24,8 @@ baseline_cancel!(data2; mode = :slope, region = :prestim) #Cancel drift
 baseline_cancel!(data2; mode = :mean, region = :prestim) #Baseline data
 lowpass_filter!(data2) #Lowpass filter using a 40hz 8-pole filter
 rmaxes = saturated_response(data2)
-println("Test 3: Rmax calculation works")
+rdims = dim_response(data2, rmaxes)
+println("Test 3: Rmax and Rdim calculation works")
 #cwt_filter!(data2) #Use a continuous wavelet transform to remove noise, but keep time series info
 #average_sweeps!(data2)
 #normalize!(data2)
@@ -38,13 +39,6 @@ println("Test 5: Plotting works")
 mins, maxes, means, stds = calculate_basic_stats(data2);
 println("Test 6: Data analysis works")
 
-
-#%% For now, rmax calculations can be done as the function is, 
-#eventually I will need to fix for non-nose components
-#Rdim is just ~20-30% of the Rmax
-
-rmaxes = saturated_response(data2)
-rmaxes * 0.20
 
 #%% Sandbox area
 P30_Green_I = [
@@ -72,20 +66,31 @@ target_path = "D:\\Data\\ERG\\Data from Paul\\Adult (NR) rods_14\\Green\\a-waves
 path = (target_path |> parse_abf)[1]
 #Extract the data
 data3 = extract_abf(path; stim_ch = -1, swps = -1, chs = -1)
-truncate_data!(data3)
+truncate_data!(data3; t_eff = 0.0)
 rmaxes = saturated_response(data3; z = 0.0)
 rdims = dim_response(data3, rmaxes)
-p1 = plot(data3, label = "",
-    line_z = log.(P30_Green_I[1:size(data3,1)])', c = :inferno
-    )
-
-hline!(p1[1], [rmaxes[1]], c = :green, label = "Rmax")
-hline!(p1[2], [rmaxes[2]], c = :green, label = "Rmax")
-hline!(p1[1], [rdims[1]], c = :red, label = "Rdim")
-hline!(p1[2], [rdims[2]], c = :red, label = "Rdim")
+t_peak = time_to_peak(data3, rdims)
 #%%
+minima = minimum(data3, dims = 2)[:,1,:]
+non_saturated = findall(minima .< rmaxes)
+saturated = findall(minima .> rmaxes)
+responses = zeros(size(data3,1), size(data3,3))
+for I in non_saturated
+    if 
+#%%
+p1 = plot(data3, label = "", c = :black)
 
+hline!(p1[1], [rmaxes[1]], c = :green, label = "Rmax", lw = 2.0)
+hline!(p1[2], [rmaxes[2]], c = :green, label = "Rmax", lw = 2.0)
+hline!(p1[1], [rdims[1]], c = :red, label = "Rdim", lw = 2.0)
+hline!(p1[2], [rdims[2]], c = :red, label = "Rdim", lw = 2.0)
+vline!(p1[1], [t_peak[1]], label = "peak time", c = :blue, lw = 2.0)
+vline!(p1[2], [t_peak[2]], label = "peak time", c = :blue, lw = 2.0)
 
+#%%
+#We want to extract all the minimas from the traces 
+#     1) If they have a minima below rmax, we want to set the rmax as the minima
+#     2) If they  have a minima above the rmax, then we want to set it as the minima
 
 #%% Analyzing a file with no nose component
 path = "D:\\Data\\ERG\\Gnat\\2020_08_16_ERG\\Mouse1_P10_KO\\NoDrugs\\365UV\\nd0_100p_8ms.abf"
