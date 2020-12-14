@@ -1,5 +1,3 @@
-
-
 ####################These functions are for filtering and adjusting the traces################
 """
 This function adjusts the baseline, similar to how it is done in clampfit. 

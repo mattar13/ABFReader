@@ -100,43 +100,53 @@ end
 begin
 	P14_Green_rmaxs = Float64[]
 	P14_Green_rdims = Float64[]
+	P14_Green_tpeak = Float64[]
 	P14_Green_paths = (P14_green |> parse_abf)
 	for path in P14_Green_paths[[1,2,5,6]]
 		title = splitpath(path)[end][1:end-4]
 		println(title)
 		data = extract_abf(path; stim_ch = -1, swps = -1, chs = -1)
-		truncate_data!(data)
+		truncate_data!(data; t_eff = 0.0)
 		
 		rmaxes = saturated_response(data; z = 0.0)
 		rdims = dim_response(data, rmaxes)
-		
+		t_peak = time_to_peak(data, rdims)
+		responses = get_response(data, rmaxes)
+
 		#Plot the results
 		savepath = "$(P14_green)\\$(title).png"
 		pi = plot(data, label = "",
 			xlabel = ["" "Time (ms)"], title = title, 
 			c = :inferno, line_z = log.(P14_I[1:size(data,1)])'
 		)
-		hline!(pi[1], [rmaxes[1]], c = :green, lw = 2.0, label = "Rmax")
-		hline!(pi[2], [rmaxes[2]], c = :green, lw = 2.0, label = "Rmax")
-		hline!(pi[1], [rdims[1]], c = :red, label = "Rdim")
-		hline!(pi[2], [rdims[2]], c = :red, label = "Rdim")
-		
+		hline!(pi[1], [rmaxes[1]], c = :green, label = "Rmax", lw = 2.0)
+		hline!(pi[2], [rmaxes[2]], c = :green, label = "Rmax", lw = 2.0)
+		hline!(pi[1], [rdims[1]], c = :red, label = "Rdim", lw = 2.0)
+		hline!(pi[2], [rdims[2]], c = :red, label = "Rdim", lw = 2.0)
+		vline!(pi[1], [t_peak[1]], label = "peak time", c = :blue, lw = 2.0)
+		vline!(pi[2], [t_peak[2]], label = "peak time", c = :blue, lw = 2.0)
+
 		savefig(pi, savepath)
 
 		push!(P14_Green_rmaxs, (rmaxes.*1000)...)
 		push!(P14_Green_rdims, (rdims.*1000)...)
+		push!(P14_Green_tpeak, (t_peak*1000)...)
 	end
 	P14_green_mean_rdim = sum(P14_Green_rdims)/length(P14_Green_rdims)
 	P14_green_sem_rdim = std(P14_Green_rdims)/(sqrt(length(P14_Green_rdims)))
 	P14_green_mean_rmax = sum(P14_Green_rmaxs)/length(P14_Green_rmaxs)
 	P14_green_sem_rmax = std(P14_Green_rmaxs)/(sqrt(length(P14_Green_rmaxs)))
+	P14_green_mean_tpeak = sum(P14_Green_tpeak)/length(P14_Green_tpeak)
+	P14_green_sem_tpeak = std(P14_Green_tpeak)/(sqrt(length(P14_Green_tpeak)))
 end;
 
 # ╔═╡ 02d99d30-34d0-11eb-168d-e561fe4c9753
 md" 
-Mean Rdim = $(-P14_green_mean_rdim) +- $P14_green_sem_rdim
+Mean Rdim = $(-P14_green_mean_rdim) μV +- $P14_green_sem_rdim
 
-Mean Rmax = $(-P14_green_mean_rmax) +- $P14_green_sem_rmax
+Mean Rmax = $(-P14_green_mean_rmax) μV +- $P14_green_sem_rmax
+
+Mean Time to Peak = $(P14_green_mean_tpeak) ms +- $P14_green_sem_tpeak
 "
 
 # ╔═╡ 07ba9a3e-3a4b-11eb-21e1-0fb0dbbf29f9
@@ -146,36 +156,42 @@ P14_Green_rmaxs
 begin
 	data1 = extract_abf(P14_Green_paths[1]; stim_ch = -1, swps = -1, chs = -1)
 	title1 = splitpath(P14_Green_paths[1])[end][1:end-4]
-	truncate_data!(data1)
+	truncate_data!(data1; t_eff = 0.0)
 
 	rmaxes1 = saturated_response(data1; z = 0.0)
 	rdims1 = dim_response(data1, rmaxes1)
+	t_peak1 = time_to_peak(data1, rdims1)
+	responses1 = get_response(data1, rmaxes1)
 
 	#Plot the results
 	p1 = plot(data1, label = "",
 		xlabel = ["" "Time (ms)"], title = title1, 
 		c = :inferno, line_z = log.(P14_I[1:size(data1,1)])'
 	)
-	hline!(p1[1], [rmaxes1[1]], c = :green, lw = 2.0, label = "Rmax")
-	hline!(p1[2], [rmaxes1[2]], c = :green, lw = 2.0, label = "Rmax")
-	hline!(p1[1], [rdims1[1]], c = :red, label = "Rdim")
-	hline!(p1[2], [rdims1[2]], c = :red, label = "Rdim")
+	hline!(p1[1], [rmaxes1[1]], c = :green, label = "Rmax", lw = 2.0)
+	hline!(p1[2], [rmaxes1[2]], c = :green, label = "Rmax", lw = 2.0)
+	hline!(p1[1], [rdims1[1]], c = :red, label = "Rdim", lw = 2.0)
+	hline!(p1[2], [rdims1[2]], c = :red, label = "Rdim", lw = 2.0)
+	vline!(p1[1], [t_peak1[1]], label = "peak time", c = :blue, lw = 2.0)
+	vline!(p1[2], [t_peak1[2]], label = "peak time", c = :blue, lw = 2.0)
 end
 
 # ╔═╡ 0c91b030-3429-11eb-0eb1-7ffa6013aff4
 begin
-	make_global2 = 1
 	P30_Green_rmaxs = Float64[]
 	P30_Green_rdims = Float64[]
+	P30_Green_tpeak = Float64[]
 	P30_Green_paths = (P30_green |> parse_abf)
 	for path in P30_Green_paths
 		title = splitpath(path)[end][1:end-4]
 		println(title)
 		
 		data = extract_abf(path; stim_ch = -1, swps = -1, chs = -1)
-		truncate_data!(data)
+		truncate_data!(data; t_eff = 0.0)
 		rmaxes = saturated_response(data; z = 0.0)
 		rdims = dim_response(data, rmaxes)
+		t_peak = time_to_peak(data, rdims)
+		responses = get_response(data, rmaxes)
 		
 		#Plot the results
 		savepath = "$(P30_green)\\$(title).png"
@@ -183,93 +199,112 @@ begin
 			xlabel = ["" "Time (ms)"], title = title, 
 			c = :inferno, line_z = log.(P30_Green_I[1:size(data,1)])'
 		)
-		hline!(pi[1], [rmaxes[1]], c = :green, lw = 2.0, label = "Rmax")
-		hline!(pi[2], [rmaxes[2]], c = :green, lw = 2.0, label = "Rmax")
-		hline!(pi[1], [rdims[1]], c = :red, label = "Rdim")
-		hline!(pi[2], [rdims[2]], c = :red, label = "Rdim")
+		hline!(pi[1], [rmaxes[1]], c = :green, label = "Rmax", lw = 2.0)
+		hline!(pi[2], [rmaxes[2]], c = :green, label = "Rmax", lw = 2.0)
+		hline!(pi[1], [rdims[1]], c = :red, label = "Rdim", lw = 2.0)
+		hline!(pi[2], [rdims[2]], c = :red, label = "Rdim", lw = 2.0)
+		vline!(pi[1], [t_peak[1]], label = "peak time", c = :blue, lw = 2.0)
+		vline!(pi[2], [t_peak[2]], label = "peak time", c = :blue, lw = 2.0)
+			
 		savefig(pi, savepath)
 				
 		push!(P30_Green_rmaxs, (rmaxes.*1000)...)
 		push!(P30_Green_rdims, (rdims.*1000)...)
+		push!(P30_Green_tpeak, (t_peak .* 1000)...)
 	end
 	P30_green_mean_rdim = sum(P30_Green_rdims)/length(P30_Green_rdims)
 	P30_green_sem_rdim = std(P30_Green_rdims)/(sqrt(length(P30_Green_rdims)))
 	P30_green_mean_rmax = sum(P30_Green_rmaxs)/length(P30_Green_rmaxs)
 	P30_green_sem_rmax = std(P30_Green_rmaxs)/(sqrt(length(P30_Green_rmaxs)))
+	P30_green_mean_tpeak = sum(P30_Green_tpeak)/length(P30_Green_tpeak)
+	P30_green_sem_tpeak = std(P30_Green_tpeak)/(sqrt(length(P30_Green_tpeak)))
 end;
 
 # ╔═╡ 219050c0-34d0-11eb-35a9-23bd92e19a1b
 md" 
-Mean Rdim = $(-P30_green_mean_rdim) +- $P30_green_sem_rdim
+Mean Rdim = $(-P30_green_mean_rdim) μV +- $P30_green_sem_rdim
 
-Mean Rmax = $(-P30_green_mean_rmax) +- $P30_green_sem_rmax
+Mean Rmax = $(-P30_green_mean_rmax) μV +- $P30_green_sem_rmax
+
+Mean Time to Peak = $(P30_green_mean_tpeak) ms +- $P30_green_sem_tpeak
 "
 
 # ╔═╡ 5f2153ee-3a4b-11eb-06f7-032d1a20912c
 P30_Green_rmaxs
 
-# ╔═╡ 2083a600-3a52-11eb-1f23-2b9f96c28fe5
-
-
 # ╔═╡ 24c6ab10-3a4b-11eb-2047-f7fb21f079fa
 begin
 	data2 = extract_abf(P30_Green_paths[1]; stim_ch = -1, swps = -1, chs = -1)
 	title2 = splitpath(P30_Green_paths[1])[end][1:end-4]
-	truncate_data!(data2)
+	truncate_data!(data2; t_eff = 0.0)
 
 	rmaxes2 = saturated_response(data2; z = 0.0)
 	rdims2 = dim_response(data2, rmaxes2)
-
+	t_peak2 = time_to_peak(data2, rdims2)
+	responses2 = get_response(data2, rmaxes2)
+	
 	#Plot the results
 	p2 = plot(data2, label = "",
 		xlabel = ["" "Time (ms)"], title = title2, 
 		c = :inferno, line_z = log.(P14_I[1:size(data2,1)])'
 	)
-	hline!(p2[1], [rmaxes2[1]], c = :green, lw = 2.0, label = "Rmax")
-	hline!(p2[2], [rmaxes2[2]], c = :green, lw = 2.0, label = "Rmax")
-	hline!(p2[1], [rdims2[1]], c = :red, label = "Rdim")
-	hline!(p2[2], [rdims2[2]], c = :red, label = "Rdim")
+	hline!(p2[1], [rmaxes2[1]], c = :green, label = "Rmax", lw = 2.0)
+	hline!(p2[2], [rmaxes2[2]], c = :green, label = "Rmax", lw = 2.0)
+	hline!(p2[1], [rdims2[1]], c = :red, label = "Rdim", lw = 2.0)
+	hline!(p2[2], [rdims2[2]], c = :red, label = "Rdim", lw = 2.0)
+	vline!(p2[1], [t_peak2[1]], label = "peak time", c = :blue, lw = 2.0)
+	vline!(p2[2], [t_peak2[2]], label = "peak time", c = :blue, lw = 2.0)
 end
 
 # ╔═╡ 0e664c0e-34cc-11eb-0302-8fb5e1da67c6
 begin
 	P30_UV_rmaxs = Float64[]
 	P30_UV_rdims = Float64[]
+	P30_UV_tpeak = Float64[]
 	P30_UV_paths = (P30_uv |> parse_abf)
 	for (idx, path) in enumerate(P30_UV_paths)
 		title = splitpath(path)[end][1:end-4]
 		println(title)
 		
 		data = extract_abf(path; stim_ch = -1, swps = -1, chs = -1)
-		truncate_data!(data)
+		truncate_data!(data; t_eff = 0.0)
 		rmaxes = saturated_response(data; z = 0.0)
 		rdims = dim_response(data, rmaxes)
+		t_peak = time_to_peak(data, rdims)
+		responses = get_response(data, rmaxes)
 		
 		savepath = "$(P30_uv)\\$(title).png"
 		pi = plot(data, label = "",
 			xlabel = ["" "Time (ms)"], title = title, 
 			c = :inferno, line_z = log.(P30_UV_I[1:size(data,1)])'
 		)
-		hline!(pi[1], [rmaxes[1]], c = :green, lw = 2.0, label = "Rmax")
-		hline!(pi[2], [rmaxes[2]], c = :green, lw = 2.0, label = "Rmax")
-		hline!(pi[1], [rdims[1]], c = :red, label = "Rdim")
-		hline!(pi[2], [rdims[2]], c = :red, label = "Rdim")
+		hline!(pi[1], [rmaxes[1]], c = :green, label = "Rmax", lw = 2.0)
+		hline!(pi[2], [rmaxes[2]], c = :green, label = "Rmax", lw = 2.0)
+		hline!(pi[1], [rdims[1]], c = :red, label = "Rdim", lw = 2.0)
+		hline!(pi[2], [rdims[2]], c = :red, label = "Rdim", lw = 2.0)
+		vline!(pi[1], [t_peak[1]], label = "peak time", c = :blue, lw = 2.0)
+		vline!(pi[2], [t_peak[2]], label = "peak time", c = :blue, lw = 2.0)
 		savefig(pi, savepath)
 		
 		push!(P30_UV_rmaxs, (rmaxes .*1000)...)
 		push!(P30_UV_rdims, (rdims .*1000)...)
+		push!(P30_UV_tpeak, (t_peak .* 1000)...)
 	end
 	P30_UV_mean_rdim = sum(P30_UV_rdims)/length(P30_UV_rdims)
 	P30_UV_sem_rdim = std(P30_UV_rdims)/(sqrt(length(P30_UV_rdims)))
 	P30_UV_mean_rmax = sum(P30_UV_rmaxs)/length(P30_UV_rmaxs)
 	P30_UV_sem_rmax = std(P30_UV_rmaxs)/(sqrt(length(P30_UV_rmaxs)))
+	P30_UV_mean_tpeak = sum(P30_UV_tpeak)/length(P30_UV_tpeak)
+	P30_UV_sem_tpeak = std(P30_UV_tpeak)/(sqrt(length(P30_UV_tpeak)))
 end;
 
 # ╔═╡ a30b70d0-34d0-11eb-17cd-011214c716cc
 md" 
-Mean Rdim = $(-P30_UV_mean_rdim) +- $P30_UV_sem_rdim
+Mean Rdim = $(-P30_UV_mean_rdim) μV +- $P30_UV_sem_rdim
 
-Mean Rmax = $(-P30_UV_mean_rmax) +- $P30_UV_sem_rmax
+Mean Rmax = $(-P30_UV_mean_rmax) μV +- $P30_UV_sem_rmax
+
+Mean Time to Peak = $(P30_UV_mean_tpeak) ms +- $P30_UV_sem_tpeak
 "
 
 # ╔═╡ dd965ff0-3a4b-11eb-0a34-fff42d9a0864
@@ -279,10 +314,12 @@ P30_UV_rmaxs
 begin
 	data3 = extract_abf(P30_UV_paths[1]; stim_ch = -1, swps = -1, chs = -1)
 	title3 = splitpath(P30_UV_paths[1])[end][1:end-4]
-	truncate_data!(data3)
+	truncate_data!(data3; t_eff = 0.0)
 
 	rmaxes3 = saturated_response(data3; z = 0.0)
 	rdims3 = dim_response(data3, rmaxes3)
+	t_peak3 = time_to_peak(data3, rdims3)
+	responses3 = get_response(data3, rmaxes3)
 
 	#Plot the results
 	p3 = plot(data3, label = "",
@@ -291,8 +328,10 @@ begin
 	)
 	hline!(p3[1], [rmaxes3[1]], c = :green, lw = 2.0, label = "Rmax")
 	hline!(p3[2], [rmaxes3[2]], c = :green, lw = 2.0, label = "Rmax")
-	hline!(p3[1], [rdims3[1]], c = :red, label = "Rdim")
-	hline!(p3[2], [rdims3[2]], c = :red, label = "Rdim")
+	hline!(p3[1], [rdims3[1]], c = :red, lw = 2.0, label = "Rdim")
+	hline!(p3[2], [rdims3[2]], c = :red, lw = 2.0, label = "Rdim")
+	vline!(p3[1], [t_peak3[1]], label = "peak time", c = :blue, lw = 2.0)
+	vline!(p3[2], [t_peak3[2]], label = "peak time", c = :blue, lw = 2.0)
 end
 
 # ╔═╡ 14430420-39cc-11eb-22c6-e3ee471ca86b
@@ -322,17 +361,16 @@ md"
 # ╟─463e82d0-3a3d-11eb-35e7-29a03be84623
 # ╟─7c0eb970-34ca-11eb-0fc2-9dd946348bd1
 # ╠═29bd3d5e-34cd-11eb-3731-a7f3347fdc37
-# ╟─02d99d30-34d0-11eb-168d-e561fe4c9753
+# ╠═02d99d30-34d0-11eb-168d-e561fe4c9753
 # ╟─07ba9a3e-3a4b-11eb-21e1-0fb0dbbf29f9
 # ╟─bd48d530-3a4a-11eb-0913-a7d207638a86
 # ╠═0c91b030-3429-11eb-0eb1-7ffa6013aff4
 # ╟─219050c0-34d0-11eb-35a9-23bd92e19a1b
 # ╟─5f2153ee-3a4b-11eb-06f7-032d1a20912c
-# ╠═2083a600-3a52-11eb-1f23-2b9f96c28fe5
 # ╟─24c6ab10-3a4b-11eb-2047-f7fb21f079fa
 # ╠═0e664c0e-34cc-11eb-0302-8fb5e1da67c6
 # ╟─a30b70d0-34d0-11eb-17cd-011214c716cc
 # ╟─dd965ff0-3a4b-11eb-0a34-fff42d9a0864
-# ╟─27407a20-3a4a-11eb-320a-3f4a9d38f994
+# ╠═27407a20-3a4a-11eb-320a-3f4a9d38f994
 # ╟─14430420-39cc-11eb-22c6-e3ee471ca86b
 # ╠═f6ba1d90-3a4c-11eb-19c1-5d6464477fb1

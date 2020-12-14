@@ -3,13 +3,16 @@ using Revise
 using NeuroPhys
 import NeuroPhys: rolling_mean
 using Distributions, StatsBase, StatsPlots, Polynomials
-println("Test 1: Package properly exported")
+println("Test 0: Package properly exported")
 
-# begin testing
-target_path = "test\\to_filter.abf"
-# Test the exporting and filtering of .abf files
-data1 = extract_abf(target_path); #Extract the data
-# Test filtering functions that are not inline
+#%% Test the exporting and filtering of .abf files
+target_path1 = "test\\to_filter.abf"
+target_path2 = "test\\to_analyze.abf"
+data1 = extract_abf(target_path1); #Extract the data for filtering
+data2 = extract_abf(target_path2); #Extract the data for concatenation analysis
+println("Test 1: File extraction works")
+
+#%% Test filtering functions that are not inline
 drift_data1 = baseline_cancel(data1; mode = :slope) #Cancel drift
 baseline_data1 = baseline_cancel(drift_data1; mode = :mean) #Baseline data
 filter_data1 = lowpass_filter(baseline_data1) #Lowpass filter using a 40hz 8-pole filter
@@ -18,28 +21,36 @@ avg_data1 = average_sweeps(baseline_data1)
 norm_data1 = normalize(baseline_data1)
 println("Test 2: All filtering functions work")
 
-# Test inline filtering functions
-data2 = extract_abf(target_path); #Extract the data
-baseline_cancel!(data2; mode = :slope, region = :prestim) #Cancel drift
-baseline_cancel!(data2; mode = :mean, region = :prestim) #Baseline data
-lowpass_filter!(data2) #Lowpass filter using a 40hz 8-pole filter
+#%% Test inline filtering functions
+#Filtering individual trace files
+baseline_cancel!(data1; mode = :slope, region = :prestim) #Cancel drift
+baseline_cancel!(data1; mode = :mean, region = :prestim) #Baseline data
+#Filtering concatenated files
+baseline_cancel!(data2; mode = :slope, region = :prestim) #Cancel drift for concatenation
+baseline_cancel!(data2; mode = :mean, region = :prestim) #Baseline data for concatenation
+lowpass_filter!(data1) #Lowpass filter using a 40hz 8-pole filter
+cwt_filter!(data1) #Use a continuous wavelet transform to remove noise, but keep time series info
+average_sweeps!(data1)
+normalize!(data1)
+println("Test 3: All inline filtering functions work")
+
+#%% Test the analysis
+mins, maxes, means, stds = calculate_basic_stats(data1);
 rmaxes = saturated_response(data2)
 rdims = dim_response(data2, rmaxes)
-println("Test 3: Rmax and Rdim calculation works")
-#cwt_filter!(data2) #Use a continuous wavelet transform to remove noise, but keep time series info
-#average_sweeps!(data2)
-#normalize!(data2)
-println("Test 4: All inline filtering functions work")
+println("Test 4: Data analysis works")
 
-# Test the plotting of the trace file
-plot(data2, stim_plot = :include)
-println("Test 5: Plotting works")
+#%% Test the plotting of the trace file
+plot(data1, stim_plot = :include)
+println("Test 5: Plotting for single traces works")
 
-# Test the analysis
-mins, maxes, means, stds = calculate_basic_stats(data2);
-println("Test 6: Data analysis works")
+#%% Practice pushing and appending
+size(data2)
+item = zeros(size(data2, 1), size(data2,2))
 
+push!(data2, item)
 
+cat(dt_arr, mt_arr; dims = 3)
 #%% Sandbox area
 P30_Green_I = [
     0.3141322
@@ -70,13 +81,7 @@ truncate_data!(data3; t_eff = 0.0)
 rmaxes = saturated_response(data3; z = 0.0)
 rdims = dim_response(data3, rmaxes)
 t_peak = time_to_peak(data3, rdims)
-#%%
-minima = minimum(data3, dims = 2)[:,1,:]
-non_saturated = findall(minima .< rmaxes)
-saturated = findall(minima .> rmaxes)
-responses = zeros(size(data3,1), size(data3,3))
-for I in non_saturated
-    if 
+responses = get_response(data3, rmaxes)
 #%%
 p1 = plot(data3, label = "", c = :black)
 
@@ -86,7 +91,6 @@ hline!(p1[1], [rdims[1]], c = :red, label = "Rdim", lw = 2.0)
 hline!(p1[2], [rdims[2]], c = :red, label = "Rdim", lw = 2.0)
 vline!(p1[1], [t_peak[1]], label = "peak time", c = :blue, lw = 2.0)
 vline!(p1[2], [t_peak[2]], label = "peak time", c = :blue, lw = 2.0)
-
 #%%
 #We want to extract all the minimas from the traces 
 #     1) If they have a minima below rmax, we want to set the rmax as the minima

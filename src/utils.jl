@@ -130,7 +130,7 @@ mutable struct NeuroTrace{T}
     filename::String
 end
 
-import Base: size, length, getindex, setindex, sum, copy, maximum, minimum
+import Base: size, length, getindex, setindex, sum, copy, maximum, minimum, push!
 
 #Extending for NeuroTrace
 size(trace::NeuroTrace) = size(trace.data_array)
@@ -141,6 +141,40 @@ length(trace::NeuroTrace) = size(trace,2)
 #Extending get index for NeuroTrace
 getindex(trace::NeuroTrace, I...) = trace.data_array[I...]
 setindex(trace::NeuroTrace, v, I...) = trace.data_array[I...] .= v
+
+"""
+This function pushes traces to the datafile
+    -It initiates in a sweepwise function and if the item dims match the data dims, 
+    the data will be added in as new sweeps
+    - Sweeps are 
+
+"""
+function push!(nt::NeuroTrace{T}, item::AbstractArray{T}; new_name = "Unnamed") where T<:Real
+    
+    if size(item,1) == 1 && size(item, 2) == size(nt,2) && size(item,3) == size(nt,3)
+        #Adding a single sweep to the data array (1 new sweep, t, chs)
+        nt.data_array = cat(nt.data_array, item, dims = 1)
+
+    elseif size(item, 1) == size(nt,2) && size(item, 2) == size(nt,3)
+        #Adding sweeps to the data array (n new sweeps, data, chs)
+        item = reshape(item, 1, size(item,1), size(item,2))
+        nt.data_array = cat(nt.data_array, item, dims = 1)
+
+    elseif size(item, 1) == size(nt,1) && size(item, 2) == size(nt, 2)
+        #Adding channels to the data array with all sweeps (swps, t, new channels)
+        nt.data_array = cat(nt.data_array, item, dims = 3)
+        #Because we are adding in a new channel, add the channel name
+        push!(nt.chNames, new_name)
+
+    elseif size(item) == size(nt)
+        #Add new data sweepwise
+        nt.data_array = cat(nt.data_array, item, dims = 1)
+        
+    else
+        throw(error("File size incompatible with push!"))
+    end
+end
+
 
 function minimum(nt::NeuroTrace; dims::Int64 = -1)
     if dims == -1
@@ -196,13 +230,12 @@ getsweep(trace::NeuroTrace, idx_arr::Array{Int64}) = trace.data_array[idx_arr, :
 """
 This iterates through all sweeps
 """
-eachsweep(trace) = Iterators.map(idx -> getsweep(trace, idx), 1:size(trace,1))
-
+eachsweep(trace::NeuroTrace) = Iterators.map(idx -> getsweep(trace, idx), 1:size(trace,1))
 
 """
 This gets the stimulus trace only if it has been set
 """
-function getstim(trace::NeuroTrace; threshold = 0.2) 
+function getstim(trace::NeuroTrace; threshold::Float64 = 0.2) 
     if trace.stim_ch != -1 
         if threshold != nothing
             return vec(getchannel(trace, trace.stim_ch) .> threshold)
@@ -232,13 +265,11 @@ function findstimRng(trace::NeuroTrace)
     end
 end
 
-
-
 """
 This function extracts an ABF file from a path
     - It creates a NeuroTrace object which 
 """
-function extract_abf(abf_path; T = Float64, stim_ch = 3, swps = -1, chs = ["Vm_prime","Vm_prime4", "IN 7"], verbose = false)
+function extract_abf(::Type{T}, abf_path::String; stim_ch = 3, swps = -1, chs = ["Vm_prime","Vm_prime4", "IN 7"], verbose = false) where T <: Real
     if length(abf_path |> splitpath) > 1
         full_path = abf_path
     else
@@ -312,6 +343,8 @@ function extract_abf(abf_path; T = Float64, stim_ch = 3, swps = -1, chs = ["Vm_p
     end
     NeuroTrace{T}(t, data_array, date_collected, tUnits, dt, chNames, chUnits, labels, stim_ch, full_path)
 end
+
+extract_abf(abf_path::String ; kwargs...) = extract_abf(Float64, abf_path ; kwargs...)
 
 """
 This function truncates the data based on the amount of time.
