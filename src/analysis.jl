@@ -90,7 +90,9 @@ end
 #This dispatch is for if there has been no rmax provided. 
 dim_response(nt::NeuroTrace; z = 0.0, rdim_percent = 0.15) = dim_response(nt, saturated_response(nt; z = z), rdim_percent = rdim_percent)
 
-
+"""
+This function calculates the time to peak using the dim response properties of the concatenated file
+"""
 function time_to_peak(nt::NeuroTrace{T}, rdims::Array{T,1}) where T
     minima = minimum(nt, dims = 2)[:,1,:]
     dim_traces = findall((minima .- rdims') .== 0.0)
@@ -105,4 +107,33 @@ function get_response(nt::NeuroTrace, rmaxes::Array{T,1}) where T
         responses[swp, ch] = minima < rmaxes[ch] ? rmaxes[ch] : minima
     end
     responses 
+end
+
+#Pepperburg analysis
+"""
+This function conducts a Pepperburg analysis on a single trace. 
+"""
+function pepperburg_analysis(X::AbstractArray; dt = 5.0e-5, rank = 6, graphically = false, peak_args...)
+    rmax = peak_finder(X; peak_args...)
+    if rmax !== nothing
+        #Now we need to find the values at 60% of the rmax found here (otherwise known as rank 6)
+        rmax_idx = findall(x -> round(x, digits = 4) < round(rmax, digits = 4), X)[end]
+        if length(rmax_idx) == 0
+            #println("this is a fucked B-wave that hits the Rmax, but never returns")
+            return nothing
+        end
+        rmax_idx = rmax_idx[end]
+        rmax_rank = rmax*(rank/10)
+        rridx = findall(x -> round(x, digits = 5) > round(rmax_rank, digits = 5), X)
+        rmax_rank_idx = rridx[rridx .> rmax_idx][1]
+        if graphically
+            return rmax, rmax_idx, rmax_rank, rmax_rank_idx
+        else
+            rmax_time = rmax_idx * dt
+            rmax_rank_time = rmax_rank_idx * dt
+            return rmax_rank_time - rmax_time
+        end
+    else
+        #return NaN
+    end
 end

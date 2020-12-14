@@ -151,30 +151,28 @@ This function pushes traces to the datafile
 """
 function push!(nt::NeuroTrace{T}, item::AbstractArray{T}; new_name = "Unnamed") where T<:Real
     
-    if size(item,1) == 1 && size(item, 2) == size(nt,2) && size(item,3) == size(nt,3)
-        #Adding a single sweep to the data array (1 new sweep, t, chs)
+    #All of these options assume the new data point length matches the old one
+    if size(item, 2) == size(nt,2) && size(item,3) == size(nt,3)
+        #item = (new_sweep, datapoints, channels)
         nt.data_array = cat(nt.data_array, item, dims = 1)
 
     elseif size(item, 1) == size(nt,2) && size(item, 2) == size(nt,3)
-        #Adding sweeps to the data array (n new sweeps, data, chs)
+        #item = (datapoints, channels) aka a single sweep
         item = reshape(item, 1, size(item,1), size(item,2))
         nt.data_array = cat(nt.data_array, item, dims = 1)
 
     elseif size(item, 1) == size(nt,1) && size(item, 2) == size(nt, 2)
-        #Adding channels to the data array with all sweeps (swps, t, new channels)
+        #item = (sweeps, datapoints, new_channels) 
         nt.data_array = cat(nt.data_array, item, dims = 3)
         #Because we are adding in a new channel, add the channel name
         push!(nt.chNames, new_name)
 
-    elseif size(item) == size(nt)
-        #Add new data sweepwise
-        nt.data_array = cat(nt.data_array, item, dims = 1)
-        
     else
         throw(error("File size incompatible with push!"))
     end
 end
 
+push!(nt_push_to::NeuroTrace, nt_added::NeuroTrace) = push!(nt_push_to, nt_added.data_array)
 
 function minimum(nt::NeuroTrace; dims::Int64 = -1)
     if dims == -1
@@ -375,6 +373,19 @@ function truncate_data!(trace::NeuroTrace; t_eff = 0.5, t_cutoff = 3.0)
 end
 
 """
+The files in path array or super folder are concatenated into a single NeuroTrace file
+- There are a few modes
+    - pre_pad will add zeros at the beginning of a data array that is too short
+    - post_pad will add zeros at the end of a data array that is too short
+    - pre_chop will remove beginning datapoints of a data array that is too long
+    - post_chop will remove end datapoints of a data array that is too long
+"""
+function concat(path_arr::Array{String,1}; mode = :post_pad)
+    
+end
+
+concat(superfolder::String; kwargs...) = concat(parse_abf(superfolder); kwargs ...)
+"""
 This function opens the .abf file in clampfit if it is installed
 """
 function openABF(path) 
@@ -395,52 +406,6 @@ function stim_intensity(filename; kwargs...)
     return stim_t, stim_i
 end
 
-"""
-Filter functions should be in the form (t,x) -> func(t,x)
-
-The concatenated file, the sweeps are removed and replaced with traces. 
-If the traces are different length, they are padded with 0's. 
-The kwarg pad controls whether or not the padding is added to the beginning (:pre)
-or the end (:post)
-
-Prestim_time sets the amount of time (in seconds) before the END of the stimulus. This sets it so the effective time is always the prestim time
-
-T_cutoff truncates the data to the time (in seconds)
-"""
-function concat(path_arr; t_cutoff = 3.5, t_eff = 0.5, filter_func = nothing, sweep_avg = true, pad = :post)
-    abfs = map(p -> extract_abf(p)[1:2], path_arr)
-    n_traces = length(path_arr)
-    
-    dt = abfs[1][1][2] - abfs[1][1][1]
-    t = collect(0.0:dt:(t_cutoff+t_eff))
-    concatenated_trace = zeros(n_traces, length(t), 3)
-    #Average multiple traces
-    for (i, (t, raw_data)) in enumerate(abfs)
-        print(i)
-        if sweep_avg
-            data = sum(raw_data, dims = 1)/size(raw_data,1)
-        else
-            data = raw_data
-        end
-        if filter_func === nothing
-            println(data |> size)
-            x_ch1 = data[1,:,1] 
-            x_ch2 = data[1,:,2] 
-            x_stim = data[1,:,3] .> 0.2
-            #x_stim = x_stim .> 0.2
-        else
-            x_ch1, x_ch2, x_stim = filter_func(t, data)
-        end
-                
-        t_stim_end = findall(x -> x == true, x_stim)[end]
-        t_start = t_stim_end - (t_eff/dt) |> Int64
-        t_end = t_stim_end + (t_cutoff/dt) |> Int64
-        concatenated_trace[i, :, 1] = x_ch1[t_start:t_end] 
-        concatenated_trace[i, :, 2] = x_ch2[t_start:t_end] 
-        concatenated_trace[i, :, 3] = x_stim[t_start:t_end] 
-    end 
-    t, concatenated_trace
-end
 
 """
 This function extracts all possible important information about the current dataset. 
@@ -498,9 +463,3 @@ function dataframe_maker(super_folder)
     end
     return df
 end
-
-
-#%%
-#import NeuroPhys: dataframe_maker
-#folder = "D:\\Data\\ERG\\Gnat\\"
-#df = dataframe_maker(folder)

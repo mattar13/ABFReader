@@ -197,20 +197,6 @@ function fft_spectrum(t, data::Array{T, 1}) where T <: Real
     return freqs[over_0], x_fft[over_0] 
 end
 
-#A single filtering pipeline
-function clean_data(t, data; negative = true, wave = WT.dog2, cutoff_octave = 9)
-    x_ch1 = data[1,:,1]; x_ch2 = data[1,:,2]; x_stim = data[1,:,3] .> 0.2;
-    #Cancelling drift
-    x_lin1 = drift_cancel(t, x_ch1);
-    x_lin2 = drift_cancel(t, x_ch2);
-    #Baseline subtraction
-    stim_idxs = findall(x -> x == true, x_stim) #Stimulus is same for both channels
-    x_adj1 = subtract_baseline(x_lin1, (1, stim_idxs[1]));
-    x_adj2 = subtract_baseline(x_lin2, (1, stim_idxs[1]));
-    #Normalization should be done to all data points after concatenation
-    return x_adj1, x_adj2, x_stim
-end
-
 """
 This function removes the stimulus artifact. 
 The estimated duration of the stimulus artifact is 0.0025s or 25us

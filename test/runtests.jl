@@ -44,13 +44,10 @@ println("Test 4: Data analysis works")
 plot(data1, stim_plot = :include)
 println("Test 5: Plotting for single traces works")
 
-#%% Practice pushing and appending
-size(data2)
-item = zeros(size(data2, 1), size(data2,2))
+#%% Practice file concatenation 
+concat_path = "D:\\Data\\ERG\\Gnat\\"
+paths = (concat_path |> parse_abf)[65:75]
 
-push!(data2, item)
-
-cat(dt_arr, mt_arr; dims = 3)
 #%% Sandbox area
 P30_Green_I = [
     0.3141322
