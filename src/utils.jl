@@ -140,7 +140,7 @@ length(trace::NeuroTrace) = size(trace,2)
  
 #Extending get index for NeuroTrace
 getindex(trace::NeuroTrace, I...) = trace.data_array[I...]
-setindex!(trace::NeuroTrace, v, I...) = trace.data_array[I...] .= v
+setindex!(trace::NeuroTrace, v, I...) = trace.data_array[I...] = v
 
 #This function allows you to enter in a timestamp and get the data value relating to it
 function getindex(trace::NeuroTrace, timestamp::Float64) 
@@ -202,25 +202,17 @@ function push!(nt::NeuroTrace{T}, item::AbstractArray{T}; new_name = "Unnamed") 
 end
 
 function push!(nt_push_to::NeuroTrace, nt_added::NeuroTrace) 
-    println(nt_added.filename)
+    push!(nt_push_to.filename, nt_added.filename...)
     push!(nt_push_to, nt_added.data_array)
 end
 
-function minimum(nt::NeuroTrace; dims::Int64 = -1)
-    if dims == -1
-        return minimum(nt.data_array)
-    else
-        return minimum(nt.data_array, dims = dims)
-    end
+function pad(trace::NeuroTrace{T}, n_add::Int64; dims::Int64 = 2, val::T = 0.0) where T
+    println(size(trace,dims) + n_add)
 end
 
-function maximum(nt::NeuroTrace; dims::Int64 = -1)
-    if dims == -1
-        return maximum(nt.data_array)
-    else
-        return maximum(nt.data_array, dims = dims)
-    end
-end
+minimum(trace::NeuroTrace; kwargs...) = minimum(trace.data_array; kwargs...)
+maximum(trace::NeuroTrace; kwargs...) = maximum(trace.data_array; kwargs...)
+sum(trace::NeuroTrace; kwargs...) = sum(trace.data_array; kwargs...)
 
 function sum(nt::NeuroTrace; dims::Int64 = -1) 
     if dims == -1
@@ -389,7 +381,7 @@ function truncate_data(trace::NeuroTrace; t_eff = 0.5, t_cutoff = 3.0)
 	t_start = t_stim_start > t_eff ? t_stim_start - (t_eff/trace.dt) |> Int64 : 1
 	t_end = t_stim_start + (t_cutoff/trace.dt) |> Int64
     data.t = trace.t[t_start:t_end] .- (trace.t[t_start] + t_eff)
-    data.data_array = trace.data_array[swp, t_start:t_end, ch]
+    data.data_array = trace.data_array[:, t_start:t_end, :]
     return data
 end
 
@@ -411,13 +403,47 @@ The files in path array or super folder are concatenated into a single NeuroTrac
     - pre_chop will remove beginning datapoints of a data array that is too long
     - post_chop will remove end datapoints of a data array that is too long
 """
-function concat(path_arr::Array{String,1}; mode = :post_pad, extract_args...)
-    data = extract_abf(path_arr[1], extract_args...)
-    println(data |> size)
+
+function concat(data::NeuroTrace{T}, data_add::NeuroTrace{T}; mode = :post_pad, avg_swps = true) where T
+    new_data = copy(data)
+    if size(data,2) == size(data_add,2)
+        if avg_swps == true && size(data_add,1) > 1
+            avg_data_added = average_sweeps(data_add)
+            push!(new_data, avg_data_add)
+        else
+            push!(new_data, data_add)
+        end
+    elseif size(data,2) > size(data_add,2)
+        pad(data_add, 10)
+    elseif size(data,2) < size(data_add,2)
+        pad(data_add, 10)
+    end
+    return new_data
+end
+
+function concat!(data::NeuroTrace{T}, data_add::NeuroTrace{T}; mode = :post_pad, avg_swps = true) where T
+    if size(data,2) == size(data_add,2)
+        if avg_swps == true && size(data_add,1) > 1
+            avg_data_added = average_sweeps(data_add)
+            push!(data, avg_data_add)
+        else
+            push!(data, data_add)
+        end
+    elseif size(data,2) > size(data_add,2)
+        pad(data_add, 10)
+    elseif size(data,2) < size(data_add,2)
+        pad(data_add, 10)
+    end
+end
+
+function concat(path_arr::Array{String,1};  kwargs...)
+    data = extract_abf(path_arr[1], kwargs...)
     for path in path_arr[2:end]
-        push!(data , extract_abf(path, extract_args...))
+        data_add = extract_abf(path, kwargs...)
+        concat!(data, data_add)
         println(data |> size)
     end
+    return data
 end
 
 concat(superfolder::String; kwargs...) = concat(parse_abf(superfolder); kwargs ...)
