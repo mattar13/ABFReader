@@ -34,6 +34,7 @@ export RSQ
 export calculate_basic_stats
 export saturated_response, dim_response, time_to_peak
 export get_response
+export pepperburg_analysis
 export curve_fit #curve fitting from LsqFit
 #export filtering functions
 

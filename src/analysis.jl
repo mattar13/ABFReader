@@ -113,7 +113,14 @@ end
 """
 This function conducts a Pepperburg analysis on a single trace. 
 """
-function pepperburg_analysis(X::AbstractArray; dt = 5.0e-5, rank = 6, graphically = false, peak_args...)
+function pepperburg_analysis(trace::NeuroTrace{T}) where T
+    if size(trace,1) == 1
+        throw(error("Pepperburg will not work on single sweeps"))
+    end
+        
+end
+
+function old_ppbg(X::AbstractArray; dt = 5.0e-5, rank = 6, graphically = false, peak_args...)
     rmax = peak_finder(X; peak_args...)
     if rmax !== nothing
         #Now we need to find the values at 60% of the rmax found here (otherwise known as rank 6)

@@ -102,6 +102,7 @@ end
 filename_extractor(filename::SubString{String}) = filename_extractor(filename |> String)
 
 """
+TODO: I want to add in a different category for ERG experiments. 
 This file contains the ABF data traces. 
 
 To see all fields of the pyABF data: 
@@ -246,18 +247,11 @@ function chop!(trace::NeuroTrace, n_chop::Int64; position::Symbol = :post, dims:
     trace.data_array = trace.data_array[resize_size...]
 end
 
-
 minimum(trace::NeuroTrace; kwargs...) = minimum(trace.data_array; kwargs...)
-maximum(trace::NeuroTrace; kwargs...) = maximum(trace.data_array; kwargs...)
-sum(trace::NeuroTrace; kwargs...) = sum(trace.data_array; kwargs...)
 
-function sum(nt::NeuroTrace; dims::Int64 = -1) 
-    if dims == -1
-        return sum(nt.data_array)
-    else
-        return sum(nt.data_array, dims = dims)
-    end
-end
+maximum(trace::NeuroTrace; kwargs...) = maximum(trace.data_array; kwargs...)
+
+sum(trace::NeuroTrace; kwargs...) = sum(trace.data_array; kwargs...)
 
 copy(nt::NeuroTrace) = NeuroTrace([getfield(nt, fn) for fn in fieldnames(nt |> typeof)]...)
 
