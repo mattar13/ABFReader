@@ -206,9 +206,46 @@ function push!(nt_push_to::NeuroTrace, nt_added::NeuroTrace)
     push!(nt_push_to, nt_added.data_array)
 end
 
-function pad(trace::NeuroTrace{T}, n_add::Int64; dims::Int64 = 2, val::T = 0.0) where T
-    println(size(trace,dims) + n_add)
+function pad(trace::NeuroTrace{T}, n_add::Int64; position::Symbol = :post, dims::Int64 = 2, val::T = 0.0) where T
+    data = copy(trace)    
+    addon_size = collect(size(trace))
+    addon_size[dims] = n_add
+    addon = zeros(addon_size...)
+    if position == :post
+        data.data_array = [trace.data_array addon]
+    elseif position == :pre
+        data.data_array = [addon trace.data_array]
+    end
+    return data
 end
+
+function pad!(trace::NeuroTrace{T}, n_add::Int64; position::Symbol = :post, dims::Int64 = 2, val::T = 0.0) where T
+    addon_size = collect(size(trace))
+    addon_size[dims] = n_add
+    addon = fill(val, addon_size...)
+    if position == :post
+        trace.data_array = [trace.data_array addon]
+    elseif position == :pre
+        trace.data_array = [addon trace.data_array]
+    end
+end
+
+function chop(trace::NeuroTrace, n_chop::Int64; position::Symbol = :post, dims::Int64 = 2) 
+    data = copy(trace)
+    resize_size = collect(size(trace))
+    resize_size[dims] = (size(trace, dims)-n_chop)
+    resize_size = map(x -> 1:x, resize_size)
+    data.data_array = data.data_array[resize_size...]
+    return data
+end
+
+function chop!(trace::NeuroTrace, n_chop::Int64; position::Symbol = :post, dims::Int64 = 2) 
+    resize_size = collect(size(trace))
+    resize_size[dims] = (size(trace, dims)-n_chop)
+    resize_size = map(x -> 1:x, resize_size)
+    trace.data_array = trace.data_array[resize_size...]
+end
+
 
 minimum(trace::NeuroTrace; kwargs...) = minimum(trace.data_array; kwargs...)
 maximum(trace::NeuroTrace; kwargs...) = maximum(trace.data_array; kwargs...)
@@ -402,37 +439,66 @@ The files in path array or super folder are concatenated into a single NeuroTrac
     - post_pad will add zeros at the end of a data array that is too short
     - pre_chop will remove beginning datapoints of a data array that is too long
     - post_chop will remove end datapoints of a data array that is too long
+    - auto mode will will select a mode for you
+        - If a majority of arrays are longer, it will pad the shorter ones
+        - If a majority of arrays are shorter, it will chop the longer ones
 """
 
-function concat(data::NeuroTrace{T}, data_add::NeuroTrace{T}; mode = :post_pad, avg_swps = true) where T
+function concat(data::NeuroTrace{T}, data_add::NeuroTrace{T}; mode = :pad, position = :post, avg_swps = true) where T
     new_data = copy(data)
-    if size(data,2) == size(data_add,2)
-        if avg_swps == true && size(data_add,1) > 1
-            avg_data_added = average_sweeps(data_add)
-            push!(new_data, avg_data_add)
-        else
-            push!(new_data, data_add)
+    if size(data,2) > size(data_add,2)
+        println("Original data larger $(size(data,2)) > $(size(data_add,2))")
+        n_vals = abs(size(data,2) - size(data_add,2))
+        if mode == :pad
+            pad!(data_add, n_vals; position = position)
+        elseif mode == :chop
+            chop!(data, n_vals; position = position)
         end
-    elseif size(data,2) > size(data_add,2)
-        pad(data_add, 10)
     elseif size(data,2) < size(data_add,2)
-        pad(data_add, 10)
+        println("Original data smaller $(size(data,2)) < $(size(data_add,2))")
+        n_vals = abs(size(data,2) - size(data_add,2))
+        if mode == :pad
+            pad!(data, n_vals; position = position)
+        elseif mode == :chop
+            chop!(data_add, n_vals; position = position)
+        end
     end
+
+    if avg_swps == true && size(data_add,1) > 1
+        avg_data_added = average_sweeps(data_add)
+        push!(new_data, avg_data_add)
+    else
+        push!(new_data, data_add)
+    end
+
     return new_data
 end
 
-function concat!(data::NeuroTrace{T}, data_add::NeuroTrace{T}; mode = :post_pad, avg_swps = true) where T
-    if size(data,2) == size(data_add,2)
-        if avg_swps == true && size(data_add,1) > 1
-            avg_data_added = average_sweeps(data_add)
-            push!(data, avg_data_add)
-        else
-            push!(data, data_add)
+function concat!(data::NeuroTrace{T}, data_add::NeuroTrace{T}; mode = :pad, position = :post, avg_swps = true) where T
+    if size(data,2) > size(data_add,2)
+        #println("Original data larger $(size(data,2)) > $(size(data_add,2))")
+        n_vals = abs(size(data,2) - size(data_add,2))
+        if mode == :pad
+            pad!(data_add, n_vals; position = position)
+        elseif mode == :chop
+            chop!(data, n_vals; position = position)
         end
-    elseif size(data,2) > size(data_add,2)
-        pad(data_add, 10)
     elseif size(data,2) < size(data_add,2)
-        pad(data_add, 10)
+        #println("Original data smaller $(size(data,2)) < $(size(data_add,2))")
+        n_vals = abs(size(data,2) - size(data_add,2))
+        if mode == :pad
+            pad!(data, n_vals; position = position)
+        elseif mode == :chop
+            chop!(data_add, n_vals; position = position)
+        end
+    end
+
+    if avg_swps == true && size(data_add,1) > 1
+        avg_data_added = average_sweeps(data_add)
+        push!(data, avg_data_add)
+    else
+        #If you one or more sweeps to add in the second trace, this adds all of them
+        push!(data, data_add)
     end
 end
 
