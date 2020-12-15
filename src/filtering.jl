@@ -212,12 +212,12 @@ function average_sweeps(trace::NeuroTrace)
     
     data = copy(trace)
     for ch in 1:size(trace,3)
-        data[:,:,ch] .= sum(trace[:,:,ch], dims = 1)/n_swps
+        data[:,:,ch] .= sum(trace[:,:,ch], dims = 1)/size(trace,1)
     end
     return data
 end
 
-average_sweeps!(trace::NeuroTrace) = trace.data_array = sum(trace, dims = 1)/n_swps  
+average_sweeps!(trace::NeuroTrace) = trace.data_array = sum(trace, dims = 1)/size(trace,1) 
 
 function normalize(trace::NeuroTrace; rng = (-1,0))
     data = copy(trace)
