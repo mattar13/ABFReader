@@ -9,10 +9,11 @@ println("Test 0: Package properly exported")
 target_path1 = "test\\to_filter.abf"
 target_path2 = "test\\to_analyze.abf"
 data1 = extract_abf(target_path1); #Extract the data for filtering
-data2 = extract_abf(target_path2; stim_ch = -1, swps = -1, chs = -1); #Extract the data for concatenation analysis
+data2 = extract_abf(target_path2; stim_ch = -1, swps = -1, chs = [1,2,3]); #Extract the data for concatenation analysis
 println("Test 1: File extraction works")
 
 #%% Test filtering functions that are not inline
+data_short = truncate_data(data1)
 drift_data1 = baseline_cancel(data1; mode = :slope) #Cancel drift
 baseline_data1 = baseline_cancel(drift_data1; mode = :mean) #Baseline data
 filter_data1 = lowpass_filter(baseline_data1) #Lowpass filter using a 40hz 8-pole filter
@@ -45,9 +46,15 @@ println("Test 4: Data analysis works")
 plot(data1, stim_plot = :include)
 println("Test 5: Plotting for single traces works")
 
-#%% Practice file concatenation 
-concat_path = "D:\\Data\\ERG\\Gnat\\"
-paths = (concat_path |> parse_abf)[65:75]
+#%% Testing file concatenation
+#Concatenate two files
+concat_data = concat([target_path2, target_path1])
+concat!(concat_data, data1; mode = :pad)
+concat!(concat_data, data2; mode = :pad)
+concat!(concat_data, data2; mode = :pad, avg_swps = false)
+println("Test 6: Concatenation works")
+
+#%% Practice Pepperburg analysis
 #%% Sandbox area
 P30_Green_I = [
     0.3141322
