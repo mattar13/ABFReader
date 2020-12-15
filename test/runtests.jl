@@ -9,7 +9,7 @@ println("Test 0: Package properly exported")
 target_path1 = "test\\to_filter.abf"
 target_path2 = "test\\to_analyze.abf"
 data1 = extract_abf(target_path1); #Extract the data for filtering
-data2 = extract_abf(target_path2); #Extract the data for concatenation analysis
+data2 = extract_abf(target_path2; stim_ch = -1, swps = -1, chs = -1); #Extract the data for concatenation analysis
 println("Test 1: File extraction works")
 
 #%% Test filtering functions that are not inline
@@ -26,10 +26,11 @@ println("Test 2: All filtering functions work")
 baseline_cancel!(data1; mode = :slope, region = :prestim) #Cancel drift
 baseline_cancel!(data1; mode = :mean, region = :prestim) #Baseline data
 #Filtering concatenated files
-baseline_cancel!(data2; mode = :slope, region = :prestim) #Cancel drift for concatenation
-baseline_cancel!(data2; mode = :mean, region = :prestim) #Baseline data for concatenation
+baseline_cancel!(data2; mode = :slope, region = (0.0,10.0)) #Cancel drift for concatenation
+baseline_cancel!(data2; mode = :mean, region = (0.0,10.0)) #Baseline data for concatenation
 lowpass_filter!(data1) #Lowpass filter using a 40hz 8-pole filter
 cwt_filter!(data1) #Use a continuous wavelet transform to remove noise, but keep time series info
+cwt_filter(data2)
 average_sweeps!(data1)
 normalize!(data1)
 println("Test 3: All inline filtering functions work")
@@ -47,7 +48,6 @@ println("Test 5: Plotting for single traces works")
 #%% Practice file concatenation 
 concat_path = "D:\\Data\\ERG\\Gnat\\"
 paths = (concat_path |> parse_abf)[65:75]
-
 #%% Sandbox area
 P30_Green_I = [
     0.3141322

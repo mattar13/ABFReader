@@ -127,7 +127,7 @@ mutable struct NeuroTrace{T}
     chUnits::Array{String, 1}
     labels::Array{String, 1}
     stim_ch::Union{String, Int64}
-    filename::String
+    filename::Array{String,1}
 end
 
 import Base: size, length, getindex, setindex, sum, copy, maximum, minimum, push!
@@ -140,7 +140,36 @@ length(trace::NeuroTrace) = size(trace,2)
  
 #Extending get index for NeuroTrace
 getindex(trace::NeuroTrace, I...) = trace.data_array[I...]
-setindex(trace::NeuroTrace, v, I...) = trace.data_array[I...] .= v
+setindex!(trace::NeuroTrace, v, I...) = trace.data_array[I...] .= v
+
+#This function allows you to enter in a timestamp and get the data value relating to it
+function getindex(trace::NeuroTrace, timestamp::Float64) 
+    if timestamp > trace.t[end]
+        trace[:, end, :]
+    else
+        return trace[:, round(Int, timestamp/trace.dt)+1, :]
+    end
+end
+
+function getindex(trace::NeuroTrace, timestamp_rng::StepRangeLen{Float64}) 
+    println(timestamp_rng)
+    if timestamp_rng[1] == 0.0
+        start_idx = 1
+    else
+        start_idx = round(Int, timestamp_rng[1]/trace.dt) + 1
+    end
+    
+    println(trace.t[end])
+    if timestamp_rng[2] > trace.t[end]
+        end_idx = length(trace.t)
+    else
+        end_idx = round(Int, timestamp_rng[2]/trace.dt) + 1
+    end
+    println(start_idx)
+    println(end_idx)
+
+    return trace[:, start_idx:end_idx, :]
+end
 
 """
 This function pushes traces to the datafile
@@ -172,7 +201,10 @@ function push!(nt::NeuroTrace{T}, item::AbstractArray{T}; new_name = "Unnamed") 
     end
 end
 
-push!(nt_push_to::NeuroTrace, nt_added::NeuroTrace) = push!(nt_push_to, nt_added.data_array)
+function push!(nt_push_to::NeuroTrace, nt_added::NeuroTrace) 
+    println(nt_added.filename)
+    push!(nt_push_to, nt_added.data_array)
+end
 
 function minimum(nt::NeuroTrace; dims::Int64 = -1)
     if dims == -1
@@ -339,7 +371,7 @@ function extract_abf(::Type{T}, abf_path::String; stim_ch = 3, swps = -1, chs = 
         end
         data_array[swp_idx, :, ch_idx] = data
     end
-    NeuroTrace{T}(t, data_array, date_collected, tUnits, dt, chNames, chUnits, labels, stim_ch, full_path)
+    NeuroTrace{T}(t, data_array, date_collected, tUnits, dt, chNames, chUnits, labels, stim_ch, [full_path])
 end
 
 extract_abf(abf_path::String ; kwargs...) = extract_abf(Float64, abf_path ; kwargs...)
@@ -351,15 +383,14 @@ This function truncates the data based on the amount of time.
 TODO: we need to add a section in here for changing the tscale
 """
 function truncate_data(trace::NeuroTrace; t_eff = 0.5, t_cutoff = 3.0)
-    dt = trace.dt
+    data = copy(trace)
     #Search for the stimulus. if there is no stimulus, then just set the stim to 0.0
     t_stim_start, t_stim_end = findstimRng(trace)
-	t_start = t_stim_start > t_eff ? t_stim_start - (t_eff/dt) |> Int64 : 0.0
-	t_end = t_stim_start + (t_cutoff/dt) |> Int64
-    new_obj = copy(trace)
-    new_obj.t = trace.t[t_start:t_end].- (trace.t[t_start] + t_eff)
-    new_obj.data_array = trace.data_array[:, t_start:t_end, :] 
-    return new_obj
+	t_start = t_stim_start > t_eff ? t_stim_start - (t_eff/trace.dt) |> Int64 : 1
+	t_end = t_stim_start + (t_cutoff/trace.dt) |> Int64
+    data.t = trace.t[t_start:t_end] .- (trace.t[t_start] + t_eff)
+    data.data_array = trace.data_array[swp, t_start:t_end, ch]
+    return data
 end
 
 function truncate_data!(trace::NeuroTrace; t_eff = 0.5, t_cutoff = 3.0)
@@ -380,8 +411,13 @@ The files in path array or super folder are concatenated into a single NeuroTrac
     - pre_chop will remove beginning datapoints of a data array that is too long
     - post_chop will remove end datapoints of a data array that is too long
 """
-function concat(path_arr::Array{String,1}; mode = :post_pad)
-    
+function concat(path_arr::Array{String,1}; mode = :post_pad, extract_args...)
+    data = extract_abf(path_arr[1], extract_args...)
+    println(data |> size)
+    for path in path_arr[2:end]
+        push!(data , extract_abf(path, extract_args...))
+        println(data |> size)
+    end
 end
 
 concat(superfolder::String; kwargs...) = concat(parse_abf(superfolder); kwargs ...)
