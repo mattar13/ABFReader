@@ -494,7 +494,7 @@ function concat!(data::NeuroTrace{T}, data_add::NeuroTrace{T}; mode = :pad, posi
     end
 
     if avg_swps == true && size(data_add,1) > 1
-        avg_data_added = average_sweeps(data_add)
+        avg_data_add = average_sweeps(data_add)
         push!(data, avg_data_add)
     else
         #If you one or more sweeps to add in the second trace, this adds all of them
@@ -513,6 +513,7 @@ function concat(path_arr::Array{String,1};  kwargs...)
 end
 
 concat(superfolder::String; kwargs...) = concat(parse_abf(superfolder); kwargs ...)
+
 """
 This function opens the .abf file in clampfit if it is installed
 """
