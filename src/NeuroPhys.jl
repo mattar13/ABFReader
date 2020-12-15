@@ -17,7 +17,7 @@ export NeuroTrace, getchannel, getsweep, getstim, findstimRng
 export parse_abf, extract_abf, number_extractor, concat, filename_extractor
 export eachchannel, eachsweep
 export truncate_data, truncate_data!
-export concat
+export concat, concat!
 
 
 #filtering are any functions that return a NeuroTrace file and alter the old one
