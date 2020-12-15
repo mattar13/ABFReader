@@ -25,29 +25,28 @@ function baseline_cancel(trace::NeuroTrace; mode::Symbol = :mean, region = :pres
         rng_end = findstimRng(trace)[1]
     end
 
-    n_swps, n_data, n_chs = size(trace)
     data = copy(trace)
     if mode == :mean
-        for swp in 1:n_swps
-            for ch in 1:n_chs
+        for swp in 1:size(trace,1)
+            for ch in 1:size(trace,3)
                 #never adjust the stim
                 if ch != trace.stim_ch
                     baseline_adjust = sum(trace[swp, rng_begin:rng_end, ch])/(rng_end-rng_begin)
-                    data[swp,:, ch] = trace.data_array[swp,:,ch] .- baseline_adjust
+                    data[swp,:, ch] .= trace.data_array[swp,:,ch] .- baseline_adjust
                 else
-                    data[swp,:,ch] = trace[swp,:,ch]
+                    data[swp,:,ch] .= trace[swp,:,ch]
                 end
             end
         end
     elseif mode == :slope
-		for swp in 1:n_swps
-            for ch in 1:n_chs
+		for swp in 1:size(trace,1)
+            for ch in 1:size(trace,3)
                 #never adjust the stim
                 if ch != trace.stim_ch
                     pfit = Polynomials.fit(trace.t[rng_begin:rng_end], trace[swp, rng_begin:rng_end , ch], 1)
-                    data[swp, :, ch] = trace[swp, :, ch] - pfit.(trace.t)
+                    data[swp, :, ch] .= trace[swp, :, ch] - pfit.(trace.t)
                 else
-                    data[swp,:,ch] = trace[swp,:,ch]
+                    data[swp,:,ch] .= trace[swp,:,ch]
                 end
             end
         end
@@ -76,25 +75,25 @@ function baseline_cancel!(trace::NeuroTrace; mode::Symbol = :mean, region = :pre
     else
         throw(error("Improper region specifications"))
     end
-    n_swps, n_data, n_chs = size(trace)
+
     if mode == :mean
-        for swp in 1:n_swps
-            for ch in 1:n_chs
+        for swp in 1:size(trace,1)
+            for ch in 1size(trace,3)
                 #never adjust the stim
                 if ch != trace.stim_ch
                     baseline_adjust = sum(trace[swp, rng_begin:rng_end, ch])/(rng_end-rng_begin)
-                    trace[swp,:, ch] = trace.data_array[swp,:,ch] .- baseline_adjust
+                    trace[swp,:, ch] .= trace.data_array[swp,:,ch] .- baseline_adjust
                 end
             end
         end
     elseif mode == :slope
-		 for swp in 1:n_swps
-            for ch in 1:n_chs
+		 for swp in 1:size(trace,1)
+            for ch in 1size(trace,3)
                 #never adjust the stim
                 if ch != trace.stim_ch
                     pfit = Polynomials.fit(trace.t[rng_begin:rng_end], trace[swp, rng_begin:rng_end , ch], 1)
                     #println(ch + pfit.(trace.t) |> size)
-                    trace[swp, :, ch] = trace[swp, :, ch] - pfit.(trace.t)
+                    trace[swp, :, ch] .= trace[swp, :, ch] - pfit.(trace.t)
                 end
             end
         end
@@ -105,18 +104,18 @@ end
 This function applies a n-pole lowpass filter
 """
 function lowpass_filter(trace::NeuroTrace; freq = 40.0, pole = 8)
-    n_swps, n_data, n_chs = size(trace)
+    
     responsetype = Lowpass(freq; fs =  1/trace.dt)
     designmethod = Butterworth(8)
     digital_filter = digitalfilter(responsetype, designmethod)
     data = copy(trace)
-    for swp in 1:n_swps
-        for ch in 1:n_chs
+    for swp in 1:size(trace,1)
+        for ch in 1:size(trace,3)
             #never adjust the stim
             if ch != trace.stim_ch
-                data[swp,:,ch] = filt(digital_filter, trace[swp, :, ch])
+                data[swp,:,ch] .= filt(digital_filter, trace[swp, :, ch])
             else
-                data[swp,:,ch] = trace[swp,:,ch]
+                data[swp,:,ch] .= trace[swp,:,ch]
             end
         end
     end
@@ -124,15 +123,15 @@ function lowpass_filter(trace::NeuroTrace; freq = 40.0, pole = 8)
 end
 
 function lowpass_filter!(trace::NeuroTrace; freq = 40.0, pole = 8)
-    n_swps, n_data, n_chs = size(trace)
+    
     responsetype = Lowpass(freq; fs =  1/trace.dt)
     designmethod = Butterworth(8)
     digital_filter = digitalfilter(responsetype, designmethod)
-    for swp in 1:n_swps
-        for ch in 1:n_chs
+    for swp in 1:size(trace,1)
+        for ch in 1:size(trace,3)
             #never adjust the stim
             if ch != trace.stim_ch
-                trace[swp,:,ch] = filt(digital_filter, trace[swp, :, ch])
+                trace[swp,:,ch] .= filt(digital_filter, trace[swp, :, ch])
             end
         end
     end
@@ -141,18 +140,18 @@ end
 lowpass_filter(trace::NeuroTrace, freq; pole = 8) = lowpass_filter(trace; freq = freq, pole = pole)
 
 function notch_filter(trace::NeuroTrace; pole = 8, center = 60.0, std = 0.1)
-    n_swps, n_data, n_chs = size(trace)
+    
     responsetype = Bandstop(center-std, center+std; fs = 1/trace.dt)
 	designmethod = Butterworth(8)
 	digital_filter = digitalfilter(responsetype, designmethod)
     data = copy(trace)
-    for swp in 1:n_swps
-        for ch in 1:n_chs
+    for swp in 1:size(trace,1)
+        for ch in 1:size(trace,3)
             #never adjust the stim
             if ch != trace.stim_ch
-                data[swp,:,ch] = filt(digital_filter, trace[swp, :, ch])
+                data[swp,:,ch] .= filt(digital_filter, trace[swp, :, ch])
             else
-                data[swp,:,ch] = trace[swp,:,ch]
+                data[swp,:,ch] .= trace[swp,:,ch]
             end
         end
     end
@@ -160,33 +159,33 @@ function notch_filter(trace::NeuroTrace; pole = 8, center = 60.0, std = 0.1)
 end
 
 function notch_filter!(trace::NeuroTrace; pole = 8, center = 60.0, std = 0.1)
-    n_swps, n_data, n_chs = size(trace)
+    
     responsetype = Bandstop(center-std, center+std; fs = 1/trace.dt)
 	designmethod = Butterworth(8)
 	digital_filter = digitalfilter(responsetype, designmethod)
-    for swp in 1:n_swps
-        for ch in 1:n_chs
+    for swp in 1:size(trace,1)
+        for ch in 1:size(trace,3)
             #never adjust the stim
             if ch != trace.stim_ch
-                trace[swp,:,ch] = filt(digital_filter, trace[swp, :, ch])
+                trace[swp,:,ch] .= filt(digital_filter, trace[swp, :, ch])
             end
         end
     end
 end
 
 function cwt_filter(trace::NeuroTrace; wave = WT.dog2, periods = 1:9, return_cwt = true)
-    n_swps, n_data, n_chs = size(trace)
+    
     data = similar(trace.data_array)
     stim_begin, stim_end = findstimRng(trace)
     data = copy(trace)
-    for swp in 1:n_swps
-        for ch in 1:n_chs
+    for swp in 1:size(trace,1)
+        for ch in 1:size(trace,3)
             #never adjust the stim
             if ch != trace.stim_ch
                 y = cwt(trace[swp, :, ch], wavelet(wave))
-                data[swp,:,ch] = sum(real.(y[:,periods]))/length(y);
+                data[swp,:,ch] .= sum(real.(y[:,periods]))/length(y);
             else
-                data[swp,:,ch] = trace[swp,:,ch]
+                data[swp,:,ch] .= trace[swp,:,ch]
             end
         end
     end
@@ -194,13 +193,13 @@ function cwt_filter(trace::NeuroTrace; wave = WT.dog2, periods = 1:9, return_cwt
 end
 
 function cwt_filter!(trace::NeuroTrace; wave = WT.dog2, periods = 1:9)
-    n_swps, n_data, n_chs = size(trace)
-    for swp in 1:n_swps
-        for ch in 1:n_chs
+    
+    for swp in 1:size(trace,1)
+        for ch in 1:size(trace,3)
             #never adjust the stim
             if ch != trace.stim_ch
                 y = cwt(trace[swp, :, ch], wavelet(wave))
-                trace[swp,:,ch] = sum(real.(y[:,periods]))/length(y);
+                trace[swp,:,ch] .= sum(real.(y[:,periods]))/length(y);
             end
         end
     end
@@ -210,30 +209,38 @@ end
 If the traces contain multiple runs, then this file averages the data
 """
 function average_sweeps(trace::NeuroTrace)
-    n_swps, n_data, n_chs = size(trace)
+    
     data = copy(trace)
-    for ch in 1:n_chs
-        data[:,:,ch] = sum(trace[:,:,ch], dims = 1)/n_swps
+    for ch in 1:size(trace,3)
+        data[:,:,ch] .= sum(trace[:,:,ch], dims = 1)/n_swps
     end
     return data
 end
 
-average_sweeps!(nt::NeuroTrace) = nt.data_array = sum(nt, dims = 1)/size(nt,1)
+average_sweeps!(trace::NeuroTrace) = trace.data_array = sum(trace, dims = 1)/n_swps  
 
 function normalize(trace::NeuroTrace; rng = (-1,0))
-    not_stim = findall(x -> x != trace.stim_ch, 1:size(trace,3))
-    x = trace.data_array[:,:,not_stim]
-    x = (x ./ minimum(x, dims = 2))
-    new_obj = copy(trace)
-    new_obj.data_array = x
-    return new_obj
+    data = copy(trace)
+    for swp in 1:size(trace,1)
+        for ch in 1:size(trace,3)
+            #never adjust the stim
+            if ch != trace.stim_ch
+                data[swp,:,ch] .= (trace[swp,:,ch] ./ minimum(trace[swp,:,ch], dims = 2))
+            end
+        end
+    end
+    return data
 end
 
 function normalize!(trace::NeuroTrace; rng = (-1,0))
-    not_stim = findall(x -> x != trace.stim_ch, 1:size(trace,3))
-    x = trace.data_array[:,:,not_stim]
-    x = (x ./ minimum(x, dims = 2))
-    trace.data_array[:,:,not_stim] = -x
+    for swp in 1:size(trace,1)
+        for ch in 1:size(trace,3)
+            #never adjust the stim
+            if ch != trace.stim_ch
+                trace[swp,:,ch] .= (trace[swp,:,ch] ./ minimum(trace[swp,:,ch], dims = 2))
+            end
+        end
+    end
 end
 
 function fft_spectrum(t, data::Array{T, 1}) where T <: Real
