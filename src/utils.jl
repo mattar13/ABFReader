@@ -291,9 +291,9 @@ This gets the stimulus trace only if it has been set
 function getstim(trace::NeuroTrace; threshold::Float64 = 0.2) 
     if trace.stim_ch != -1 
         if threshold != nothing
-            return vec(getchannel(trace, trace.stim_ch) .> threshold)
+            return trace[:, :, trace.stim_ch] .> threshold
         else
-            return vec(getchannel(trace, trace.stim_ch))
+            return trace[:, :, trace.stim_ch] 
         end
     else
         println("Stim not set")
@@ -304,18 +304,32 @@ end
 This returns the indexes where the stimulus is occurring
 """
 function findstimRng(trace::NeuroTrace) 
+    stim_rng = zeros(Int, size(trace,1), 2)
     if trace.stim_ch == -1
         #println("Stim not set")
-        return (0, 1)
+        stim_rng[:,2] .= 1.0
     else
         stim_trace = getstim(trace; threshold = 0.2)
         stim_points = findall(x -> x == true, stim_trace)
-        if any(stim_trace) 
-            return (stim_points[1], stim_points[end])
+        if !isempty(stim_points)
+            for I in stim_points
+                swp = I[1]
+                val = I[2]
+                if stim_rng[swp, 1] == 0.0
+                    stim_rng[swp, 1] = val
+                elseif stim_rng[swp, 1] < val
+                    stim_rng[swp, 2] = val
+                elseif stim_rng[swp, 1] > val
+                    #There was an order error, swap the two values
+                    stim_rng[swp, 2] = stim_rng[swp, 1]
+                    stim_rng[swp, 1] = val
+                end
+            end
         else
-            return (0, 1)
+            stim_rng[:,2] .= 1.0
         end
     end
+    stim_rng
 end
 
 """
@@ -438,10 +452,10 @@ The files in path array or super folder are concatenated into a single NeuroTrac
         - If a majority of arrays are shorter, it will chop the longer ones
 """
 
-function concat(data::NeuroTrace{T}, data_add::NeuroTrace{T}; mode = :pad, position = :post, avg_swps = true) where T
+function concat(data::NeuroTrace{T}, data_add::NeuroTrace{T}; mode = :pad, position = :post, avg_swps = true, kwargs...) where T
     new_data = copy(data)
     if size(data,2) > size(data_add,2)
-        println("Original data larger $(size(data,2)) > $(size(data_add,2))")
+        #println("Original data larger $(size(data,2)) > $(size(data_add,2))")
         n_vals = abs(size(data,2) - size(data_add,2))
         if mode == :pad
             pad!(data_add, n_vals; position = position)
@@ -449,7 +463,7 @@ function concat(data::NeuroTrace{T}, data_add::NeuroTrace{T}; mode = :pad, posit
             chop!(data, n_vals; position = position)
         end
     elseif size(data,2) < size(data_add,2)
-        println("Original data smaller $(size(data,2)) < $(size(data_add,2))")
+        #println("Original data smaller $(size(data,2)) < $(size(data_add,2))")
         n_vals = abs(size(data,2) - size(data_add,2))
         if mode == :pad
             pad!(data, n_vals; position = position)
@@ -468,7 +482,7 @@ function concat(data::NeuroTrace{T}, data_add::NeuroTrace{T}; mode = :pad, posit
     return new_data
 end
 
-function concat!(data::NeuroTrace{T}, data_add::NeuroTrace{T}; mode = :pad, position = :post, avg_swps = true) where T
+function concat!(data::NeuroTrace{T}, data_add::NeuroTrace{T}; mode = :pad, position = :post, avg_swps = true, kwargs...) where T
     if size(data,2) > size(data_add,2)
         #println("Original data larger $(size(data,2)) > $(size(data_add,2))")
         n_vals = abs(size(data,2) - size(data_add,2))
@@ -496,12 +510,11 @@ function concat!(data::NeuroTrace{T}, data_add::NeuroTrace{T}; mode = :pad, posi
     end
 end
 
-function concat(path_arr::Array{String,1};  kwargs...)
+function concat(path_arr::Array{String,1}; kwargs...)
     data = extract_abf(path_arr[1], kwargs...)
     for path in path_arr[2:end]
         data_add = extract_abf(path, kwargs...)
-        concat!(data, data_add)
-        println(data |> size)
+        concat!(data, data_add; kwargs...)
     end
     return data
 end

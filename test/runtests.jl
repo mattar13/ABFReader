@@ -9,7 +9,7 @@ println("Test 0: Package properly exported")
 target_path1 = "test\\to_filter.abf"
 target_path2 = "test\\to_analyze.abf"
 data1 = extract_abf(target_path1); #Extract the data for filtering
-data2 = extract_abf(target_path2; stim_ch = -1, swps = -1, chs = [1,2,3]); #Extract the data for concatenation analysis
+data2 = extract_abf(target_path2; stim_ch = 3, swps = -1, chs = [1,3,5]); #Extract the data for concatenation analysis
 println("Test 1: File extraction works")
 
 #%% Test filtering functions that are not inline
@@ -26,9 +26,10 @@ println("Test 2: All filtering functions work")
 #Filtering individual trace files
 baseline_cancel!(data1; mode = :slope, region = :prestim) #Cancel drift
 baseline_cancel!(data1; mode = :mean, region = :prestim) #Baseline data
-#Filtering concatenated files
-baseline_cancel!(data2; mode = :slope, region = (0.0,10.0)) #Cancel drift for concatenation
-baseline_cancel!(data2; mode = :mean, region = (0.0,10.0)) #Baseline data for concatenation
+
+#Test on concatenated files
+baseline_cancel!(data2; mode = :slope, region = :prestim) #Cancel drift for concatenation
+baseline_cancel!(data2; mode = :mean, region = :prestim) #Baseline data for concatenation
 lowpass_filter!(data1) #Lowpass filter using a 40hz 8-pole filter
 cwt_filter!(data1) #Use a continuous wavelet transform to remove noise, but keep time series info
 cwt_filter(data2)
@@ -54,7 +55,15 @@ concat!(concat_data, data2; mode = :pad)
 concat!(concat_data, data2; mode = :pad, avg_swps = false)
 println("Test 6: Concatenation works")
 
+#%%
+rmaxes |> typeof
 #%% Practice Pepperburg analysis
+pepperburg_analysis(data2)
+#%%
+#findstimRng(data2)
+plot(data2)
+
+#%%
 #%% Sandbox area
 P30_Green_I = [
     0.3141322

@@ -45,7 +45,7 @@ This function uses a histogram method to find the saturation point.
     - In ERG traces, a short nose component is usually present in saturated values
     - Does this same function work for the Rmax of nonsaturated responses?
 """
-function saturated_response(nt::NeuroTrace; precision = 500, z = 0.0)
+function saturated_response(nt::NeuroTrace; precision = 500, z = 0.0, kwargs...)
     rmaxs = zeros(size(nt,1), size(nt,3))
     for swp in 1:size(nt, 1)
         for ch in 1:size(nt,3)
@@ -112,13 +112,19 @@ end
 #Pepperburg analysis
 """
 This function conducts a Pepperburg analysis on a single trace. 
+
+    Two dispatches are available. 
+    1) A rmax is provided, does not need to calculate rmaxes
+    2) No rmax is provided, so one is calculated
 """
-function pepperburg_analysis(trace::NeuroTrace{T}) where T
+function pepperburg_analysis(trace::NeuroTrace{T}, rmaxes::Array{T, 1}; kwargs...) where T
     if size(trace,1) == 1
         throw(error("Pepperburg will not work on single sweeps"))
     end
-        
+    println(rmaxes)
 end
+
+pepperburg_analysis(trace::NeuroTrace{T}; kwargs...) where T = pepperburg_analysis(trace, saturated_response(trace; kwargs...); kwargs...)    
 
 function old_ppbg(X::AbstractArray; dt = 5.0e-5, rank = 6, graphically = false, peak_args...)
     rmax = peak_finder(X; peak_args...)

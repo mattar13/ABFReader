@@ -10,13 +10,14 @@ This function plots by channel. This is the most basic functionality of the trac
 
     if stim_plot == :include
         layout := (size(nt,3)-1, 1)
-        if time_adjusted 
-            t_series = nt.t .- nt.t[findstimRng(nt)[end]]
-        else
-            t_series = nt.t
-        end
+
         for swp in 1:size(nt,1)
             for ch in 1:size(nt,3)-1
+                if time_adjusted 
+                    t_series = nt.t .- nt.t[findstimRng(nt)[swp, 1]]
+                else
+                    t_series = nt.t
+                end
                 xlabels = reshape(repeat([""], size(nt,3)-1), (1, size(nt,3)-1))
                 xlabels[end] = "Time ($(nt.tUnits))"
                 xguide := xlabels
@@ -36,6 +37,7 @@ This function plots by channel. This is the most basic functionality of the trac
                     seriestype := :vline
                     label := "Stimulus"
                     y := [0.0]
+                    yguide := "$(nt.chNames[ch])($(nt.chUnits[ch]))"
                     ()
                 end
             end
@@ -45,7 +47,7 @@ This function plots by channel. This is the most basic functionality of the trac
         for swp in 1:size(nt,1)
             for ch in 1:size(nt,3)
                 if time_adjusted 
-                    t_series = nt.t .- nt.t[findstimRng(nt)[end]]
+                    t_series = nt.t .- nt.t[findstimRng(nt)[swp, 1]]
                 else
                     t_series = nt.t
                 end
