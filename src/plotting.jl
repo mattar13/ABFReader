@@ -29,13 +29,13 @@ This function plots by channel. This is the most basic functionality of the trac
                     ()
                 end
                 @series begin
-                    #trng = findstimRng(nt) .* nt.dt
-                    #stim_duration = -(trng...) * 1000
                     subplot := ch
                     seriescolor := :yellow
                     linewidth := 2.0
                     seriestype := :vline
-                    label := "Stimulus"
+                    if swp == 1
+                        label := "Stimulus"
+                    end
                     y := [0.0]
                     yguide := "$(nt.chNames[ch])($(nt.chUnits[ch]))"
                     ()
