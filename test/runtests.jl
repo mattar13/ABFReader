@@ -26,7 +26,6 @@ println("Test 2: All filtering functions work")
 #Filtering individual trace files
 baseline_cancel!(data1; mode = :slope, region = :prestim) #Cancel drift
 baseline_cancel!(data1; mode = :mean, region = :prestim) #Baseline data
-
 #Test on concatenated files
 baseline_cancel!(data2; mode = :slope, region = :prestim) #Cancel drift for concatenation
 baseline_cancel!(data2; mode = :mean, region = :prestim) #Baseline data for concatenation
@@ -39,10 +38,15 @@ println("Test 3: All inline filtering functions work")
 
 #%% Test the analysis
 mins, maxes, means, stds = calculate_basic_stats(data1);
+truncate_data!(data2)
 rmaxes = saturated_response(data2)
 rdims = dim_response(data2, rmaxes)
+t_peak = time_to_peak(data2, rdims)
+t_dom = pepperburg_analysis(data2, rmaxes)
+ppbg_thresh = rmaxes .* 0.60;
+#This function will be helpful for plotting the intensity response curves
+responses = get_response(data2, rmaxes)
 println("Test 4: Data analysis works")
-
 #%% Test the plotting of the trace file
 plot(data1, stim_plot = :include)
 println("Test 5: Plotting for single traces works")
@@ -56,14 +60,17 @@ concat!(concat_data, data2; mode = :pad, avg_swps = false)
 println("Test 6: Concatenation works")
 
 #%%
-rmaxes |> typeof
-#%% Practice Pepperburg analysis
-pepperburg_analysis(data2)
-#%%
-#findstimRng(data2)
-plot(data2)
+p = plot(data2, labels = "", c = :black, lw = 2.0)
+hline!(p[1], [rmaxes[1]], c = :green, lw = 2.0, label = "Rmax")
+hline!(p[2], [rmaxes[2]], c = :green, lw = 2.0, label = "Rmax")
+hline!(p[1], [rdims[1]], c = :red, lw = 2.0, label = "Rdim")
+hline!(p[2], [rdims[2]], c = :red, lw = 2.0, label = "Rdim")
+vline!(p[1], [t_peak[1]], c = :blue, lw = 2.0, label = "Time to peak")
+vline!(p[2], [t_peak[2]], c = :blue, lw = 2.0, label = "Time to peak")
+plot!(p[1], t_dom[:,1], repeat([ppbg_thresh[1]], size(data2,1)), marker = :square, c = :grey, label = "Pepperburg", lw = 2.0)
+plot!(p[2], t_dom[:,2], repeat([ppbg_thresh[2]], size(data2,1)), marker = :square, c = :grey, label = "Pepperburg", lw = 2.0)
+p
 
-#%%
 #%% Sandbox area
 P30_Green_I = [
     0.3141322
