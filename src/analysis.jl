@@ -45,18 +45,18 @@ This function uses a histogram method to find the saturation point.
     - In ERG traces, a short nose component is usually present in saturated values
     - Does this same function work for the Rmax of nonsaturated responses?
 """
-function saturated_response(nt::NeuroTrace; precision = 500, z = 0.0, kwargs...)
-    rmaxs = zeros(size(nt,1), size(nt,3))
-    for swp in 1:size(nt, 1)
-        for ch in 1:size(nt,3)
-            trace = nt[swp, :, ch]
-            mean = sum(trace)/length(trace)
-            deviation = z*std(trace)
-            bins = LinRange(minimum(trace), mean-deviation, precision)
-            h = Distributions.fit(Histogram, trace, bins)
+function saturated_response(trace::NeuroTrace; precision = 500, z = 0.0, kwargs...)
+    rmaxs = zeros(size(trace,1), size(trace,3))
+    for swp in 1:size(trace, 1)
+        for ch in 1:size(trace,3)
+            data = trace[swp, :, ch]
+            mean = sum(data)/length(data)
+            deviation = z*std(data)
+            bins = LinRange(minimum(data), mean-deviation, precision)
+            h = Distributions.fit(Histogram, data, bins)
             edges = collect(h.edges...)[2:end]
             weights = h.weights
-            #Essentially we want the mode to be the 
+            
             rmaxs[swp, ch] = edges[argmax(weights)]
         end
     end
@@ -67,15 +67,15 @@ end
 This function only works on concatenated files with more than one trace
     Rmax argument should have the same number of sweeps and channels as the 
 """
-function dim_response(nt::NeuroTrace{T}, rmaxes::Array{T, 1}; rdim_percent = 0.15) where T
+function dim_response(trace::NeuroTrace{T}, rmaxes::Array{T, 1}; rdim_percent = 0.15) where T
     #We need
-    if size(nt,1) == 1
+    if size(trace,1) == 1
         throw(ErrorException("There is no sweeps to this file, and Rdim will not work"))
-    elseif size(nt,3) != size(rmaxes,1)
+    elseif size(trace,3) != size(rmaxes,1)
         throw(ErrorException("The number of rmaxes is not equal to the channels of the dataset"))
     else
         rdims_thresh = rmaxes .* rdim_percent
-        minima = minimum(nt, dims = 2)[:,1,:]
+        minima = minimum(trace, dims = 2)[:,1,:]
         #Check to see which global minimas are over the rdim threshold
         over_rdim = ((minima .> rdims_thresh').* -Inf)
         rdims = minima .+ over_rdim
@@ -88,25 +88,25 @@ function dim_response(nt::NeuroTrace{T}, rmaxes::Array{T, 1}; rdim_percent = 0.1
 end
 
 #This dispatch is for if there has been no rmax provided. 
-dim_response(nt::NeuroTrace; z = 0.0, rdim_percent = 0.15) = dim_response(nt, saturated_response(nt; z = z), rdim_percent = rdim_percent)
+dim_response(trace::NeuroTrace; z = 0.0, rdim_percent = 0.15) = dim_response(trace, saturated_response(trace; z = z), rdim_percent = rdim_percent)
 
 """
 This function calculates the time to peak using the dim response properties of the concatenated file
 """
-function time_to_peak(nt::NeuroTrace{T}, rdims::Array{T,1}) where T
-    minima = minimum(nt, dims = 2)[:,1,:]
+function time_to_peak(trace::NeuroTrace{T}, rdims::Array{T,1}) where T
+    minima = minimum(trace, dims = 2)[:,1,:]
     dim_traces = findall((minima .- rdims') .== 0.0)
-    return [nt.t[argmin(nt[I[1], :, I[2]])] for I in dim_traces] |> vec
+    return [trace.t[argmin(trace[I[1], :, I[2]])] for I in dim_traces] |> vec
 end
 
-function get_response(nt::NeuroTrace, rmaxes::Array{T,1}) where T
-    minima = minimum(nt, dims = 2)[:,1,:]
+function get_response(trace::NeuroTrace, rmaxes::Array{T,1}) where T
+    minima = minimum(trace, dims = 2)[:,1,:]
     responses = zeros(size(minima))
-    for swp in 1:size(nt,1), ch in 1:size(nt,3)
-        minima = minimum(nt[swp, :, ch]) 
+    for swp in 1:size(trace,1), ch in 1:size(trace,3)
+        minima = minimum(trace[swp, :, ch]) 
         responses[swp, ch] = minima < rmaxes[ch] ? rmaxes[ch] : minima
     end
-    responses 
+    responses[:, 1:end .!= trace.stim_ch] 
 end
 
 #Pepperburg analysis
@@ -117,36 +117,27 @@ This function conducts a Pepperburg analysis on a single trace.
     1) A rmax is provided, does not need to calculate rmaxes
     2) No rmax is provided, so one is calculated
 """
-function pepperburg_analysis(trace::NeuroTrace{T}, rmaxes::Array{T, 1}; kwargs...) where T
+function pepperburg_analysis(trace::NeuroTrace{T}, rmaxes::Array{T, 1}; recovery_percent = 0.60, kwargs...) where T
     if size(trace,1) == 1
         throw(error("Pepperburg will not work on single sweeps"))
     end
-    println(rmaxes)
+    r_rec = rmaxes .* recovery_percent
+    t_dom = zeros(size(trace,1), size(trace,3))
+    for swp in 1:size(trace,1)
+        for ch in 1:size(trace,3)
+            #We don't need to calculate this on stimulus channels
+            if ch != trace.stim_ch
+                not_recovered = findall(trace[swp, :, ch] .< r_rec[ch])
+                if isempty(not_recovered)
+                    #println("Trace never exceeded $(recovery_percent*100)% the Rmax")
+                    t_dom[swp, ch] = NaN
+                else
+                    t_dom[swp, ch] = trace.t[not_recovered[end]] - trace.t[findstimRng(trace)[swp, 1]]
+                end
+            end
+        end
+    end
+    t_dom[:, 1:end .!= trace.stim_ch]
 end
 
 pepperburg_analysis(trace::NeuroTrace{T}; kwargs...) where T = pepperburg_analysis(trace, saturated_response(trace; kwargs...); kwargs...)    
-
-function old_ppbg(X::AbstractArray; dt = 5.0e-5, rank = 6, graphically = false, peak_args...)
-    rmax = peak_finder(X; peak_args...)
-    if rmax !== nothing
-        #Now we need to find the values at 60% of the rmax found here (otherwise known as rank 6)
-        rmax_idx = findall(x -> round(x, digits = 4) < round(rmax, digits = 4), X)[end]
-        if length(rmax_idx) == 0
-            #println("this is a fucked B-wave that hits the Rmax, but never returns")
-            return nothing
-        end
-        rmax_idx = rmax_idx[end]
-        rmax_rank = rmax*(rank/10)
-        rridx = findall(x -> round(x, digits = 5) > round(rmax_rank, digits = 5), X)
-        rmax_rank_idx = rridx[rridx .> rmax_idx][1]
-        if graphically
-            return rmax, rmax_idx, rmax_rank, rmax_rank_idx
-        else
-            rmax_time = rmax_idx * dt
-            rmax_rank_time = rmax_rank_idx * dt
-            return rmax_rank_time - rmax_time
-        end
-    else
-        #return NaN
-    end
-end
