@@ -47,8 +47,10 @@ ppbg_thresh = rmaxes .* 0.60;
 #This function will be helpful for plotting the intensity response curves
 responses = get_response(data2, rmaxes)
 println("Test 4: Data analysis works")
+
 #%% Test the plotting of the trace file
-plot(data1, stim_plot = :include)
+fig1 = plot(data1, stim_plot = :include)
+savefig(fig1, "test\\test_figure1.png")
 println("Test 5: Plotting for single traces works")
 
 #%% Testing file concatenation
@@ -60,16 +62,16 @@ concat!(concat_data, data2; mode = :pad, avg_swps = false)
 println("Test 6: Concatenation works")
 
 #%%
-p = plot(data2, labels = "", c = :black, lw = 2.0)
-hline!(p[1], [rmaxes[1]], c = :green, lw = 2.0, label = "Rmax")
-hline!(p[2], [rmaxes[2]], c = :green, lw = 2.0, label = "Rmax")
-hline!(p[1], [rdims[1]], c = :red, lw = 2.0, label = "Rdim")
-hline!(p[2], [rdims[2]], c = :red, lw = 2.0, label = "Rdim")
-vline!(p[1], [t_peak[1]], c = :blue, lw = 2.0, label = "Time to peak")
-vline!(p[2], [t_peak[2]], c = :blue, lw = 2.0, label = "Time to peak")
-plot!(p[1], t_dom[:,1], repeat([ppbg_thresh[1]], size(data2,1)), marker = :square, c = :grey, label = "Pepperburg", lw = 2.0)
-plot!(p[2], t_dom[:,2], repeat([ppbg_thresh[2]], size(data2,1)), marker = :square, c = :grey, label = "Pepperburg", lw = 2.0)
-p
+fig2 = plot(data2, labels = "", c = :black, lw = 2.0)
+hline!(fig2[1], [rmaxes[1]], c = :green, lw = 2.0, label = "Rmax")
+hline!(fig2[2], [rmaxes[2]], c = :green, lw = 2.0, label = "Rmax")
+hline!(fig2[1], [rdims[1]], c = :red, lw = 2.0, label = "Rdim")
+hline!(fig2[2], [rdims[2]], c = :red, lw = 2.0, label = "Rdim")
+vline!(fig2[1], [t_peak[1]], c = :blue, lw = 2.0, label = "Time to peak")
+vline!(fig2[2], [t_peak[2]], c = :blue, lw = 2.0, label = "Time to peak")
+plot!(fig2[1], t_dom[:,1], repeat([ppbg_thresh[1]], size(data2,1)), marker = :square, c = :grey, label = "Pepperburg", lw = 2.0)
+plot!(fig2[2], t_dom[:,2], repeat([ppbg_thresh[2]], size(data2,1)), marker = :square, c = :grey, label = "Pepperburg", lw = 2.0)
+savefig(fig2, "test\\test_figure2.png")
 
 #%% Sandbox area
 P30_Green_I = [
