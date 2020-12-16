@@ -304,10 +304,10 @@ end
 This returns the indexes where the stimulus is occurring
 """
 function findstimRng(trace::NeuroTrace) 
-    stim_rng = zeros(Int, size(trace,1), 2)
+    stim_rng = ones(Int, size(trace,1), 2)
     if trace.stim_ch == -1
         #println("Stim not set")
-        stim_rng[:,2] .= 1.0
+        nothing
     else
         stim_trace = getstim(trace; threshold = 0.2)
         stim_points = findall(x -> x == true, stim_trace)
@@ -326,7 +326,7 @@ function findstimRng(trace::NeuroTrace)
                 end
             end
         else
-            stim_rng[:,2] .= 1.0
+            nothing
         end
     end
     stim_rng
