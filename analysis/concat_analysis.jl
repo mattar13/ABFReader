@@ -27,6 +27,9 @@ md"
 # ╔═╡ d194c94e-3427-11eb-20d0-33898e117d26
 target_folder = "D:\\Data\\ERG\\Data from paul\\"
 
+# ╔═╡ 42969a50-3fec-11eb-01af-ade8f0ff92cb
+paths = target_folder |> parse_abf
+
 # ╔═╡ 463e82d0-3a3d-11eb-35e7-29a03be84623
 begin
 	P14_I = [
@@ -87,14 +90,126 @@ begin
 
 end
 
+# ╔═╡ 2f094322-3fec-11eb-07ca-ed65e0acdbcd
+begin
+	data_analysis = DataFrame(Path = paths)
+	for row in eachrow(data_analysis)
+		path = row[:Path]
+		title = splitpath(path)[end][1:end-4]
+		#println(title)
+		data = try
+			extract_abf(path; stim_ch = 3, swps = -1)
+		catch 
+			#println("a stimulus file is not included")
+			extract_abf(path; stim_ch = -1, swps = -1, chs = -1)
+		end
+		
+		truncate_data!(data; t_eff = 0.0)
+		
+		#Complete analysis
+		rmaxes = saturated_response(data)
+		rdims = dim_response(data, rmaxes)
+		t_peak = time_to_peak(data, rdims)
+		t_dom = pepperburg_analysis(data, rmaxes)
+		
+		println(rmaxes)
+	end
+end
+
+# ╔═╡ 0a8c6cc0-3fce-11eb-19e5-871006153f60
+exclude(A, exclusions) = A[filter(x -> !(x ∈ exclusions), eachindex(A))]
+
 # ╔═╡ 7c0eb970-34ca-11eb-0fc2-9dd946348bd1
 begin
 	#This is all the paths for which we need data
+	P10_green = "D:\\Data\\ERG\\Data from Paul\\P10 (NR) rods_cones_12\\Green\\a-waves" 
+	#P10_uv = 
 	P14_green = "D:\\Data\\ERG\\Data from Paul\\P14 (NR) rods_12\\Green\\a-waves"
-	#P14_uv = 
+	P14_uv = "D:\\Data\\ERG\\Data from Paul\\P14 (NR) rods_12\\UV\\a-waves"
 	P30_green = "D:\\Data\\ERG\\Data from Paul\\Adult (NR) rods_14\\Green\\a-waves"
 	P30_uv = "D:\\Data\\ERG\\Data from Paul\\Adult (NR) rods_14\\UV\\a-waves"
-end
+	
+end;
+
+# ╔═╡ 287df860-3fca-11eb-2e32-9da24a738abf
+begin
+	P10_Green_rmaxs = Float64[]
+	P10_Green_rdims = Float64[]
+	P10_Green_tpeak = Float64[]
+	P10_Green_paths = (P10_green |> parse_abf)
+	for path in P10_Green_paths
+		title = splitpath(path)[end][1:end-4]
+		println(title)
+		
+		data = try
+			extract_abf(path; stim_ch = 3, swps = -1)
+		catch 
+			println("a stimulus file is not included")
+			extract_abf(path; stim_ch = -1, swps = -1, chs = -1)
+		end
+		println(data.chNames)
+		truncate_data!(data; t_eff = 0.0)
+		
+		rmaxes = saturated_response(data)
+		rdims = dim_response(data, rmaxes)
+		t_peak = time_to_peak(data, rdims)
+		t_dom = pepperburg_analysis(data, rmaxes)
+		ppbg_thresh = rmaxes .* 0.60;
+		responses = get_response(data, rmaxes)
+
+		#Plot the results
+		savepath = "$(P10_green)\\$(title).png"
+		pi = plot(data, label = "",
+			xlabel = ["" "Time (ms)"], title = title, 
+			c = :inferno, line_z = log.(P14_I[1:size(data,1)])'
+		)
+		hline!(pi[1], [rmaxes[1]], c = :green, label = "Rmax", lw = 2.0)
+		hline!(pi[2], [rmaxes[2]], c = :green, label = "Rmax", lw = 2.0)
+		hline!(pi[1], [rdims[1]], c = :red, label = "Rdim", lw = 2.0)
+		hline!(pi[2], [rdims[2]], c = :red, label = "Rdim", lw = 2.0)
+		vline!(pi[1], [t_peak[1]], label = "peak time", c = :blue, lw = 2.0)
+		vline!(pi[2], [t_peak[2]], label = "peak time", c = :blue, lw = 2.0)
+		plot!(pi[1], t_dom[:,1], repeat([ppbg_thresh[1]], size(data,1)), 
+			marker = :square, c = :grey, label = "Pepperburg", lw = 2.0
+		)
+		plot!(pi[2], t_dom[:,2], repeat([ppbg_thresh[2]], size(data,1)), 
+			marker = :square, c = :grey, label = "Pepperburg", lw = 2.0
+		)
+
+		savefig(pi, savepath)
+		
+		push!(P10_Green_rmaxs, (rmaxes.*1000)...)
+		push!(P10_Green_rdims, (rdims.*1000)...)
+		push!(P10_Green_tpeak, (t_peak*1000)...)
+				
+	end
+	P10_Green_rdims = exclude(P10_Green_rdims, [3, 8, 10])
+	P10_Green_rmaxs = exclude(P10_Green_rmaxs, [3, 8, 10])
+	P10_Green_tpeak = exclude(P10_Green_tpeak, [3, 8, 10])
+	
+	P10_green_mean_rdim = sum(P10_Green_rdims)/length(P10_Green_rdims)
+	P10_green_sem_rdim = std(P10_Green_rdims)/(sqrt(length(P10_Green_rdims)))
+	P10_green_mean_rmax = sum(P10_Green_rmaxs)/length(P10_Green_rmaxs)
+	P10_green_sem_rmax = std(P10_Green_rmaxs)/(sqrt(length(P10_Green_rmaxs)))
+	P10_green_mean_tpeak = sum(P10_Green_tpeak)/length(P10_Green_tpeak)
+	P10_green_sem_tpeak = std(P10_Green_tpeak)/(sqrt(length(P10_Green_tpeak)))
+end;
+
+# ╔═╡ 4ba26650-3fca-11eb-350f-1bc72d9b2e89
+md"
+### P10 520nm
+
+n = $(length(P10_Green_rmaxs))
+
+Mean Rdim = $(-P10_green_mean_rdim) μV +- $P10_green_sem_rdim
+
+Mean Rmax = $(-P10_green_mean_rmax) μV +- $P10_green_sem_rmax
+
+Mean Time to Peak = $(P10_green_mean_tpeak) ms +- $P10_green_sem_tpeak
+"
+
+# ╔═╡ 67b5f410-3fcf-11eb-288b-71a9fab93c99
+P10_Green_rmaxs
 
 # ╔═╡ 29bd3d5e-34cd-11eb-3731-a7f3347fdc37
 begin
@@ -102,15 +217,23 @@ begin
 	P14_Green_rdims = Float64[]
 	P14_Green_tpeak = Float64[]
 	P14_Green_paths = (P14_green |> parse_abf)
-	for path in P14_Green_paths[[1,2,5,6]]
+	for path in P14_Green_paths
 		title = splitpath(path)[end][1:end-4]
 		println(title)
-		data = extract_abf(path; stim_ch = -1, swps = -1, chs = -1)
+		data = try
+			println("a stimulus file is included")
+			extract_abf(path; stim_ch = 3, swps = -1)
+		catch 
+			println("a stimulus file is not included")
+			extract_abf(path; stim_ch = -1, swps = -1, chs = -1)
+		end
 		truncate_data!(data; t_eff = 0.0)
 		
-		rmaxes = saturated_response(data; z = 0.0)
+		rmaxes = saturated_response(data)
 		rdims = dim_response(data, rmaxes)
 		t_peak = time_to_peak(data, rdims)
+		t_dom = pepperburg_analysis(data, rmaxes)
+		ppbg_thresh = rmaxes .* 0.60;
 		responses = get_response(data, rmaxes)
 
 		#Plot the results
@@ -125,6 +248,12 @@ begin
 		hline!(pi[2], [rdims[2]], c = :red, label = "Rdim", lw = 2.0)
 		vline!(pi[1], [t_peak[1]], label = "peak time", c = :blue, lw = 2.0)
 		vline!(pi[2], [t_peak[2]], label = "peak time", c = :blue, lw = 2.0)
+		plot!(pi[1], t_dom[:,1], repeat([ppbg_thresh[1]], size(data,1)), 
+			marker = :square, c = :grey, label = "Pepperburg", lw = 2.0
+		)
+		plot!(pi[2], t_dom[:,2], repeat([ppbg_thresh[2]], size(data,1)), 
+			marker = :square, c = :grey, label = "Pepperburg", lw = 2.0
+		)
 
 		savefig(pi, savepath)
 
@@ -132,6 +261,10 @@ begin
 		push!(P14_Green_rdims, (rdims.*1000)...)
 		push!(P14_Green_tpeak, (t_peak*1000)...)
 	end
+	P14_Green_rdims = exclude(P14_Green_rdims, [6, 8])
+	P14_Green_rmaxs = exclude(P14_Green_rmaxs, [6, 8])
+	P14_Green_tpeak = exclude(P14_Green_tpeak, [6, 8])
+	
 	P14_green_mean_rdim = sum(P14_Green_rdims)/length(P14_Green_rdims)
 	P14_green_sem_rdim = std(P14_Green_rdims)/(sqrt(length(P14_Green_rdims)))
 	P14_green_mean_rmax = sum(P14_Green_rmaxs)/length(P14_Green_rmaxs)
@@ -141,7 +274,11 @@ begin
 end;
 
 # ╔═╡ 02d99d30-34d0-11eb-168d-e561fe4c9753
-md" 
+md"
+### P14 520nm
+
+n = $(length(P14_Green_rmaxs))
+
 Mean Rdim = $(-P14_green_mean_rdim) μV +- $P14_green_sem_rdim
 
 Mean Rmax = $(-P14_green_mean_rmax) μV +- $P14_green_sem_rmax
@@ -152,29 +289,82 @@ Mean Time to Peak = $(P14_green_mean_tpeak) ms +- $P14_green_sem_tpeak
 # ╔═╡ 07ba9a3e-3a4b-11eb-21e1-0fb0dbbf29f9
 P14_Green_rmaxs
 
-# ╔═╡ bd48d530-3a4a-11eb-0913-a7d207638a86
+# ╔═╡ 0f84a620-3fc9-11eb-0e4e-8d467f8bfa7d
 begin
-	data1 = extract_abf(P14_Green_paths[1]; stim_ch = -1, swps = -1, chs = -1)
-	title1 = splitpath(P14_Green_paths[1])[end][1:end-4]
-	truncate_data!(data1; t_eff = 0.0)
+	P14_UV_rmaxs = Float64[]
+	P14_UV_rdims = Float64[]
+	P14_UV_tpeak = Float64[]
+	P14_UV_paths = (P14_uv |> parse_abf)
+	for path in P14_UV_paths
+		title = splitpath(path)[end][1:end-4]
+		println(title)
+		data = try
+			extract_abf(path; stim_ch = 3, swps = -1)
+		catch 
+			println("a stimulus file is not included")
+			extract_abf(path; stim_ch = -1, swps = -1, chs = -1)
+		end
+		truncate_data!(data; t_eff = 0.0)
+		
+		rmaxes = saturated_response(data)
+		rdims = dim_response(data, rmaxes)
+		t_peak = time_to_peak(data, rdims)
+		t_dom = pepperburg_analysis(data, rmaxes)
+		ppbg_thresh = rmaxes .* 0.60;
+		responses = get_response(data, rmaxes)
 
-	rmaxes1 = saturated_response(data1; z = 0.0)
-	rdims1 = dim_response(data1, rmaxes1)
-	t_peak1 = time_to_peak(data1, rdims1)
-	responses1 = get_response(data1, rmaxes1)
+		#Plot the results
+		savepath = "$(P14_uv)\\$(title).png"
+		pi = plot(data, label = "",
+			xlabel = ["" "Time (ms)"], title = title, 
+			c = :inferno, line_z = log.(P14_I[1:size(data,1)])'
+		)
+		hline!(pi[1], [rmaxes[1]], c = :green, label = "Rmax", lw = 2.0)
+		hline!(pi[2], [rmaxes[2]], c = :green, label = "Rmax", lw = 2.0)
+		hline!(pi[1], [rdims[1]], c = :red, label = "Rdim", lw = 2.0)
+		hline!(pi[2], [rdims[2]], c = :red, label = "Rdim", lw = 2.0)
+		vline!(pi[1], [t_peak[1]], label = "peak time", c = :blue, lw = 2.0)
+		vline!(pi[2], [t_peak[2]], label = "peak time", c = :blue, lw = 2.0)
+		plot!(pi[1], t_dom[:,1], repeat([ppbg_thresh[1]], size(data,1)), 
+			marker = :square, c = :grey, label = "Pepperburg", lw = 2.0
+		)
+		plot!(pi[2], t_dom[:,2], repeat([ppbg_thresh[2]], size(data,1)), 
+			marker = :square, c = :grey, label = "Pepperburg", lw = 2.0
+		)
 
-	#Plot the results
-	p1 = plot(data1, label = "",
-		xlabel = ["" "Time (ms)"], title = title1, 
-		c = :inferno, line_z = log.(P14_I[1:size(data1,1)])'
-	)
-	hline!(p1[1], [rmaxes1[1]], c = :green, label = "Rmax", lw = 2.0)
-	hline!(p1[2], [rmaxes1[2]], c = :green, label = "Rmax", lw = 2.0)
-	hline!(p1[1], [rdims1[1]], c = :red, label = "Rdim", lw = 2.0)
-	hline!(p1[2], [rdims1[2]], c = :red, label = "Rdim", lw = 2.0)
-	vline!(p1[1], [t_peak1[1]], label = "peak time", c = :blue, lw = 2.0)
-	vline!(p1[2], [t_peak1[2]], label = "peak time", c = :blue, lw = 2.0)
-end
+		savefig(pi, savepath)
+
+		push!(P14_UV_rmaxs, (rmaxes.*1000)...)
+		push!(P14_UV_rdims, (rdims.*1000)...)
+		push!(P14_UV_tpeak, (t_peak*1000)...)
+	end
+	P14_UV_rdims = exclude(P14_UV_rdims, [4, 6])
+	P14_UV_rmaxs = exclude(P14_UV_rmaxs, [4, 6])
+	P14_UV_tpeak = exclude(P14_UV_tpeak, [4, 6])
+	
+	P14_UV_mean_rdim = sum(P14_UV_rdims)/length(P14_UV_rdims)
+	P14_UV_sem_rdim = std(P14_UV_rdims)/(sqrt(length(P14_UV_rdims)))
+	P14_UV_mean_rmax = sum(P14_UV_rmaxs)/length(P14_UV_rmaxs)
+	P14_UV_sem_rmax = std(P14_UV_rmaxs)/(sqrt(length(P14_UV_rmaxs)))
+	P14_UV_mean_tpeak = sum(P14_UV_tpeak)/length(P14_UV_tpeak)
+	P14_UV_sem_tpeak = std(P14_UV_tpeak)/(sqrt(length(P14_UV_tpeak)))
+end;
+
+# ╔═╡ 5d3c4760-3fc9-11eb-1603-c994044bd844
+md"
+### P14 365nm
+
+n = $(length(P14_UV_rmaxs))
+
+Mean Rdim = $(-P14_UV_mean_rdim) μV +- $P14_UV_sem_rdim
+
+Mean Rmax = $(-P14_UV_mean_rmax) μV +- $P14_UV_sem_rmax
+
+Mean Time to Peak = $(P14_UV_mean_tpeak) ms +- $P14_UV_sem_tpeak
+"
+
+# ╔═╡ 2b98657e-3fcf-11eb-2ecd-71110395afa2
+P14_UV_rmaxs
 
 # ╔═╡ 0c91b030-3429-11eb-0eb1-7ffa6013aff4
 begin
@@ -186,11 +376,19 @@ begin
 		title = splitpath(path)[end][1:end-4]
 		println(title)
 		
-		data = extract_abf(path; stim_ch = -1, swps = -1, chs = -1)
+		data = try
+			extract_abf(path; stim_ch = 3, swps = -1)
+		catch 
+			println("a stimulus file is not included")
+			extract_abf(path; stim_ch = -1, swps = -1, chs = -1)
+		end
 		truncate_data!(data; t_eff = 0.0)
-		rmaxes = saturated_response(data; z = 0.0)
+		
+		rmaxes = saturated_response(data)
 		rdims = dim_response(data, rmaxes)
 		t_peak = time_to_peak(data, rdims)
+		t_dom = pepperburg_analysis(data, rmaxes)
+		ppbg_thresh = rmaxes .* 0.60;
 		responses = get_response(data, rmaxes)
 		
 		#Plot the results
@@ -205,7 +403,12 @@ begin
 		hline!(pi[2], [rdims[2]], c = :red, label = "Rdim", lw = 2.0)
 		vline!(pi[1], [t_peak[1]], label = "peak time", c = :blue, lw = 2.0)
 		vline!(pi[2], [t_peak[2]], label = "peak time", c = :blue, lw = 2.0)
-			
+		plot!(pi[1], t_dom[:,1], repeat([ppbg_thresh[1]], size(data,1)), 
+			marker = :square, c = :grey, label = "Pepperburg", lw = 2.0
+		)
+		plot!(pi[2], t_dom[:,2], repeat([ppbg_thresh[2]], size(data,1)), 
+			marker = :square, c = :grey, label = "Pepperburg", lw = 2.0
+		)	
 		savefig(pi, savepath)
 				
 		push!(P30_Green_rmaxs, (rmaxes.*1000)...)
@@ -222,6 +425,10 @@ end;
 
 # ╔═╡ 219050c0-34d0-11eb-35a9-23bd92e19a1b
 md" 
+### P30+ 520nm
+
+n = $(length(P30_Green_rmaxs))
+
 Mean Rdim = $(-P30_green_mean_rdim) μV +- $P30_green_sem_rdim
 
 Mean Rmax = $(-P30_green_mean_rmax) μV +- $P30_green_sem_rmax
@@ -231,30 +438,6 @@ Mean Time to Peak = $(P30_green_mean_tpeak) ms +- $P30_green_sem_tpeak
 
 # ╔═╡ 5f2153ee-3a4b-11eb-06f7-032d1a20912c
 P30_Green_rmaxs
-
-# ╔═╡ 24c6ab10-3a4b-11eb-2047-f7fb21f079fa
-begin
-	data2 = extract_abf(P30_Green_paths[1]; stim_ch = -1, swps = -1, chs = -1)
-	title2 = splitpath(P30_Green_paths[1])[end][1:end-4]
-	truncate_data!(data2; t_eff = 0.0)
-
-	rmaxes2 = saturated_response(data2; z = 0.0)
-	rdims2 = dim_response(data2, rmaxes2)
-	t_peak2 = time_to_peak(data2, rdims2)
-	responses2 = get_response(data2, rmaxes2)
-	
-	#Plot the results
-	p2 = plot(data2, label = "",
-		xlabel = ["" "Time (ms)"], title = title2, 
-		c = :inferno, line_z = log.(P14_I[1:size(data2,1)])'
-	)
-	hline!(p2[1], [rmaxes2[1]], c = :green, label = "Rmax", lw = 2.0)
-	hline!(p2[2], [rmaxes2[2]], c = :green, label = "Rmax", lw = 2.0)
-	hline!(p2[1], [rdims2[1]], c = :red, label = "Rdim", lw = 2.0)
-	hline!(p2[2], [rdims2[2]], c = :red, label = "Rdim", lw = 2.0)
-	vline!(p2[1], [t_peak2[1]], label = "peak time", c = :blue, lw = 2.0)
-	vline!(p2[2], [t_peak2[2]], label = "peak time", c = :blue, lw = 2.0)
-end
 
 # ╔═╡ 0e664c0e-34cc-11eb-0302-8fb5e1da67c6
 begin
@@ -266,13 +449,21 @@ begin
 		title = splitpath(path)[end][1:end-4]
 		println(title)
 		
-		data = extract_abf(path; stim_ch = -1, swps = -1, chs = -1)
+		data = try
+			extract_abf(path; stim_ch = 3, swps = -1)
+		catch 
+			println("a stimulus file is not included")
+			extract_abf(path; stim_ch = -1, swps = -1, chs = -1)
+		end
 		truncate_data!(data; t_eff = 0.0)
-		rmaxes = saturated_response(data; z = 0.0)
+		rmaxes = saturated_response(data)
 		rdims = dim_response(data, rmaxes)
 		t_peak = time_to_peak(data, rdims)
+		t_dom = pepperburg_analysis(data, rmaxes)
+		ppbg_thresh = rmaxes .* 0.60;
 		responses = get_response(data, rmaxes)
 		
+		#Plot the results
 		savepath = "$(P30_uv)\\$(title).png"
 		pi = plot(data, label = "",
 			xlabel = ["" "Time (ms)"], title = title, 
@@ -284,6 +475,13 @@ begin
 		hline!(pi[2], [rdims[2]], c = :red, label = "Rdim", lw = 2.0)
 		vline!(pi[1], [t_peak[1]], label = "peak time", c = :blue, lw = 2.0)
 		vline!(pi[2], [t_peak[2]], label = "peak time", c = :blue, lw = 2.0)
+		plot!(pi[1], t_dom[:,1], repeat([ppbg_thresh[1]], size(data,1)), 
+			marker = :square, c = :grey, label = "Pepperburg", lw = 2.0
+		)
+		plot!(pi[2], t_dom[:,2], repeat([ppbg_thresh[2]], size(data,1)), 
+			marker = :square, c = :grey, label = "Pepperburg", lw = 2.0
+		)	
+		
 		savefig(pi, savepath)
 		
 		push!(P30_UV_rmaxs, (rmaxes .*1000)...)
@@ -300,6 +498,11 @@ end;
 
 # ╔═╡ a30b70d0-34d0-11eb-17cd-011214c716cc
 md" 
+
+### P30+ 365nm
+
+n = $(length(P30_Green_rmaxs))
+
 Mean Rdim = $(-P30_UV_mean_rdim) μV +- $P30_UV_sem_rdim
 
 Mean Rmax = $(-P30_UV_mean_rmax) μV +- $P30_UV_sem_rmax
@@ -310,41 +513,28 @@ Mean Time to Peak = $(P30_UV_mean_tpeak) ms +- $P30_UV_sem_tpeak
 # ╔═╡ dd965ff0-3a4b-11eb-0a34-fff42d9a0864
 P30_UV_rmaxs
 
-# ╔═╡ 27407a20-3a4a-11eb-320a-3f4a9d38f994
-begin
-	data3 = extract_abf(P30_UV_paths[1]; stim_ch = -1, swps = -1, chs = -1)
-	title3 = splitpath(P30_UV_paths[1])[end][1:end-4]
-	truncate_data!(data3; t_eff = 0.0)
-
-	rmaxes3 = saturated_response(data3; z = 0.0)
-	rdims3 = dim_response(data3, rmaxes3)
-	t_peak3 = time_to_peak(data3, rdims3)
-	responses3 = get_response(data3, rmaxes3)
-
-	#Plot the results
-	p3 = plot(data3, label = "",
-		xlabel = ["" "Time (ms)"], title = title3, 
-		c = :inferno, line_z = log.(P14_I[1:size(data3,1)])'
-	)
-	hline!(p3[1], [rmaxes3[1]], c = :green, lw = 2.0, label = "Rmax")
-	hline!(p3[2], [rmaxes3[2]], c = :green, lw = 2.0, label = "Rmax")
-	hline!(p3[1], [rdims3[1]], c = :red, lw = 2.0, label = "Rdim")
-	hline!(p3[2], [rdims3[2]], c = :red, lw = 2.0, label = "Rdim")
-	vline!(p3[1], [t_peak3[1]], label = "peak time", c = :blue, lw = 2.0)
-	vline!(p3[2], [t_peak3[2]], label = "peak time", c = :blue, lw = 2.0)
-end
-
 # ╔═╡ 14430420-39cc-11eb-22c6-e3ee471ca86b
 md"
+## Update 12-9-2020
+
 - Paul needs to double check his data and make sure that the responses and the graphs are up to date.
 - I am doing a readout of the graphs for the UV data. 
 - There may be a UV file that has not been uploaded. This could bump up the average. 
 - There could be a possibility that the histogram method 
 
-- Things for Paul
+- Things for Paul:
 1) The UV Rmax is pretty low in my data analysis. What might the reason be? 
 2) Are all the excel spreadsheets up to date
 3) We need to go back and double check 
+
+## Update 12-15-2020
+
+- Anything that relies on the timing of the stimulus cannot be calculated from Pauls concatenates alone. I need to basically hunt down every file on the back computer in order to complete the Time to peak, and Pepperburg, without the light stimulus they are somewhat useless...
+
+- Finished analysis
+1) Pepperburg Plots
+	
+- Need to get the numbers from these plots
 "
 
 # ╔═╡ f6ba1d90-3a4c-11eb-19c1-5d6464477fb1
@@ -358,19 +548,25 @@ md"
 # ╠═cebf8940-3427-11eb-0b10-210fe9e4ce7e
 # ╠═cec10fe0-3427-11eb-20a0-3b01c33d4284
 # ╠═d194c94e-3427-11eb-20d0-33898e117d26
+# ╠═42969a50-3fec-11eb-01af-ade8f0ff92cb
 # ╟─463e82d0-3a3d-11eb-35e7-29a03be84623
-# ╟─7c0eb970-34ca-11eb-0fc2-9dd946348bd1
-# ╠═29bd3d5e-34cd-11eb-3731-a7f3347fdc37
-# ╠═02d99d30-34d0-11eb-168d-e561fe4c9753
+# ╠═2f094322-3fec-11eb-07ca-ed65e0acdbcd
+# ╠═0a8c6cc0-3fce-11eb-19e5-871006153f60
+# ╠═7c0eb970-34ca-11eb-0fc2-9dd946348bd1
+# ╠═287df860-3fca-11eb-2e32-9da24a738abf
+# ╟─4ba26650-3fca-11eb-350f-1bc72d9b2e89
+# ╟─67b5f410-3fcf-11eb-288b-71a9fab93c99
+# ╟─29bd3d5e-34cd-11eb-3731-a7f3347fdc37
+# ╟─02d99d30-34d0-11eb-168d-e561fe4c9753
 # ╟─07ba9a3e-3a4b-11eb-21e1-0fb0dbbf29f9
-# ╟─bd48d530-3a4a-11eb-0913-a7d207638a86
-# ╠═0c91b030-3429-11eb-0eb1-7ffa6013aff4
+# ╟─0f84a620-3fc9-11eb-0e4e-8d467f8bfa7d
+# ╟─5d3c4760-3fc9-11eb-1603-c994044bd844
+# ╟─2b98657e-3fcf-11eb-2ecd-71110395afa2
+# ╟─0c91b030-3429-11eb-0eb1-7ffa6013aff4
 # ╟─219050c0-34d0-11eb-35a9-23bd92e19a1b
 # ╟─5f2153ee-3a4b-11eb-06f7-032d1a20912c
-# ╟─24c6ab10-3a4b-11eb-2047-f7fb21f079fa
-# ╠═0e664c0e-34cc-11eb-0302-8fb5e1da67c6
+# ╟─0e664c0e-34cc-11eb-0302-8fb5e1da67c6
 # ╟─a30b70d0-34d0-11eb-17cd-011214c716cc
 # ╟─dd965ff0-3a4b-11eb-0a34-fff42d9a0864
-# ╠═27407a20-3a4a-11eb-320a-3f4a9d38f994
 # ╟─14430420-39cc-11eb-22c6-e3ee471ca86b
 # ╠═f6ba1d90-3a4c-11eb-19c1-5d6464477fb1

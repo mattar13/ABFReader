@@ -73,6 +73,11 @@ plot!(fig2[1], t_dom[:,1], repeat([ppbg_thresh[1]], size(data2,1)), marker = :sq
 plot!(fig2[2], t_dom[:,2], repeat([ppbg_thresh[2]], size(data2,1)), marker = :square, c = :grey, label = "Pepperburg", lw = 2.0)
 savefig(fig2, "test\\test_figure2.png")
 
+#%%
+#Testing access of googledrive .abf files
+using GoogleDrive
+file_url = "https://drive.google.com/file/d/1uyGUs0AdZxusZH9_zk6gqFyppR07WSZZ/view?usp=sharing"
+file = google_download(file_url, pwd())
 #%% Sandbox area
 P30_Green_I = [
     0.3141322
