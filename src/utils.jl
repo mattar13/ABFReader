@@ -521,6 +521,7 @@ end
 
 concat(superfolder::String; kwargs...) = concat(parse_abf(superfolder); kwargs ...)
 
+exclude(A, exclusions) = A[filter(x -> !(x ∈ exclusions), eachindex(A))]
 """
 This function opens the .abf file in clampfit if it is installed
 """

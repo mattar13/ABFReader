@@ -60,7 +60,7 @@ function saturated_response(trace::NeuroTrace; precision = 500, z = 0.0, kwargs.
             rmaxs[swp, ch] = edges[argmax(weights)]
         end
     end
-    minimum(rmaxs, dims = 1) |> vec
+    minimum(rmaxs, dims = 1)[1:end .!= trace.stim_ch] |> vec
 end
 
 """
@@ -82,7 +82,7 @@ function dim_response(trace::NeuroTrace{T}, rmaxes::Array{T, 1}; rdim_percent = 
         if !any(rdims .!= -Inf)
             throw(ErrorException("There seems to be no response under minima"))
         else
-            return maximum(rdims, dims = 1) |> vec
+            return maximum(rdims, dims = 1)[1:end .!= trace.stim_ch] |> vec
         end
     end
 end
@@ -96,7 +96,7 @@ This function calculates the time to peak using the dim response properties of t
 function time_to_peak(trace::NeuroTrace{T}, rdims::Array{T,1}) where T
     minima = minimum(trace, dims = 2)[:,1,:]
     dim_traces = findall((minima .- rdims') .== 0.0)
-    return [trace.t[argmin(trace[I[1], :, I[2]])] for I in dim_traces] |> vec
+    return [trace.t[argmin(trace[I[1], :, I[2]])] for I in dim_traces][1:end .!= trace.stim_ch] |> vec
 end
 
 function get_response(trace::NeuroTrace, rmaxes::Array{T,1}) where T
