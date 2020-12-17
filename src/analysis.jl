@@ -71,11 +71,11 @@ function dim_response(trace::NeuroTrace{T}, rmaxes::Array{T, 1}; rdim_percent = 
     #We need
     if size(trace,1) == 1
         throw(ErrorException("There is no sweeps to this file, and Rdim will not work"))
-    elseif size(trace,3) != size(rmaxes,1)
+    elseif size(trace, 3) - Int(trace.stim_ch > 1) != size(rmaxes,1)
         throw(ErrorException("The number of rmaxes is not equal to the channels of the dataset"))
     else
         rdims_thresh = rmaxes .* rdim_percent
-        minima = minimum(trace, dims = 2)[:,1,:]
+        minima = minimum(trace, dims = 2)[:,1,1:end .!= trace.stim_ch]
         #Check to see which global minimas are over the rdim threshold
         over_rdim = ((minima .> rdims_thresh').* -Inf)
         rdims = minima .+ over_rdim
@@ -94,17 +94,20 @@ dim_response(trace::NeuroTrace; z = 0.0, rdim_percent = 0.15) = dim_response(tra
 This function calculates the time to peak using the dim response properties of the concatenated file
 """
 function time_to_peak(trace::NeuroTrace{T}, rdims::Array{T,1}) where T
-    minima = minimum(trace, dims = 2)[:,1,:]
+    minima = minimum(trace, dims = 2)[:,1,1:end .!= trace.stim_ch]
     dim_traces = findall((minima .- rdims') .== 0.0)
     return [trace.t[argmin(trace[I[1], :, I[2]])] for I in dim_traces][1:end .!= trace.stim_ch] |> vec
 end
 
 function get_response(trace::NeuroTrace, rmaxes::Array{T,1}) where T
-    minima = minimum(trace, dims = 2)[:,1,:]
-    responses = zeros(size(minima))
-    for swp in 1:size(trace,1), ch in 1:size(trace,3)
-        minima = minimum(trace[swp, :, ch]) 
-        responses[swp, ch] = minima < rmaxes[ch] ? rmaxes[ch] : minima
+    responses = zeros(size(trace,1), size(trace,1))
+    for swp in 1:size(trace,1)
+        for ch in 1:size(trace,3)
+            if ch != trace.stim_ch
+                minima = minimum(trace[swp, :, ch]) 
+                responses[swp, ch] = minima < rmaxes[ch] ? rmaxes[ch] : minima
+            end
+        end
     end
     responses[:, 1:end .!= trace.stim_ch] 
 end
