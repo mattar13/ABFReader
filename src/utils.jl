@@ -119,6 +119,8 @@ Fields:
     stimulus_ch: If there is a channel to set as the stimulus, this will remember that channel, otherwise, this is set to -1
 """
 mutable struct NeuroTrace{T}
+    ID::String
+    protocol::String
     t::Array{T, 1}
     data_array::Array{T, 3}
     date_collected::DateTime
@@ -382,8 +384,6 @@ function extract_abf(::Type{T}, abf_path::String; stim_ch = 3, swps = -1, chs = 
 
     #Set up the data array
     t = T.(trace_file.sweepX);
-    tUnits = trace_file.sweepUnitsX
-    dt = t[2]
     data_array = zeros(T, n_data_sweeps, n_data_points, n_data_channels)
     labels = [trace_file.sweepLabelX, trace_file.sweepLabelY, trace_file.sweepLabelC, trace_file.sweepLabelD]
     if verbose 
@@ -408,7 +408,20 @@ function extract_abf(::Type{T}, abf_path::String; stim_ch = 3, swps = -1, chs = 
         end
         data_array[swp_idx, :, ch_idx] = data
     end
-    NeuroTrace{T}(t, data_array, date_collected, tUnits, dt, chNames, chUnits, labels, stim_ch, [full_path])
+    NeuroTrace{T}(
+        trace_file.abfID, 
+        trace_file.protocol,
+        t, 
+        data_array, 
+        date_collected, 
+        trace_file.sweepUnitsX, 
+        trace_file.dataSecPerPoint, 
+        chNames, 
+        chUnits, 
+        labels, 
+        stim_ch, 
+        [full_path]
+        )
 end
 
 extract_abf(abf_path::String ; kwargs...) = extract_abf(Float64, abf_path ; kwargs...)
