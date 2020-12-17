@@ -133,6 +133,98 @@ mutable struct NeuroTrace{T}
     filename::Array{String,1}
 end
 
+"""
+This function extracts an ABF file from a path
+    - It creates a NeuroTrace object which 
+"""
+function extract_abf(::Type{T}, abf_path::String; stim_ch = 3, swps = -1, chs = ["Vm_prime","Vm_prime4", "IN 7"], verbose = false) where T <: Real
+    if length(abf_path |> splitpath) > 1
+        full_path = abf_path
+    else
+        full_path = joinpath(pwd(), abf_path)   
+    end
+    
+    #extract the abf file by using pyABF
+    pyABF = pyimport("pyabf")
+    trace_file = pyABF.ABF(full_path)
+
+    #First extract the date collected 
+    date_collected = trace_file.abfDateTime
+    n_data_sweeps = n_sweeps = length(trace_file.sweepList)
+    n_data_channels = n_channels = length(trace_file.channelList)
+    n_data_points = n_points = length(trace_file.sweepX)
+    
+    if isa(swps, Int) && swps != -1 #Pick a sweep by index
+        data_sweeps = [swps-1]
+        n_data_sweeps = 1
+    elseif isa(swps, AbstractArray) #pick a sweep by multiple indexes
+        data_sweeps = swps.-1
+        n_data_sweeps = length(swps)
+    else #choose all channels to extract
+        data_sweeps = trace_file.sweepList
+    end
+    
+
+    if isa(chs, Int) && chs != -1 #Pick a channel by index
+        data_channels = [chs-1]
+        n_data_channels = 1
+    elseif isa(chs, Array{Int64,1}) #Pick a channel by multiple indexes
+        data_channels = chs.-1
+        n_data_channels = length(chs)
+    elseif isa(chs, Array{String, 1}) #Pick a channel by multiple names
+        data_channels = map(ch_name -> findall(x -> x == ch_name, trace_file.adcNames)[1], chs) .- 1
+        n_data_channels = length(chs)
+    else #Choose all channels
+        data_channels = trace_file.channelList
+    end 
+        #Identify channel names
+    chNames = trace_file.adcNames[(data_channels.+1)]
+    chUnits = trace_file.adcUnits[(data_channels.+1)]
+
+    #Set up the data array
+    t = T.(trace_file.sweepX);
+    data_array = zeros(T, n_data_sweeps, n_data_points, n_data_channels)
+    labels = [trace_file.sweepLabelX, trace_file.sweepLabelY, trace_file.sweepLabelC, trace_file.sweepLabelD]
+    if verbose 
+        print("Data output size will be:")
+        println(size(data_array))
+        println("$n_sweeps Sweeps available: $(trace_file.sweepList)")
+        println("$n_channels Channels available: $(trace_file.channelList)")
+    end
+    
+    
+    for (swp_idx, swp) in enumerate(data_sweeps), (ch_idx, ch) in enumerate(data_channels)
+        trace_file.setSweep(sweepNumber = swp, channel = ch);
+        data = Float64.(trace_file.sweepY);
+        t = Float64.(trace_file.sweepX);
+        dt = t[2]
+        if verbose
+            println("Data extracted from $full_path")
+            println("Data from Channel $(ch) Sweep $(swp)")
+            println("Data from time stamp $(t[1]) s to $(t[end]+dt) s with dt = $dt ms")
+            println("Data was acquired at $(1/dt/1000) Hz")
+            println("$n_data_points data points")
+        end
+        data_array[swp_idx, :, ch_idx] = data
+    end
+    NeuroTrace{T}(
+        trace_file.abfID, 
+        trace_file.protocol,
+        t, 
+        data_array, 
+        date_collected, 
+        trace_file.sweepUnitsX, 
+        trace_file.dataSecPerPoint, 
+        chNames, 
+        chUnits, 
+        labels, 
+        stim_ch, 
+        [full_path]
+        )
+end
+
+extract_abf(abf_path::String ; kwargs...) = extract_abf(Float64, abf_path ; kwargs...)
+
 import Base: size, length, getindex, setindex, sum, copy, maximum, minimum, push!
 
 #Extending for NeuroTrace
@@ -334,97 +426,7 @@ function findstimRng(trace::NeuroTrace)
     stim_rng
 end
 
-"""
-This function extracts an ABF file from a path
-    - It creates a NeuroTrace object which 
-"""
-function extract_abf(::Type{T}, abf_path::String; stim_ch = 3, swps = -1, chs = ["Vm_prime","Vm_prime4", "IN 7"], verbose = false) where T <: Real
-    if length(abf_path |> splitpath) > 1
-        full_path = abf_path
-    else
-        full_path = joinpath(pwd(), abf_path)   
-    end
-    
-    #extract the abf file by using pyABF
-    pyABF = pyimport("pyabf")
-    trace_file = pyABF.ABF(full_path)
 
-    #First extract the date collected 
-    date_collected = trace_file.abfDateTime
-    n_data_sweeps = n_sweeps = length(trace_file.sweepList)
-    n_data_channels = n_channels = length(trace_file.channelList)
-    n_data_points = n_points = length(trace_file.sweepX)
-    
-    if isa(swps, Int) && swps != -1 #Pick a sweep by index
-        data_sweeps = [swps-1]
-        n_data_sweeps = 1
-    elseif isa(swps, AbstractArray) #pick a sweep by multiple indexes
-        data_sweeps = swps.-1
-        n_data_sweeps = length(swps)
-    else #choose all channels to extract
-        data_sweeps = trace_file.sweepList
-    end
-    
-
-    if isa(chs, Int) && chs != -1 #Pick a channel by index
-        data_channels = [chs-1]
-        n_data_channels = 1
-    elseif isa(chs, Array{Int64,1}) #Pick a channel by multiple indexes
-        data_channels = chs.-1
-        n_data_channels = length(chs)
-    elseif isa(chs, Array{String, 1}) #Pick a channel by multiple names
-        data_channels = map(ch_name -> findall(x -> x == ch_name, trace_file.adcNames)[1], chs) .- 1
-        n_data_channels = length(chs)
-    else #Choose all channels
-        data_channels = trace_file.channelList
-    end 
-        #Identify channel names
-    chNames = trace_file.adcNames[(data_channels.+1)]
-    chUnits = trace_file.adcUnits[(data_channels.+1)]
-
-    #Set up the data array
-    t = T.(trace_file.sweepX);
-    data_array = zeros(T, n_data_sweeps, n_data_points, n_data_channels)
-    labels = [trace_file.sweepLabelX, trace_file.sweepLabelY, trace_file.sweepLabelC, trace_file.sweepLabelD]
-    if verbose 
-        print("Data output size will be:")
-        println(size(data_array))
-        println("$n_sweeps Sweeps available: $(trace_file.sweepList)")
-        println("$n_channels Channels available: $(trace_file.channelList)")
-    end
-    
-    
-    for (swp_idx, swp) in enumerate(data_sweeps), (ch_idx, ch) in enumerate(data_channels)
-        trace_file.setSweep(sweepNumber = swp, channel = ch);
-        data = Float64.(trace_file.sweepY);
-        t = Float64.(trace_file.sweepX);
-        dt = t[2]
-        if verbose
-            println("Data extracted from $full_path")
-            println("Data from Channel $(ch) Sweep $(swp)")
-            println("Data from time stamp $(t[1]) s to $(t[end]+dt) s with dt = $dt ms")
-            println("Data was acquired at $(1/dt/1000) Hz")
-            println("$n_data_points data points")
-        end
-        data_array[swp_idx, :, ch_idx] = data
-    end
-    NeuroTrace{T}(
-        trace_file.abfID, 
-        trace_file.protocol,
-        t, 
-        data_array, 
-        date_collected, 
-        trace_file.sweepUnitsX, 
-        trace_file.dataSecPerPoint, 
-        chNames, 
-        chUnits, 
-        labels, 
-        stim_ch, 
-        [full_path]
-        )
-end
-
-extract_abf(abf_path::String ; kwargs...) = extract_abf(Float64, abf_path ; kwargs...)
 
 """
 This function truncates the data based on the amount of time.
