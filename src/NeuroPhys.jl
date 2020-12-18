@@ -13,6 +13,7 @@ using Dates
 
 #Utility files contain file extraction and abf editing functions
 include("utils.jl")
+include("file_formatting.jl")
 export NeuroTrace, getchannel, getsweep, getstim, findstimRng
 export parse_abf, extract_abf, number_extractor, concat, filename_extractor
 export eachchannel, eachsweep
