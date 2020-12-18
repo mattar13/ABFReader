@@ -90,7 +90,7 @@ function dim_response(trace::NeuroTrace{T}, rmaxes::Array{T, 1}; rdim_percent = 
         if sum(rdims, dims = 1) == zeros(size(trace,3))
             throw(ErrorException("There seems to be no response under minima"))
         else
-            return maximum(rdims, dims = 1)
+            return maximum(rdims, dims = 1) |> vec
         end
     end
 end
