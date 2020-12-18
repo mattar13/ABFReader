@@ -74,15 +74,23 @@ function dim_response(trace::NeuroTrace{T}, rmaxes::Array{T, 1}; rdim_percent = 
     elseif size(trace, 3) - Int(trace.stim_ch > 1) != size(rmaxes,1)
         throw(ErrorException("The number of rmaxes is not equal to the channels of the dataset"))
     else
-        rdims_thresh = rmaxes .* rdim_percent
-        minima = minimum(trace, dims = 2)[:,1,1:end .!= trace.stim_ch]
-        #Check to see which global minimas are over the rdim threshold
-        over_rdim = ((minima .> rdims_thresh').* -Inf)
-        rdims = minima .+ over_rdim
-        if !any(rdims .!= -Inf)
+        rdims = zeros(size(trace,1), size(trace,3))
+        for swp in 1:size(trace,1)
+            for ch in 1:size(trace,3)
+                if ch != trace.stim_ch
+                    rdim_thresh = rmaxes[ch] * rdim_percent
+                    minima = minimum(trace[swp, :, ch])
+                    if minima < rdim_thresh
+                        #Reverse the polarity
+                        rdims[swp, ch] = -minima
+                    end
+                end
+            end
+        end
+        if sum(rdims, dims = 1) == zeros(size(trace,3))
             throw(ErrorException("There seems to be no response under minima"))
         else
-            return maximum(rdims, dims = 1)[1:end .!= trace.stim_ch] |> vec
+            return maximum(rdims, dims = 1)
         end
     end
 end

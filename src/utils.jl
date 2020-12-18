@@ -346,7 +346,7 @@ end
 function truncate_data!(trace::NeuroTrace; t_eff = 0.5, t_cutoff = 3.0)
 	dt = trace.dt
     t_stim_start, t_stim_end = findstimRng(trace)
-    println(t_stim_start - (t_eff/dt))
+    #println(t_stim_start - (t_eff/dt))
 	t_start = t_stim_start > t_eff ? t_stim_end - (t_eff/dt) |> Int64 : 1
 	t_end = (t_stim_end  + (t_cutoff/dt)) |> Int64
 	trace.t = trace.t[t_start:t_end] .- (trace.t[t_start] + t_eff)
