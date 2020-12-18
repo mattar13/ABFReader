@@ -47,7 +47,6 @@ mins, maxes, means, stds = calculate_basic_stats(data1);
 truncate_data!(data2)
 rmaxes = saturated_response(data2)
 rdims = dim_response(data2, rmaxes)
-#%%
 t_peak = time_to_peak(data2, rdims)
 t_dom = pepperburg_analysis(data2, rmaxes)
 ppbg_thresh = rmaxes .* 0.60;
