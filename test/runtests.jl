@@ -1,16 +1,22 @@
 #%% Test to see if the importing works
+println("Beginning testing")
+#%%
 using Revise
 using NeuroPhys
-import NeuroPhys: rolling_mean
 using Distributions, StatsBase, StatsPlots, Polynomials
-println("Test 0: Package properly exported")
+println("Exporting succeeded")
+#%%
+format = ("\\", ~, ~, ~, ~, ("_", (" ", ~, :Rearing, :Photoreceptors), :Sample_size), [:Wavelength, color_func], :Drugs, ("_", :Month, :Day, :Year, :Genotype, :Age, :Animal))
+string = "D:\\Data\\ERG\\Data from paul\\Adult (NR) rods_14\\Green\\a-waves\\10_14_19_WT_P33_m1_D_Rods_Green(shifted).abf"
+nt = formatted_split(string, format)
+println("Formatted Strings function")
 
 #%% Test the exporting and filtering of .abf files
 target_path1 = "test\\to_filter.abf"
 target_path2 = "test\\to_analyze.abf"
 data1 = extract_abf(target_path1); #Extract the data for filtering
 data2 = extract_abf(target_path2; stim_ch = 3, swps = -1, chs = [1,3,5]); #Extract the data for concatenation analysis
-println("Test 1: File extraction works")
+println("File extraction works")
 
 #%% Test filtering functions that are not inline
 data_short = truncate_data(data1)
@@ -20,7 +26,7 @@ filter_data1 = lowpass_filter(baseline_data1) #Lowpass filter using a 40hz 8-pol
 cwt_data1 = cwt_filter(baseline_data1) #Use a continuous wavelet transform to remove noise, but keep time series info
 avg_data1 = average_sweeps(baseline_data1)
 norm_data1 = normalize(baseline_data1)
-println("Test 2: All filtering functions work")
+println("All filtering functions work")
 
 #%% Test inline filtering functions
 #Filtering individual trace files
@@ -34,7 +40,7 @@ cwt_filter!(data1) #Use a continuous wavelet transform to remove noise, but keep
 cwt_filter(data2)
 average_sweeps!(data1)
 normalize!(data1)
-println("Test 3: All inline filtering functions work")
+println("All inline filtering functions work")
 
 #%% Test the analysis
 mins, maxes, means, stds = calculate_basic_stats(data1);
@@ -46,12 +52,12 @@ t_dom = pepperburg_analysis(data2, rmaxes)
 ppbg_thresh = rmaxes .* 0.60;
 #This function will be helpful for plotting the intensity response curves
 responses = get_response(data2, rmaxes)
-println("Test 4: Data analysis works")
+println("Data analysis works")
 
 #%% Test the plotting of the trace file
 fig1 = plot(data1, stim_plot = :include)
 savefig(fig1, "test\\test_figure1.png")
-println("Test 5: Plotting for single traces works")
+println("Plotting for single traces works")
 
 #%% Testing file concatenation
 #Concatenate two files
@@ -73,6 +79,16 @@ plot!(fig2[1], t_dom[:,1], repeat([ppbg_thresh[1]], size(data2,1)), marker = :sq
 plot!(fig2[2], t_dom[:,2], repeat([ppbg_thresh[2]], size(data2,1)), marker = :square, c = :grey, label = "Pepperburg", lw = 2.0)
 savefig(fig2, "test\\test_figure2.png")
 
+#%% Testing formatted string
+
+
+
+#%%
+
+#%% Find something that helps with the stimulus in the header file
+pyABF = pyimport("pyabf")
+trace_file = pyABF.ABF(target_path[1])
+PyCall.inspect[:getmembers](trace_file)
 #%%
 #Testing access of googledrive .abf files
 using GoogleDrive
