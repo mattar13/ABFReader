@@ -11,11 +11,15 @@ using LsqFit #Used for fitting amplification and Intensity Response models
 using DataFrames, XLSX #Used for saving data
 using Dates
 
+#Functions that can help with file extraction
+include("file_formatting.jl")
+export formatted_split
+export parse_abf, extract_abf 
+export number_extractor, filename_extractor
+
 #Utility files contain file extraction and abf editing functions
 include("utils.jl")
-include("file_formatting.jl")
 export NeuroTrace, getchannel, getsweep, getstim, findstimRng
-export parse_abf, extract_abf, number_extractor, concat, filename_extractor
 export eachchannel, eachsweep
 export truncate_data, truncate_data!
 export concat, concat!

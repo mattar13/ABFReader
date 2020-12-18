@@ -18,7 +18,6 @@ function parse_abf(super_folder::String; extension::String = ".abf", verbose = f
     file_list
 end
 
-########################### These are some functions that will make parsing folder names easier ##############
 """
 This function pulls out all adjacent numbers from a string and returns a list of numbers and letters
 """
@@ -71,6 +70,94 @@ function number_extractor(str)
     end
 end
 #These functions open and load ABF data
+
+"""
+This function works well with the formatted_split. 
+    If there is a color it turns it into the wavelength
+"""
+function color_func(x::String)
+    if x == "Green"
+        525
+    elseif x == "Blue"
+        365
+    end
+end
+
+color_func(x) = x
+
+"""
+This is the formatted_split function. 
+    You use this as an expression that breaks down info in strings
+    1) If the first value is a string, it will become the delimiter
+    2) If the key is a tuple, it becomes a nested formatted_split
+    3) If the key is an array, it becomes a [key, function]
+        To use boolean statements use the oneline boolean functions:
+            [:Wavelength, x -> x == "Green" || x == 594 ? 594 : 365]
+"""
+function formatted_split(string::String, format::Tuple; dlm = "_", parse_numbers = true)
+    #If the first item in the format tuple is a string, it is the delimiter
+    if isa(format[1], String)
+        #This first string becomes the delimiter
+        dlm = format[1]
+        format = format[2:end]
+    end
+    split_str = split(string, dlm)
+
+    nt_keys = Symbol[]
+    nt_vals = Array([])
+    misc_vals = String[]
+    for (idx, nt_key) in enumerate(format)
+        nt_val = split_str[idx] |> String
+        if nt_key == ~
+            #println("Ignore key")
+            nothing
+        elseif isa(nt_key, Array)
+            nt_key, f = nt_key
+            println(nt_key)
+            nt_val = f(nt_val)
+            push!(nt_keys, nt_key)
+            push!(nt_vals, nt_val)
+        elseif isa(nt_key, Tuple)
+            inside_split = formatted_split(nt_val, nt_key)
+            for in_key in keys(inside_split)
+                if in_key == :misc
+                    push!(misc_vals, inside_split[:misc]...)
+                else
+                    push!(nt_keys, in_key)
+                    push!(nt_vals, inside_split[in_key])
+                end
+            end
+        else
+            
+            if parse_numbers
+                num_data = number_seperator(nt_val)
+                if isempty(num_data[1])
+                    #String contains no numbers
+                    nothing
+                else
+                    nt_val = num_data[1][1]
+                end
+            end
+            
+            push!(nt_keys, nt_key)
+            push!(nt_vals, nt_val)
+        end
+    end
+    if length(split_str) > length(format)
+        #This is where misc gets created
+        push!(misc_vals, split_str[length(format)+1:length(split_str)]...)
+        
+    end
+    if !isempty(misc_vals)
+        push!(nt_vals, misc_vals)
+        push!(nt_keys, :misc)
+    end
+
+    return NamedTuple{Tuple(nt_keys)}(nt_vals)
+end
+
+########################### These are some functions that will make parsing folder names easier ##############
+
 
 
 """
