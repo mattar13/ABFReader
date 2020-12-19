@@ -103,11 +103,21 @@ function saturated_response(trace::NeuroTrace; saturated_thresh = 0.01, polarity
             #Here we cutoff all points after the sweep returns to the mean
             if polarity < 0
                 idxs = findall(data .< (mean - deviation))
+                if isempty(idxs)
+                    #This is a weird catch, but no points fall under the mean. 
+                    rmaxs[ch] = minimum(data)
+                    continue
+                end
                 data = data[idxs]
                 #For negative components
                 bins = LinRange(minimum(data), min(0.0, mean-deviation), precision)
             elseif polarity > 0
                 idxs = findlast(data .> (mean + deviation))
+                if isempty(idxs)
+                    #This is a weird catch, but no points fall under the mean. 
+                    rmaxs[ch] = minimum(data)
+                    continue
+                end
                 data = data[idxs]
                 #For positive components
                 bins = LinRange(max(0.0, mean+deviation), maximum(data),  precision)
