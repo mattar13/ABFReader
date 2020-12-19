@@ -137,7 +137,7 @@ function saturated_response(trace::NeuroTrace; saturated_thresh = 0.01, polarity
             end
         end
     end
-    rmaxes
+    rmaxs |> vec
 end
 
 """
