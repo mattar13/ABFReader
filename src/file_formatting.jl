@@ -113,7 +113,6 @@ function formatted_split(string::String, format::Tuple; dlm = "_", parse_numbers
             nothing
         elseif isa(nt_key, Array)
             nt_key, f = nt_key
-            println(nt_key)
             nt_val = f(nt_val)
             push!(nt_keys, nt_key)
             push!(nt_vals, nt_val)
