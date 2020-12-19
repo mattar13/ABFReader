@@ -282,7 +282,7 @@ This gets the stimulus trace only if it has been set
 """
 function getstim(trace::NeuroTrace; threshold::Float64 = 0.2) 
     if trace.stim_ch != -1 
-        if threshold != nothing
+        if !isnothing(threshold)
             return trace[:, :, trace.stim_ch] .> threshold
         else
             return trace[:, :, trace.stim_ch] 

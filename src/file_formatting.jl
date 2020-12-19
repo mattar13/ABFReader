@@ -243,7 +243,7 @@ function dataframe_maker(super_folder)
                 wavelengh, color = condition |> number_seperator
                 for file in files
                     info = filename_extractor(file)
-                    if info != nothing
+                    if !isnothing(info)
                         nd, intensity, t_stim = info
                         push!(df, (year, month, day, 
                             animal_n, age, genotype, 
