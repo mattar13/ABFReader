@@ -52,7 +52,7 @@ begin
 	for file in stim_files
 		wavelength = split(file, "\\")[end-1] |> number_extractor
 		info = split(file, "\\")[end] |> filename_extractor
-		if info != nothing
+		if isnothing(info)
 			#There might have been an error in ND3 filtering. 
 			#For now remove it
 			nd, per, ts = info

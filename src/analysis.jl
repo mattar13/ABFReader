@@ -197,7 +197,7 @@ function time_to_peak(trace::NeuroTrace{T}, rdims::Array{T,1}) where T
                     dim_trace = minima .- rdims[ch]
                     #println(dim_trace)
                     
-                    if findfirst(dim_trace .== 0.0) != nothing
+                    if isnothing(findfirst(dim_trace .== 0.0))
                         sweep_minimum = argmin(trace[swp, :, ch])
                         t_peak[ch] = trace.t[sweep_minimum]
                     end

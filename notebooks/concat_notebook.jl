@@ -90,31 +90,71 @@ begin
 
 end
 
+# ╔═╡ d3fb6000-4183-11eb-22a1-650f6e0d8ddd
+function color_func(x::String)
+    if x == "Green"
+        525
+    elseif x == "Blue" || x == "UV"
+        365
+    end
+end
+
+# ╔═╡ cf048d72-409c-11eb-2ddc-5d7a90890119
+begin
+	format1 = ("\\", ~, ~, ~, ~, ("_", (" ", ~, :Rearing, :Photoreceptors), :Sample_size), [:Wavelength, color_func], :Drugs, ("_", :Month, :Day, :Year, :Genotype, :Age, :Animal))
+	format2 = ("\\", ~, ~, ~, ~, ("_", (" ", ~, :Rearing, :Photoreceptors), :Sample_size), [:Wavelength, color_func], :Drugs, ("_", :Month, :Day, :Year, :Animal, :Genotype, :Age))
+end
+
 # ╔═╡ 2f094322-3fec-11eb-07ca-ed65e0acdbcd
 begin
-	data_analysis = DataFrame(Path = paths)
-	for row in eachrow(data_analysis)
-		path = row[:Path]
+	data_analysis = DataFrame(
+		Path = String[], 
+		Year = Int64[], Month = Int64[], Day = Int64[],
+		Age = Int64[], Wavelength = Int64[], Waveform = String[], Channel = String[],
+		Rmax = Float64[], Rdim = Float64[], t_peak = Float64[]
+	)
+	
+	for path in paths
+		println(path)
 		title = splitpath(path)[end][1:end-4]
-		#println(title)
+		nt = formatted_split(path, format1)
+		#Now we have to start sorting through random inconsistancies Paul has made
+		if isa(nt[:Age], String)
+			#Reformat the string
+			nt = formatted_split(path, format2)
+		end
+		println(nt[:Age])
 		data = try
 			extract_abf(path; stim_ch = 3, swps = -1)
 		catch 
 			#println("a stimulus file is not included")
 			extract_abf(path; stim_ch = -1, swps = -1, chs = -1)
 		end
-		
 		truncate_data!(data; t_eff = 0.0)
 		
-		#Complete analysis
-		rmaxes = saturated_response(data)
+		rmaxes = saturated_response(data)		
 		rdims = dim_response(data, rmaxes)
-		t_peak = time_to_peak(data, rdims)
+		t_peak = time_to_peak(data, -rdims)
 		t_dom = pepperburg_analysis(data, rmaxes)
 		
 		println(rmaxes)
+		println(rdims)
+		println(t_peak)
+		#Complete analysis
+		for i = (1:size(data,3))[1:end .!= data.stim_ch]
+			push!(data_analysis, (
+					"path", 
+					nt[:Year], nt[:Month], nt[:Day],
+					nt[:Age], nt[:Wavelength], nt[:Drugs], data.chNames[i],
+					-rmaxes[i]*1000, -rdims[i]*1000, t_peak[i]*1000
+				)
+			)
+		end
 	end
 end
+
+# ╔═╡ bc59ae60-4099-11eb-1614-43090154721c
+data_analysis
 
 # ╔═╡ 0a8c6cc0-3fce-11eb-19e5-871006153f60
 exclude(A, exclusions) = A[filter(x -> !(x ∈ exclusions), eachindex(A))]
@@ -550,10 +590,13 @@ md"
 # ╠═d194c94e-3427-11eb-20d0-33898e117d26
 # ╠═42969a50-3fec-11eb-01af-ade8f0ff92cb
 # ╟─463e82d0-3a3d-11eb-35e7-29a03be84623
+# ╠═d3fb6000-4183-11eb-22a1-650f6e0d8ddd
+# ╠═cf048d72-409c-11eb-2ddc-5d7a90890119
 # ╠═2f094322-3fec-11eb-07ca-ed65e0acdbcd
+# ╠═bc59ae60-4099-11eb-1614-43090154721c
 # ╠═0a8c6cc0-3fce-11eb-19e5-871006153f60
-# ╠═7c0eb970-34ca-11eb-0fc2-9dd946348bd1
-# ╠═287df860-3fca-11eb-2e32-9da24a738abf
+# ╟─7c0eb970-34ca-11eb-0fc2-9dd946348bd1
+# ╟─287df860-3fca-11eb-2e32-9da24a738abf
 # ╟─4ba26650-3fca-11eb-350f-1bc72d9b2e89
 # ╟─67b5f410-3fcf-11eb-288b-71a9fab93c99
 # ╟─29bd3d5e-34cd-11eb-3731-a7f3347fdc37
