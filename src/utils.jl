@@ -200,7 +200,7 @@ function push!(nt_push_to::NeuroTrace, nt_added::NeuroTrace)
 end
 
 function pad(trace::NeuroTrace{T}, n_add::Int64; position::Symbol = :post, dims::Int64 = 2, val::T = 0.0) where T
-    data = copy(trace)    
+    data = deepcopy(trace)    
     addon_size = collect(size(trace))
     addon_size[dims] = n_add
     addon = zeros(addon_size...)
@@ -333,7 +333,7 @@ This function truncates the data based on the amount of time.
 TODO: we need to add a section in here for changing the tscale
 """
 function truncate_data(trace::NeuroTrace; t_eff = 0.5, t_cutoff = 3.0)
-    data = copy(trace)
+    data = deepcopy(trace)
     #Search for the stimulus. if there is no stimulus, then just set the stim to 0.0
     t_stim_start, t_stim_end = findstimRng(trace)
 	t_start = t_stim_start > t_eff ? t_stim_start - (t_eff/trace.dt) |> Int64 : 1
@@ -367,7 +367,7 @@ The files in path array or super folder are concatenated into a single NeuroTrac
 """
 
 function concat(data::NeuroTrace{T}, data_add::NeuroTrace{T}; mode = :pad, position = :post, avg_swps = true, kwargs...) where T
-    new_data = copy(data)
+    new_data = deepcopy(data)
     if size(data,2) > size(data_add,2)
         #println("Original data larger $(size(data,2)) > $(size(data_add,2))")
         n_vals = abs(size(data,2) - size(data_add,2))

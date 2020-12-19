@@ -29,7 +29,7 @@ function baseline_cancel(trace::NeuroTrace; mode::Symbol = :mean, region = :pres
         rng_end_arr = findstimRng(trace)[:, 1]
     end
 
-    data = copy(trace)
+    data = deepcopy(trace)
     if mode == :mean
         for swp in 1:size(trace,1)
             for ch in 1:size(trace,3)
@@ -126,7 +126,7 @@ function lowpass_filter(trace::NeuroTrace; freq = 40.0, pole = 8)
     responsetype = Lowpass(freq; fs =  1/trace.dt)
     designmethod = Butterworth(8)
     digital_filter = digitalfilter(responsetype, designmethod)
-    data = copy(trace)
+    data = deepcopy(trace)
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
             #never adjust the stim
@@ -162,7 +162,7 @@ function notch_filter(trace::NeuroTrace; pole = 8, center = 60.0, std = 0.1)
     responsetype = Bandstop(center-std, center+std; fs = 1/trace.dt)
 	designmethod = Butterworth(8)
 	digital_filter = digitalfilter(responsetype, designmethod)
-    data = copy(trace)
+    data = deepcopy(trace)
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
             #never adjust the stim
@@ -195,7 +195,7 @@ function cwt_filter(trace::NeuroTrace; wave = WT.dog2, periods = 1:9, return_cwt
     
     data = similar(trace.data_array)
     stim_begin, stim_end = findstimRng(trace)
-    data = copy(trace)
+    data = deepcopy(trace)
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
             #never adjust the stim
@@ -228,7 +228,7 @@ If the traces contain multiple runs, then this file averages the data
 """
 function average_sweeps(trace::NeuroTrace)
     
-    data = copy(trace)
+    data = deepcopy(trace)
     for ch in 1:size(trace,3)
         data[:,:,ch] .= sum(trace[:,:,ch], dims = 1)/size(trace,1)
     end
@@ -238,7 +238,7 @@ end
 average_sweeps!(trace::NeuroTrace) = trace.data_array = sum(trace, dims = 1)/size(trace,1) 
 
 function normalize(trace::NeuroTrace; rng = (-1,0))
-    data = copy(trace)
+    data = deepcopy(trace)
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
             #never adjust the stim
