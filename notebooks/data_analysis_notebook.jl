@@ -80,7 +80,7 @@ begin
 			#Wavelength extractor
 			wavelength = wavelength |> number_extractor
 			cond_info = condition |> filename_extractor
-			if isnothing(cond_info)
+			if !isnothing(cond_info)
 				od, intensity, stim_time = cond_info .|> Float64
 				transferrance = od |> Transferrance
 				photons = stimulus_model([transferrance, intensity, stim_time])
