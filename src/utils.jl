@@ -257,7 +257,7 @@ getchannel(trace::NeuroTrace, name::String) = getchannel(trace, findall(x -> x==
 """
 This iterates through all of the channels
 """
-function eachchannel(trace::NeuroTrace; include_stim = true) 
+function eachchannel(trace::NeuroTrace; include_stim = false) 
     if include_stim == true
         return Iterators.map(idx -> getchannel(trace, idx), 1:size(trace,3))
     else
