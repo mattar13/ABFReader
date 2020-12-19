@@ -39,9 +39,9 @@ function baseline_cancel(trace::NeuroTrace; mode::Symbol = :mean, region = :pres
                         rng_end = rng_end_arr[swp]
                     end
                     baseline_adjust = sum(trace[swp, rng_begin:rng_end, ch])/(rng_end-rng_begin)
-                    data[swp,:, ch] .= trace.data_array[swp,:,ch] .- baseline_adjust
+                    data.data_array[swp,:, ch] .= trace.data_array[swp,:,ch] .- baseline_adjust
                 else
-                    data[swp,:,ch] .= trace[swp,:,ch]
+                    data.data_array[swp,:,ch] .= trace[swp,:,ch]
                 end
             end
         end
@@ -54,9 +54,9 @@ function baseline_cancel(trace::NeuroTrace; mode::Symbol = :mean, region = :pres
                         rng_end = rng_end_arr[swp]
                     end
                     pfit = Polynomials.fit(trace.t[rng_begin:rng_end], trace[swp, rng_begin:rng_end , ch], 1)
-                    data[swp, :, ch] .= trace[swp, :, ch] - pfit.(trace.t)
+                    data.data_array[swp, :, ch] .= trace[swp, :, ch] - pfit.(trace.t)
                 else
-                    data[swp,:,ch] .= trace[swp,:,ch]
+                    data.data_array[swp,:,ch] .= trace[swp,:,ch]
                 end
             end
         end
@@ -131,9 +131,9 @@ function lowpass_filter(trace::NeuroTrace; freq = 40.0, pole = 8)
         for ch in 1:size(trace,3)
             #never adjust the stim
             if ch != trace.stim_ch
-                data[swp,:,ch] .= filt(digital_filter, trace[swp, :, ch])
+                data.data_array[swp,:,ch] .= filt(digital_filter, trace[swp, :, ch])
             else
-                data[swp,:,ch] .= trace[swp,:,ch]
+                data.data_array[swp,:,ch] .= trace[swp,:,ch]
             end
         end
     end
@@ -167,9 +167,9 @@ function notch_filter(trace::NeuroTrace; pole = 8, center = 60.0, std = 0.1)
         for ch in 1:size(trace,3)
             #never adjust the stim
             if ch != trace.stim_ch
-                data[swp,:,ch] .= filt(digital_filter, trace[swp, :, ch])
+                data.data_array[swp,:,ch] .= filt(digital_filter, trace[swp, :, ch])
             else
-                data[swp,:,ch] .= trace[swp,:,ch]
+                data.data_array[swp,:,ch] .= trace[swp,:,ch]
             end
         end
     end
@@ -201,9 +201,9 @@ function cwt_filter(trace::NeuroTrace; wave = WT.dog2, periods = 1:9, return_cwt
             #never adjust the stim
             if ch != trace.stim_ch
                 y = cwt(trace[swp, :, ch], wavelet(wave))
-                data[swp,:,ch] .= sum(real.(y[:,periods]))/length(y);
+                data.data_array[swp,:,ch] .= sum(real.(y[:,periods]))/length(y);
             else
-                data[swp,:,ch] .= trace[swp,:,ch]
+                data.data_array[swp,:,ch] .= trace[swp,:,ch]
             end
         end
     end
