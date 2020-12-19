@@ -128,8 +128,8 @@ function saturated_response(trace::NeuroTrace; saturated_thresh = 0.01, polarity
             edges = collect(h.edges...)[2:end]
             weights = h.weights./length(data)
 
-            println(maximum(weights))
-            return edges, weights
+            #println(maximum(weights))
+            #return edges, weights
             if maximum(weights) > saturated_thresh
                 rmaxs[ch] = edges[argmax(weights)]
             else
