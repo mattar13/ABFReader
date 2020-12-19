@@ -45,49 +45,6 @@ This function uses a histogram method to find the saturation point.
     - In ERG traces, a short nose component is usually present in saturated values
     - Does this same function work for the Rmax of nonsaturated responses?
 """
-function old_saturated_response(trace::NeuroTrace; distance_thresh = 0.02, polarity::Int64 = -1, precision = 500, z = 0.0, kwargs...)
-    rmaxs = zeros(eachsweep(trace)|>length, eachchannel(trace)|>length)
-    for swp in 1:size(trace, 1)
-        for ch in 1:size(trace,3)
-            if ch != trace.stim_ch
-                stim_begin = findstimRng(trace)[swp, 1] #We don't want to pull values from before the stim
-                data = trace[swp, stim_begin:size(trace,2), ch]
-                mean = sum(data)/length(data)
-                deviation = z*std(data)
-                #Here we cutoff all points after the sweep returns to the mean
-                if polarity < 0
-                    idx_end = findlast(data .< (mean - deviation))
-                    data = data[1:idx_end]
-                    #For negative components
-                    bins = LinRange(minimum(data), min(0.0, mean-deviation), precision)
-                elseif polarity > 0
-                    idx_end = findlast(data .> (mean + deviation))
-                    data = data[1:idx_end]
-                    #For positive components
-                    bins = LinRange(max(0.0, mean+deviation), maximum(data),  precision)
-                else
-                    throw(error("Polarity incorrect"))
-                end
-                h = Distributions.fit(Histogram, data, bins; )
-                edges = collect(h.edges...)[2:end]
-                weights = h.weights./length(data)
-                if edges[argmax(weights)] < -0.23
-                    println("Over: $(abs(maximum(weights) - weights[1]))")
-                    println("Rmax -> $(edges[argmax(weights)])")
-                    println("Minima -> $(minimum(data))")
-                end
-                rmaxs[swp, ch] = edges[argmax(weights)]
-            end
-        end
-    end
-    minimum(rmaxs, dims = 1) |> vec
-end
-
-"""
-This function uses a histogram method to find the saturation point. 
-    - In ERG traces, a short nose component is usually present in saturated values
-    - Does this same function work for the Rmax of nonsaturated responses?
-"""
 function saturated_response(trace::NeuroTrace; saturated_thresh = 0.01, polarity::Int64 = -1, precision = 500, z = 0.0, kwargs...)
     rmaxs = zeros(eachchannel(trace)|>length)
     for ch in 1:size(trace,3)
@@ -143,36 +100,50 @@ end
 """
 This function only works on concatenated files with more than one trace
     Rmax argument should have the same number of sweeps and channels as the 
+    In the rdim calculation, it is better to adjust the higher percent
+    Example: no traces in 20-30% range, try 20-40%
 """
-function dim_response(trace::NeuroTrace{T}, rmaxes::Array{T, 1}; polarity::Int64 = -1, rdim_percent = 0.15) where T
+function dim_response(trace::NeuroTrace{T}, rmaxes::Array{T, 1}; return_idx = true, polarity::Int64 = -1, rmax_lin = [0.20, 0.40]) where T
     #We need
     if size(trace,1) == 1
         throw(ErrorException("There is no sweeps to this file, and Rdim will not work"))
     elseif eachchannel(trace)|> length != size(rmaxes,1)
         throw(ErrorException("The number of rmaxes is not equal to the channels of the dataset"))
     else
-        rdims = zeros(eachsweep(trace)|> length, eachchannel(trace)|> length)
+        rdims = zeros(Float64, eachchannel(trace)|> length)
+        dim_idx = zeros(Int64, eachchannel(trace)|> length)
         for swp in 1:size(trace,1)
             for ch in 1:size(trace,3)
                 if ch != trace.stim_ch
-                    rdim_thresh = rmaxes[ch] * rdim_percent
-                    minima = minimum(trace[swp, :, ch])
+                    rmax_val = rmax_lin .* rmaxes[ch]
+                    if rmax_val[1] > rmax_val[2]
+                        rmax_val = reverse(rmax_val)
+                    end
+                    rdim_thresh = rmaxes[ch] * 0.15
+                    
                     if polarity < 0
-                        if minima > rdim_thresh
-                            rdims[swp, ch] = minima
-                        end
-                    elseif polarity > 0
-                        if minima < rdim_thresh
-                            rdims[swp, ch] = minima
+                        minima = minimum(trace[swp, :, ch])
+                    else
+                        minima = maximum(trace[swp, :, ch])
+                    end
+
+                    if rmax_val[1] < minima < rmax_val[2]
+                        if minima < rdims[ch] && polarity < 0
+                            rdims[ch] = minima
+                            dim_idx[ch] = swp 
+                        elseif minima > rdims[ch] && polarity > 0
+                            rdims[ch] = minima
+                            dim_idx[ch] = swp
                         end
                     end
+
                 end
             end
         end
-        if sum(rdims, dims = 1) == zeros(size(trace,3))
-            throw(ErrorException("There seems to be no response under minima"))
+        if return_idx #In most cases, the rdim will be used to calculate the time to peak
+            rdims |> vec, dim_idx |> vec
         else
-            return minimum(rdims, dims = 1)|> vec
+            rdims |> vec
         end
     end
 end
@@ -183,33 +154,25 @@ dim_response(trace::NeuroTrace; z = 0.0, rdim_percent = 0.15) = dim_response(tra
 """
 This function calculates the time to peak using the dim response properties of the concatenated file
 """
-function time_to_peak(trace::NeuroTrace{T}, rdims::Array{T,1}) where T
+function time_to_peak(trace::NeuroTrace{T}, idxs::Array{Int64,1}) where T
     if size(trace,1) == 1
         throw(ErrorException("There is no sweeps to this file, and Tpeak will not work"))
-    elseif eachchannel(trace)|> length != size(rdims,1)
-        throw(ErrorException("The number of rdims is not equal to the channels of the dataset"))
+    elseif eachchannel(trace)|> length != size(idxs,1)
+        throw(ErrorException("The number of indexes is not equal to the channels of the dataset"))
     else
         t_peak = zeros(eachchannel(trace)|> length)
-        for swp in 1:size(trace,1)
-            for ch in 1:size(trace,3) 
-                if ch != trace.stim_ch
-                    minima = minimum(trace[swp, :, ch])
-                    dim_trace = minima .- rdims[ch]
-                    #println(dim_trace)
-                    
-                    if isnothing(findfirst(dim_trace .== 0.0))
-                        sweep_minimum = argmin(trace[swp, :, ch])
-                        t_peak[ch] = trace.t[sweep_minimum]
-                    end
-                end
-            end
+        for (ch, swp) in enumerate(idxs)
+            stim_begin = findstimRng(trace)[swp, 1]
+            data = trace[swp, stim_begin:size(trace,2), ch]
+            #println(argmin(data))
+            t_peak[ch] = trace.t[argmin(data)+stim_begin]
         end
-        return t_peak
+        t_peak
     end
 end
 
 function get_response(trace::NeuroTrace, rmaxes::Array{T,1}) where T
-    responses = zeros(size(trace,1), size(trace,1))
+    responses = zeros(eachsweep(trace) |> length, eachchannel(trace) |> length)
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
             if ch != trace.stim_ch
