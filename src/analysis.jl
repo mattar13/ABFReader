@@ -45,19 +45,37 @@ This function uses a histogram method to find the saturation point.
     - In ERG traces, a short nose component is usually present in saturated values
     - Does this same function work for the Rmax of nonsaturated responses?
 """
-function saturated_response(trace::NeuroTrace; precision = 500, z = 0.0, kwargs...)
+function old_saturated_response(trace::NeuroTrace; distance_thresh = 0.02, polarity::Int64 = -1, precision = 500, z = 0.0, kwargs...)
     rmaxs = zeros(eachsweep(trace)|>length, eachchannel(trace)|>length)
     for swp in 1:size(trace, 1)
         for ch in 1:size(trace,3)
             if ch != trace.stim_ch
-                data = trace[swp, :, ch]
+                stim_begin = findstimRng(trace)[swp, 1] #We don't want to pull values from before the stim
+                data = trace[swp, stim_begin:size(trace,2), ch]
                 mean = sum(data)/length(data)
                 deviation = z*std(data)
-                bins = LinRange(minimum(data), mean-deviation, precision)
-                h = Distributions.fit(Histogram, data, bins)
+                #Here we cutoff all points after the sweep returns to the mean
+                if polarity < 0
+                    idx_end = findlast(data .< (mean - deviation))
+                    data = data[1:idx_end]
+                    #For negative components
+                    bins = LinRange(minimum(data), min(0.0, mean-deviation), precision)
+                elseif polarity > 0
+                    idx_end = findlast(data .> (mean + deviation))
+                    data = data[1:idx_end]
+                    #For positive components
+                    bins = LinRange(max(0.0, mean+deviation), maximum(data),  precision)
+                else
+                    throw(error("Polarity incorrect"))
+                end
+                h = Distributions.fit(Histogram, data, bins; )
                 edges = collect(h.edges...)[2:end]
-                weights = h.weights
-                
+                weights = h.weights./length(data)
+                if edges[argmax(weights)] < -0.23
+                    println("Over: $(abs(maximum(weights) - weights[1]))")
+                    println("Rmax -> $(edges[argmax(weights)])")
+                    println("Minima -> $(minimum(data))")
+                end
                 rmaxs[swp, ch] = edges[argmax(weights)]
             end
         end
@@ -66,10 +84,57 @@ function saturated_response(trace::NeuroTrace; precision = 500, z = 0.0, kwargs.
 end
 
 """
+This function uses a histogram method to find the saturation point. 
+    - In ERG traces, a short nose component is usually present in saturated values
+    - Does this same function work for the Rmax of nonsaturated responses?
+"""
+function saturated_response(trace::NeuroTrace; saturated_thresh = 0.01, polarity::Int64 = -1, precision = 500, z = 0.0, kwargs...)
+    rmaxs = zeros(eachchannel(trace)|>length)
+    for ch in 1:size(trace,3)
+        data = Float64[]
+        if ch != trace.stim_ch
+            for swp in 1:size(trace,1)
+                stim_begin = findstimRng(trace)[swp, 1] #We don't want to pull values from before the stim
+                push!(data,  trace[:, stim_begin:size(trace,2), ch]...)
+            end
+            #We are going to concatenate all sweeps together into one histogram
+            mean = sum(data)/length(data)
+            deviation = z*std(data)
+            #Here we cutoff all points after the sweep returns to the mean
+            if polarity < 0
+                idxs = findall(data .< (mean - deviation))
+                data = data[idxs]
+                #For negative components
+                bins = LinRange(minimum(data), min(0.0, mean-deviation), precision)
+            elseif polarity > 0
+                idxs = findlast(data .> (mean + deviation))
+                data = data[idxs]
+                #For positive components
+                bins = LinRange(max(0.0, mean+deviation), maximum(data),  precision)
+            else
+                throw(error("Polarity incorrect"))
+            end
+            h = Distributions.fit(Histogram, data, bins; )
+            edges = collect(h.edges...)[2:end]
+            weights = h.weights./length(data)
+
+            println(maximum(weights))
+            return edges, weights
+            if maximum(weights) > saturated_thresh
+                rmaxs[ch] = edges[argmax(weights)]
+            else
+                rmaxs[ch] = minimum(data)
+            end
+        end
+    end
+    rmaxes
+end
+
+"""
 This function only works on concatenated files with more than one trace
     Rmax argument should have the same number of sweeps and channels as the 
 """
-function dim_response(trace::NeuroTrace{T}, rmaxes::Array{T, 1}; rdim_percent = 0.15) where T
+function dim_response(trace::NeuroTrace{T}, rmaxes::Array{T, 1}; polarity::Int64 = -1, rdim_percent = 0.15) where T
     #We need
     if size(trace,1) == 1
         throw(ErrorException("There is no sweeps to this file, and Rdim will not work"))
@@ -82,9 +147,14 @@ function dim_response(trace::NeuroTrace{T}, rmaxes::Array{T, 1}; rdim_percent = 
                 if ch != trace.stim_ch
                     rdim_thresh = rmaxes[ch] * rdim_percent
                     minima = minimum(trace[swp, :, ch])
-                    if minima < rdim_thresh
-                        #Reverse the polarity
-                        rdims[swp, ch] = minima
+                    if polarity < 0
+                        if minima > rdim_thresh
+                            rdims[swp, ch] = minima
+                        end
+                    elseif polarity > 0
+                        if minima < rdim_thresh
+                            rdims[swp, ch] = minima
+                        end
                     end
                 end
             end

@@ -191,7 +191,7 @@ function notch_filter!(trace::NeuroTrace; pole = 8, center = 60.0, std = 0.1)
     end
 end
 
-function cwt_filter(trace::NeuroTrace; wave = WT.dog2, periods = 1:9, return_cwt = true)
+function cwt_filter(trace::NeuroTrace; wave = WT.dog2, periods = 1:7, return_cwt = true)
     
     data = similar(trace.data_array)
     stim_begin, stim_end = findstimRng(trace)
@@ -201,7 +201,7 @@ function cwt_filter(trace::NeuroTrace; wave = WT.dog2, periods = 1:9, return_cwt
             #never adjust the stim
             if ch != trace.stim_ch
                 y = cwt(trace[swp, :, ch], wavelet(wave))
-                data.data_array[swp,:,ch] .= sum(real.(y[:,periods]))/length(y);
+                data.data_array[swp,:,ch] .= -sum(real.(y[:,periods]), dims = 2) |> vec;
             else
                 data.data_array[swp,:,ch] .= trace[swp,:,ch]
             end
@@ -217,7 +217,7 @@ function cwt_filter!(trace::NeuroTrace; wave = WT.dog2, periods = 1:9)
             #never adjust the stim
             if ch != trace.stim_ch
                 y = cwt(trace[swp, :, ch], wavelet(wave))
-                trace.data_array[swp,:,ch] .= sum(real.(y[:,periods]))/length(y);
+                trace.data_array[swp,:,ch] .= -sum(real.(y[:,periods]), dims = 2) |> vec;
             end
         end
     end
