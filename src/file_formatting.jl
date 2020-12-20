@@ -94,10 +94,10 @@ This is the formatted_split function.
         To use boolean statements use the oneline boolean functions:
             [:Wavelength, x -> x == "Green" || x == 594 ? 594 : 365]
 """
-function formatted_split(string::String, format::Tuple; dlm = "_", parse_numbers = true, allow_misc = false)
+function formatted_split(string::String, format::Tuple; dlm = "_", parse_numbers = true, allow_misc = false, continue_type = :error)
     #If the first item in the format tuple is a string, it is the delimiter
     if isa(format[1], String)
-        #This first string becomes the delimiter
+        #If the first object in the format is a string, it becomes the new delimiter
         dlm = format[1]
         format = format[2:end]
     end
@@ -106,29 +106,37 @@ function formatted_split(string::String, format::Tuple; dlm = "_", parse_numbers
     nt_keys = Symbol[]
     nt_vals = Array([])
     misc_vals = String[]
+    #First we go looking through all formats
     for (idx, nt_key) in enumerate(format)
         nt_val = split_str[idx] |> String
         if nt_key == ~
+            #if the key is ~, ignore this string
             #println("Ignore key")
             nothing
         elseif isa(nt_key, Array)
+            #If the format is an array it is a [name -> function]
             nt_key, f = nt_key
             nt_val = f(nt_val)
             push!(nt_keys, nt_key)
             push!(nt_vals, nt_val)
         elseif isa(nt_key, Tuple)
+            #If it is a tuple it is a nested format
             inside_split = formatted_split(nt_val, nt_key)
+            #If the nested format returns a misc arg, add it to misc
             for in_key in keys(inside_split)
-                if in_key == :misc && misc_arg
+                if in_key == :misc
                     push!(misc_vals, inside_split[:misc]...)
                 else
                     push!(nt_keys, in_key)
                     push!(nt_vals, inside_split[in_key])
                 end
             end
+        elseif nt_key == :misc 
+            #If the key is misc, then the formatting will expect unlabeled arguments
+            allow_misc = true
         else
-            
             if parse_numbers
+                #We have added number parsing functionality
                 num_data = number_seperator(nt_val)
                 if isempty(num_data[1])
                     #String contains no numbers
@@ -142,20 +150,47 @@ function formatted_split(string::String, format::Tuple; dlm = "_", parse_numbers
             push!(nt_vals, nt_val)
         end
     end
-    if length(split_str) > length(format)
-        #This is where misc gets created
+    if length(split_str) > length(format) && allow_misc
+        #This is where misc gets created. 
         push!(misc_vals, split_str[length(format)+1:length(split_str)]...)
-        
+    elseif length(split_str) > length(format) && !isempty(misc_vals)
+        #If there is no keyword misc, and the allow_misc is set to false:
+        if continue_type == :error
+            #This will throw and error and prevent you from going further
+            throw(error("Misc key not allowed, arguments need to match string exactly"))
+        elseif continue_type == :warn
+            #This will simply warn you that format may not be correct, but won't prevent you from continuing
+            println("WARNING: Misc key not allowed, arguments need to match string exactly")
+        elseif isnothing(continue_type)
+            #This will do nothing
+        end
     end
-    if !isempty(misc_vals) && allow_misc
+    
+    if !isempty(misc_vals)
         push!(nt_vals, misc_vals)
         push!(nt_keys, :misc)
-    elseif !isempty(misc_vals) && !allow_misc
-        throw(error("Misc key not allowed, arguments need to match string exactly"))
     end
 
     return NamedTuple{Tuple(nt_keys)}(nt_vals)
 end
+
+#Basically this is what you pick when you aren't sure which format is correct out of a few options
+function formatted_split(string::String, formats...; kwargs...)
+    for (i, format) in enumerate(formats)
+        #println(format)
+        try
+            split = formatted_split(string, format; allow_misc = false, kwargs...)
+            return split
+        catch
+            #println("Format $i does not work")
+            nothing
+        end
+    end
+    throw(error("No formats currently correct"))
+end
+
+
+
 
 ########################### These are some functions that will make parsing folder names easier ##############
 
