@@ -255,7 +255,11 @@ function normalize!(trace::NeuroTrace; rng = (-1,0))
         for ch in 1:size(trace,3)
             #never adjust the stim
             if ch != trace.stim_ch
-                trace[swp,:,ch] .= (trace[swp,:,ch] ./ minimum(trace[swp,:,ch], dims = 2))
+                if rng[1] < 0
+                    trace.data_array[swp,:,ch] .= (trace[swp,:,ch] ./ minimum(trace[swp,:,ch], dims = 2))
+                else
+                    trace.data_array[swp,:,ch] .= (trace[swp,:,ch] ./ maximum(trace[swp,:,ch], dims = 2))
+                end
             end
         end
     end
