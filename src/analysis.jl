@@ -45,7 +45,10 @@ This function uses a histogram method to find the saturation point.
     - In ERG traces, a short nose component is usually present in saturated values
     - Does this same function work for the Rmax of nonsaturated responses?
 """
-function saturated_response(trace::NeuroTrace; saturated_thresh = 0.01, polarity::Int64 = -1, precision = 500, z = 0.0, kwargs...)
+function saturated_response(trace::NeuroTrace; saturated_thresh = :determine, polarity::Int64 = -1, precision = 500, z = 1.3, kwargs...)
+    if isa(saturated_thresh, Symbol)
+        saturated_thresh = size(trace,1)/precision/2
+    end
     rmaxs = zeros(eachchannel(trace)|>length)
     for ch in 1:size(trace,3)
         data = Float64[]
@@ -58,6 +61,7 @@ function saturated_response(trace::NeuroTrace; saturated_thresh = 0.01, polarity
             mean = sum(data)/length(data)
             deviation = z*std(data)
             #Here we cutoff all points after the sweep returns to the mean
+            ##println(mean - deviation)
             if polarity < 0
                 idxs = findall(data .< (mean - deviation))
                 if isempty(idxs)
@@ -84,9 +88,11 @@ function saturated_response(trace::NeuroTrace; saturated_thresh = 0.01, polarity
             h = Distributions.fit(Histogram, data, bins; )
             edges = collect(h.edges...)[2:end]
             weights = h.weights./length(data)
-
+            
             #println(maximum(weights))
+            #println(saturated_thresh)
             #return edges, weights
+
             if maximum(weights) > saturated_thresh
                 rmaxs[ch] = edges[argmax(weights)]
             else
@@ -119,14 +125,13 @@ function dim_response(trace::NeuroTrace{T}, rmaxes::Array{T, 1}; return_idx = tr
                     if rmax_val[1] > rmax_val[2]
                         rmax_val = reverse(rmax_val)
                     end
-                    rdim_thresh = rmaxes[ch] * 0.15
+                    #rdim_thresh = rmaxes[ch] * 0.15
                     
                     if polarity < 0
                         minima = minimum(trace[swp, :, ch])
                     else
                         minima = maximum(trace[swp, :, ch])
                     end
-
                     if rmax_val[1] < minima < rmax_val[2]
                         if minima < rdims[ch] && polarity < 0
                             rdims[ch] = minima
