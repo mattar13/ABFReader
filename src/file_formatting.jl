@@ -94,7 +94,7 @@ This is the formatted_split function.
         To use boolean statements use the oneline boolean functions:
             [:Wavelength, x -> x == "Green" || x == 594 ? 594 : 365]
 """
-function formatted_split(string::String, format::Tuple; dlm = "_", parse_numbers = true)
+function formatted_split(string::String, format::Tuple; dlm = "_", parse_numbers = true, allow_misc = false)
     #If the first item in the format tuple is a string, it is the delimiter
     if isa(format[1], String)
         #This first string becomes the delimiter
@@ -119,7 +119,7 @@ function formatted_split(string::String, format::Tuple; dlm = "_", parse_numbers
         elseif isa(nt_key, Tuple)
             inside_split = formatted_split(nt_val, nt_key)
             for in_key in keys(inside_split)
-                if in_key == :misc
+                if in_key == :misc && misc_arg
                     push!(misc_vals, inside_split[:misc]...)
                 else
                     push!(nt_keys, in_key)
@@ -147,9 +147,11 @@ function formatted_split(string::String, format::Tuple; dlm = "_", parse_numbers
         push!(misc_vals, split_str[length(format)+1:length(split_str)]...)
         
     end
-    if !isempty(misc_vals)
+    if !isempty(misc_vals) && allow_misc
         push!(nt_vals, misc_vals)
         push!(nt_keys, :misc)
+    elseif !isempty(misc_vals) && !allow_misc
+        throw(error("Misc key not allowed, arguments need to match string exactly"))
     end
 
     return NamedTuple{Tuple(nt_keys)}(nt_vals)
