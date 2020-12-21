@@ -355,7 +355,6 @@ function truncate_data!(trace::NeuroTrace; t_pre = 0.5, t_post = 3.0)
     t_start = t_start > 0 ? t_start : 1
     t_end = round(Int, t_stim_start  + (t_post/dt))
     t_end = t_end < size(trace,2) ? t_end : size(trace,2)
-    println(t_start)
 	trace.t = trace.t[t_start:t_end] .- (trace.t[t_start] + t_pre)
 	trace.data_array = trace[:, t_start:t_end, :]
 	return trace
