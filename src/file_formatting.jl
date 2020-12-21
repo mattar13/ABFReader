@@ -77,9 +77,9 @@ This function works well with the formatted_split.
 """
 function color_func(x::String)
     if x == "Green"
-        525
-    elseif x == "Blue"
-        365
+        return (:Wavelength, 525)
+    elseif x == "Blue" || x == "UV"
+        return (:Wavelength, 365)
     end
 end
 
@@ -113,12 +113,12 @@ function formatted_split(string::String, format::Tuple; dlm = "_", parse_numbers
             #if the key is ~, ignore this string
             #println("Ignore key")
             nothing
-        elseif isa(nt_key, Array)
+        elseif isa(nt_key, Function)
             #If the format is an array it is a [name -> function]
-            nt_key, f = nt_key
-            nt_val = f(nt_val)
-            push!(nt_keys, nt_key)
-            push!(nt_vals, nt_val)
+            #println(nt_key)
+            f_key, f_val = nt_key(nt_val)
+            push!(nt_keys, f_key)
+            push!(nt_vals, f_val)
         elseif isa(nt_key, Tuple)
             #If it is a tuple it is a nested format
             inside_split = formatted_split(nt_val, nt_key)
