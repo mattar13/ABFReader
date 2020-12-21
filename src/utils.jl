@@ -46,7 +46,7 @@ function extract_abf(::Type{T}, abf_path::String; stim_ch = 3, swps = -1, chs = 
     #extract the abf file by using pyABF
     pyABF = pyimport("pyabf")
     trace_file = pyABF.ABF(full_path)
-
+    #println("Made it here")
     #First extract the date collected 
     date_collected = trace_file.abfDateTime
     n_data_sweeps = n_sweeps = length(trace_file.sweepList)
@@ -338,8 +338,10 @@ function truncate_data(trace::NeuroTrace; t_pre = 0.5, t_post = 3.0)
     data = deepcopy(trace)
     #Search for the stimulus. if there is no stimulus, then just set the stim to 0.0
     t_stim_start, t_stim_end = findstimRng(trace)
-	t_start = t_stim_start > t_pre ? t_stim_start - (t_pre/trace.dt) |> Int64 : 1
-	t_end = t_stim_start + (t_post/trace.dt) |> Int64
+    t_start = t_stim_start - (t_pre/dt) |> Int64
+    t_start = t_start > 0 ? t_start : 1
+    t_end = (t_stim_start  + (t_post/dt)) |> Int64
+    t_end = t_end < size(trace,2) ? t_end : size(trace,2)
     data.t = trace.t[t_start:t_end] .- (trace.t[t_start] + t_pre)
     data.data_array = trace.data_array[:, t_start:t_end, :]
     return data
@@ -349,8 +351,11 @@ function truncate_data!(trace::NeuroTrace; t_pre = 0.5, t_post = 3.0)
 	dt = trace.dt
     t_stim_start, t_stim_end = findstimRng(trace)
     #println(t_stim_start - (t_pre/dt))
-	t_start = t_stim_start > t_pre ? t_stim_end - (t_pre/dt) |> Int64 : 1
-	t_end = (t_stim_end  + (t_post/dt)) |> Int64
+    t_start = round(Int, t_stim_start - (t_pre/dt))
+    t_start = t_start > 0 ? t_start : 1
+    t_end = round(Int, t_stim_start  + (t_post/dt))
+    t_end = t_end < size(trace,2) ? t_end : size(trace,2)
+    println(t_start)
 	trace.t = trace.t[t_start:t_end] .- (trace.t[t_start] + t_pre)
 	trace.data_array = trace[:, t_start:t_end, :]
 	return trace
