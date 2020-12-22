@@ -130,11 +130,14 @@ begin
 			#println("a stimulus file is not included")
 			extract_abf(path; stim_ch = -1, swps = -1, chs = -1)
 		end
+		#Truncate, baseline, and filter data
 		truncate_data!(data; t_eff = 0.0)
+		baseline_cancel!(data) #Baseline data
+		filter_data = lowpass_filter(data) #Lowpass filter using a 40hz 8-pole 
 		
-		rmaxes = saturated_response(data)		
-		rdims = dim_response(data, rmaxes)
-		t_peak = time_to_peak(data, -rdims)
+		rmaxes = saturated_response(filter_data)		
+		rdims, dim_idx = dim_response(filter_data, rmaxes)
+		t_peak = time_to_peak(data, dim_idx)
 		t_dom = pepperburg_analysis(data, rmaxes)
 		
 		println(rmaxes)
@@ -596,9 +599,9 @@ md"
 # ╠═bc59ae60-4099-11eb-1614-43090154721c
 # ╠═0a8c6cc0-3fce-11eb-19e5-871006153f60
 # ╟─7c0eb970-34ca-11eb-0fc2-9dd946348bd1
-# ╟─287df860-3fca-11eb-2e32-9da24a738abf
-# ╟─4ba26650-3fca-11eb-350f-1bc72d9b2e89
-# ╟─67b5f410-3fcf-11eb-288b-71a9fab93c99
+# ╠═287df860-3fca-11eb-2e32-9da24a738abf
+# ╠═4ba26650-3fca-11eb-350f-1bc72d9b2e89
+# ╠═67b5f410-3fcf-11eb-288b-71a9fab93c99
 # ╟─29bd3d5e-34cd-11eb-3731-a7f3347fdc37
 # ╟─02d99d30-34d0-11eb-168d-e561fe4c9753
 # ╟─07ba9a3e-3a4b-11eb-21e1-0fb0dbbf29f9
