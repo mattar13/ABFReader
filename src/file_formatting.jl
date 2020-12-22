@@ -170,13 +170,12 @@ function formatted_split(string::String, formats...; kwargs...)
             split = formatted_split(string, format; allow_misc = false, kwargs...)
             return split
         catch error
-            println(error)
+            #println(error)
             nothing
         end
     end
     throw(error("No formats currently correct"))
 end
-
 
 function check_age(x::String)
     x = NeuroPhys.number_seperator(x)[1][1]
