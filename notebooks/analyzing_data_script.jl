@@ -1,7 +1,6 @@
 #%% Using this we can continually revise the file
 using Revise
 using NeuroPhys
-import NeuroPhys.color_func
 using DataFrames, Query, XLSX
 using StatsBase, Statistics
 #%% Recapitulating Pauls data
@@ -15,11 +14,11 @@ format3 = ("\\", ~, ~, ~, ~, ("_", (" ", ~, :Rearing, check_pc), :Sample_size), 
 format4 = ("\\", ~, ~, ~, ~, ("_", (" ", ~, :Rearing), :Sample_size), check_color, :Drugs, ("_", :Month, :Day, :Year, :Genotype, check_age, :Animal, ~, check_pc))
 format5 = ("\\", ~, ~, ~, ~, ("_", (" ", ~, :Rearing), :Sample_size), :Drugs, check_color, ("_", :Month, :Day, :Year, :Genotype, check_age, :Animal, ~, check_pc))
 format6 = ("\\", ~, ~, ~, ~, ("_", (" ", ~, :Rearing), :Sample_size), :Drugs, check_color, ("_", :Month, :Day, :Year, :Genotype, check_age, ~, check_pc, ~))
+format7 = ("\\", ~, ~, ~, ~, ("_", (" ", ~, :Rearing), :Sample_size), check_color, :Drugs, ("_", :Month, :Day ,:Year, :Animal, :Genotype, check_age, ~, ~))
 
-#file_odd = paths[1]
+#file_odd = "D:\\Data\\ERG\\Data from paul\\P9 (NR)_8\\UV\\b-waves\\2_15_20_m2_WT_P9_ND_Green.abf"
 #println(file_odd)
-#nt = formatted_split(file_odd, format1)
-#
+#nt = formatted_split(file_odd, format7)
 # We can start with the path and data analysis, then parse the files after
 data_analysis = DataFrame(
     Path = String[], 
@@ -40,7 +39,7 @@ for (i,path) in enumerate(paths)
             #Some files may not
             extract_abf(path; stim_ch = -1, swps = -1, chs = -1)
         end
-        nt = formatted_split(path, format1, format2, format3, format4, format5, format6)
+        nt = formatted_split(path, format1, format2, format3, format4, format5, format6, format7)
         
         if nt.Photoreceptors == "cones"
             t_pre = 1.0
@@ -50,13 +49,20 @@ for (i,path) in enumerate(paths)
             t_post = 3.0
         end
 
+        #println(nt.Age)
         if isa(nt.Age, String)
             #This means that the file was not extracted correctly
             println("Retry formatting")
             nt = formatted_split(path, format3)
-            println(nt.Age)
+            #println(nt.Age)
         end  
-
+        if nt.Age == 8 || nt.Age == 9
+            println("Photoreceptors equals both")
+            Photoreceptors = "Both"
+        else
+            Photoreceptors = nt.Photoreceptors
+        end
+        
         if !haskey(nt, :Animal)
             animal = 1
         else
@@ -89,7 +95,7 @@ for (i,path) in enumerate(paths)
             push!(data_analysis, (
                     path, 
                     nt[:Year], nt[:Month], nt[:Day], 
-                    animal, nt[:Age], nt[:Wavelength], nt[:Genotype], nt[:Drugs], nt[:Photoreceptors],
+                    animal, nt[:Age], nt[:Wavelength], nt[:Genotype], nt[:Drugs], Photoreceptors,
                     data.chNames[i],
                     -rmaxes[i]*1000, -rdims[i]*1000, t_peak[i]*1000
                 )
@@ -108,8 +114,9 @@ for (i,path) in enumerate(paths)
         push!(fail_files, i)
     end
 end
+data_analysis  = data_analysis |> @orderby(_.Age) |> @thenby_descending(_.Photoreceptors) |> @thenby(_.Wavelength) |> DataFrame
 #%%
-paths[130]
+fail_files
 #%% Make and export the dataframe 
 all_categories = data_analysis |> 
     @unique({_.Age, _.Wavelength, _.Photoreceptors}) |> 
@@ -159,7 +166,7 @@ all_categories[:, :Rdim] = rdims
 all_categories[:, :Rdim_SEM] = rdims_sem
 all_categories[:, :T_Peak] = tpeaks
 all_categories[:, :T_Peak_SEM] = tpeaks_sem
-all_categories
+all_categories  = all_categories |> @orderby(_.Age) |> @thenby_descending(_.Photoreceptors) |> @thenby(_.Wavelength) |> DataFrame
 
 #%% Save data
 save_path = joinpath(target_folder,"data.xlsx")
