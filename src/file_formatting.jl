@@ -71,19 +71,7 @@ function number_extractor(str)
 end
 #These functions open and load ABF data
 
-"""
-This function works well with the formatted_split. 
-    If there is a color it turns it into the wavelength
-"""
-function color_func(x::String)
-    if x == "Green"
-        return (:Wavelength, 525)
-    elseif x == "Blue" || x == "UV"
-        return (:Wavelength, 365)
-    end
-end
 
-color_func(x) = x
 
 """
 This is the formatted_split function. 
@@ -181,8 +169,8 @@ function formatted_split(string::String, formats...; kwargs...)
         try
             split = formatted_split(string, format; allow_misc = false, kwargs...)
             return split
-        catch
-            #println("Format $i does not work")
+        catch error
+            println(error)
             nothing
         end
     end
@@ -190,8 +178,37 @@ function formatted_split(string::String, formats...; kwargs...)
 end
 
 
+function check_age(x::String)
+    x = NeuroPhys.number_seperator(x)[1][1]
+    #println(x)
+    if x > 30
+        return (:Age, 30)
+    else
+        return (:Age, x)
+    end
+end
 
+function check_pc(x::String)
+    if x != "rods" || x != "cones"
+        return (:Photoreceptors, x)
+    else
+        throw(error("Wrong Key"))
+    end
+end
 
+"""
+This function works well with the formatted_split. 
+    If there is a color it turns it into the wavelength
+"""
+function check_color(x::String)
+    if x == "Green"
+        return (:Wavelength, 525)
+    elseif x == "Blue" || x == "UV"
+        return (:Wavelength, 365)
+    end
+end
+
+check_color(x) = x
 ########################### These are some functions that will make parsing folder names easier ##############
 
 
