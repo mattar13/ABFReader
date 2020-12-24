@@ -44,6 +44,7 @@ rolling_mean(arr::AbstractArray; radius = 5) = [sum(arr[i:i+radius])/radius for 
 This function uses a histogram method to find the saturation point. 
     - In ERG traces, a short nose component is usually present in saturated values
     - Does this same function work for the Rmax of nonsaturated responses?
+    - Setting the saturated threshold to infinity will completely disregard the histogram method
 """
 function saturated_response(trace::NeuroTrace; saturated_thresh = :determine, polarity::Int64 = -1, precision = 500, z = 1.3, kwargs...)
     if isa(saturated_thresh, Symbol)
@@ -170,8 +171,9 @@ function time_to_peak(trace::NeuroTrace{T}, idxs::Array{Int64,1}) where T
             if swp != 0
                 stim_begin = findstimRng(trace)[swp, 1]
                 data = trace[swp, stim_begin:size(trace,2), ch]
+                t_series = trace.t[stim_begin:end]
                 #println(argmin(data))
-                t_peak[ch] = trace.t[argmin(data)+stim_begin]
+                t_peak[ch] = t_series[argmin(data)]
             end
         end
         t_peak
