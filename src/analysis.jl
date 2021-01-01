@@ -169,9 +169,8 @@ function time_to_peak(trace::NeuroTrace{T}, idxs::Array{Int64,1}) where T
         t_peak = zeros(eachchannel(trace)|> length)
         for (ch, swp) in enumerate(idxs)
             if swp != 0
-                stim_begin = findstimRng(trace)[swp, 1]
-                data = trace[swp, stim_begin:size(trace,2), ch]
-                t_series = trace.t[stim_begin:end]
+                t_series = trace.t[findall(trace.t .>= 0.0)]
+                data = trace[idxs[1], findall(trace.t .> 0), 1]
                 #println(argmin(data))
                 t_peak[ch] = t_series[argmin(data)]
             end

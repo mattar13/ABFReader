@@ -199,8 +199,8 @@ end
 
 
 #%% Plot anything that seems odd (single file plotting)
-path = paths[fail_files[4]]
-#path = "D:\\Data\\ERG\\Data from paul\\Adult (NR) cones_10\\UV\\a-waves\\12_3_19_WT_P38_m2_D_Cones_Blue(shifted).abf"
+#path = paths[fail_files[4]]
+path = "D:\\Data\\ERG\\Data from paul\\P8 (NR)_10\\a-waves\\Green\\4_6_19_WT_P8_m1_ND_Green.abf"
 println(path)
 data_ex = try
     #Some files may have a stimulus channel
@@ -222,26 +222,27 @@ filter_data = lowpass_filter(data_ex) #Lowpass filter using a 40hz 8-pole
 rmaxes = saturated_response(filter_data; saturated_thresh = Inf)
 ppbg_thresh = rmaxes .* 0.60;
 rdims, dim_idx = dim_response(filter_data, rmaxes)
+println(dim_idx)
 t_peak = time_to_peak(data_ex, dim_idx)
 t_dom = pepperburg_analysis(data_ex, rmaxes)
 
-println(rmaxes)
 fig1 = plot(data_ex, label = "", size = (1200, 800), title = data_ex.ID)
 #title!(fig1[1], data_ex.ID)
 hline!(fig1[1], [rmaxes[1]], c = :green, label = "Rmax")
 hline!(fig1[2], [rmaxes[2]], c = :green, label = "Rmax")
 hline!(fig1[1], [rdims[1]], c = :red, label = "Rdim")
 hline!(fig1[2], [rdims[2]], c = :red, label = "Rdim")
-#vline!(fig1[1], [t_peak[1]], c = :blue, label = "Tpeak")
-#vline!(fig1[2], [t_peak[2]], c = :blue, label = "Tpeak")
+vline!(fig1[1], [t_peak[1]], c = :blue, label = "Tpeak")
+vline!(fig1[2], [t_peak[2]], c = :blue, label = "Tpeak")
 plot!(fig1[1], t_dom[:,1], repeat([ppbg_thresh[1]], size(data_ex,1)), marker = :square, c = :grey, label = "Pepperburg", lw = 2.0)
 plot!(fig1[2], t_dom[:,2], repeat([ppbg_thresh[2]], size(data_ex,1)), marker = :square, c = :grey, label = "Pepperburg", lw = 2.0)
 
 #%%
 Qgraph = data_analysis |>
-        @filter(_.Age == 10) |>
-        @filter(_.Photoreceptors == "cones") |> 
-        #@filter(_.Wavelength == 525) |> 
+        @filter(_.Age == 8) |>
+        @filter(_.Rearing == 8) |>
+        #@filter(_.Photoreceptors == "cones") |> 
+        @filter(_.Wavelength == 525) |> 
         #@filter(_.Drugs == "a-waves") |> 
         @map({_.Path, _.Rmax, _.Rdim}) |> 
         DataFrame
