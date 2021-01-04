@@ -110,7 +110,7 @@ This function only works on concatenated files with more than one trace
     In the rdim calculation, it is better to adjust the higher percent
     Example: no traces in 20-30% range, try 20-40%
 """
-function dim_response(trace::NeuroTrace{T}, rmaxes::Array{T, 1}; return_idx = true, polarity::Int64 = -1, rmax_lin = [0.20, 0.40]) where T
+function dim_response(trace::NeuroTrace{T}, rmaxes::Array{T, 1}; return_idx = true, polarity::Int64 = -1, rmax_lin = [0.15, 0.40]) where T
     #We need
     if size(trace,1) == 1
         throw(ErrorException("There is no sweeps to this file, and Rdim will not work"))
@@ -170,7 +170,7 @@ function time_to_peak(trace::NeuroTrace{T}, idxs::Array{Int64,1}) where T
         for (ch, swp) in enumerate(idxs)
             if swp != 0
                 t_series = trace.t[findall(trace.t .>= 0.0)]
-                data = trace[idxs[1], findall(trace.t .> 0), 1]
+                data = trace[idxs[1], findall(trace.t .> 0), ch]
                 #println(argmin(data))
                 t_peak[ch] = t_series[argmin(data)]
             end
