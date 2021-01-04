@@ -342,7 +342,7 @@ function truncate_data(trace::NeuroTrace; t_pre = 0.5, t_post = 3.0)
     t_start = t_start > 0 ? t_start : 1
     t_end = (t_stim_start  + (t_post/dt)) |> Int64
     t_end = t_end < size(trace,2) ? t_end : size(trace,2)
-    data.t = trace.t[t_start:t_end] .- (trace.t[t_start] + t_pre)
+    data.t = trace.t[t_start:t_end] .- trace.t[t_stim_start]
     data.data_array = trace.data_array[:, t_start:t_end, :]
     return data
 end
@@ -350,12 +350,15 @@ end
 function truncate_data!(trace::NeuroTrace; t_pre = 0.5, t_post = 3.0)
 	dt = trace.dt
     t_stim_start, t_stim_end = findstimRng(trace)
-    #println(t_stim_start - (t_pre/dt))
-    t_start = round(Int, t_stim_start - (t_pre/dt))
-    t_start = t_start > 0 ? t_start : 1
-    t_end = round(Int, t_stim_start  + (t_post/dt))
-    t_end = t_end < size(trace,2) ? t_end : size(trace,2)
-	trace.t = trace.t[t_start:t_end] .- (trace.t[t_start] + t_pre)
+    
+    t_start = round(Int, t_stim_start - (t_pre/dt)) #Index of truncated start point
+    t_start = t_start >= 0 ? t_start : 1 #If the bounds are negative indexes then reset the bounds to index 1
+    
+    t_end = round(Int, t_stim_start  + (t_post/dt)) #Index of truncated end point
+    t_end = t_end < size(trace,2) ? t_end : size(trace,2) #If the indexes are greater than the number of datapoints then reset the indexes to n
+
+    #set the new time points to all the points between the indexes
+	trace.t = trace.t[t_start:t_end] .- trace.t[t_stim_start]
 	trace.data_array = trace[:, t_start:t_end, :]
 	return trace
 end
