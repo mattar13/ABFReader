@@ -52,6 +52,6 @@ export photons, Transferrance, stimulus_model
 export IR, IR_dev, AMP
 
 include("plotting.jl")
-export plot, plot!, vline!, hline!, savefig, histogram
+export plot, plot!, vline!, hline!, savefig, histogram, grid
 
 end # module
