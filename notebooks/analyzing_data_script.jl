@@ -90,15 +90,9 @@ for (i,path) in enumerate(paths)
         rmaxes = saturated_response(filter_data; saturated_thresh = saturated_thresh)
         rdims, dim_idx = dim_response(filter_data, rmaxes)
         t_peak = time_to_peak(data, dim_idx)
+        println(t_peak)
         t_dom = pepperburg_analysis(data, rmaxes)
-        #There were some pretty crazy scaling errors
-        for idx in 1:length(rmaxes)
-            if rmaxes[idx] >= 1.0
-                println("A scaling error was made")
-                rmaxes[idx] ./= 1000
-                rdims[idx] ./= 1000	
-            end
-        end
+
         for i = 1:(eachchannel(data)|>length)
             push!(data_analysis, (
                     path, 
@@ -122,11 +116,11 @@ for (i,path) in enumerate(paths)
         push!(fail_files, i)
     end
 end
-#%%
 data_analysis  = data_analysis |> @orderby_descending(_.Rearing) |> @thenby(_.Age) |> @thenby_descending(_.Photoreceptors) |> @thenby(_.Wavelength) |> @thenby_descending(_.Rmax) |> DataFrame
-#%%
-paths[fail_files]
-#%% Make and export the dataframe 
+
+#paths[fail_files]
+
+#Make and export the dataframe 
 all_categories = data_analysis |> 
     @unique({_.Age, _.Wavelength, _.Photoreceptors, _.Rearing}) |> 
     @filter(_.Drugs != "b_waves") |> 
@@ -210,8 +204,15 @@ catch
     extract_abf(path; stim_ch = -1, swps = -1, chs = -1)
 end
 #using Plots
+nt = formatted_split(path, format1, format2, format3, format4, format5, format6, format7)
+#%%
 truncate_data!(data_ex; t_pre = 0.2, t_post = 1.0)
-
+filter_data = lowpass_filter(data_ex) #Lowpass filter using a 40hz 8-pole 
+rmaxes = saturated_response(filter_data; saturated_thresh = saturated_thresh)
+rdims, dim_idx = dim_response(filter_data, rmaxes)
+t_peak = time_to_peak(data_ex, dim_idx)
+println(t_peak)
+t_dom = pepperburg_analysis(data, rmaxes)
 if findstimRng(data_ex)[1] == 1
     println("Don't baseline")
 else
@@ -222,12 +223,19 @@ filter_data = lowpass_filter(data_ex) #Lowpass filter using a 40hz 8-pole
 rmaxes = saturated_response(filter_data; saturated_thresh = Inf)
 ppbg_thresh = rmaxes .* 0.60;
 rdims, dim_idx = dim_response(filter_data, rmaxes)
-println(dim_idx)
 t_peak = time_to_peak(data_ex, dim_idx)
+println(t_peak)
 t_dom = pepperburg_analysis(data_ex, rmaxes)
 
-fig1 = plot(data_ex, label = "", size = (1200, 800), title = data_ex.ID)
-#title!(fig1[1], data_ex.ID)
+fig1 = plot(data_ex, label = "", title = data_ex.ID, c = :black)
+if dim_idx[1] != 0
+    plot!(fig1[1], data_ex.t, data_ex[dim_idx[1], :, 1], c = :red)
+end
+
+if dim_idx[2] != 0
+    plot!(fig1[2], data_ex.t, data_ex[dim_idx[2], :, 2], c = :red)
+end
+
 hline!(fig1[1], [rmaxes[1]], c = :green, label = "Rmax")
 hline!(fig1[2], [rmaxes[2]], c = :green, label = "Rmax")
 hline!(fig1[1], [rdims[1]], c = :red, label = "Rdim")
