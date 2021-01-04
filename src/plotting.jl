@@ -23,7 +23,7 @@ This function plots by channel. This is the most basic functionality of the trac
                 xguide := xlabels
                 @series begin
                     subplot := ch
-                    x := t_series
+                    x := nt.t #t_series
                     y := nt[swp, :, ch]
                     yguide := "$(nt.chNames[ch])($(nt.chUnits[ch]))"
                     ()
@@ -56,7 +56,7 @@ This function plots by channel. This is the most basic functionality of the trac
                 xguide := "Time ($(nt.tUnits))" 
                 @series begin
                     subplot := ch
-                    x := t_series
+                    x := nt.t #t_series
                     y := nt[swp, :, ch]
                     yguide := "$(nt.chNames[ch])($(nt.chUnits[ch]))"
                     ()
