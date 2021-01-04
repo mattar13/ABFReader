@@ -170,7 +170,7 @@ function time_to_peak(trace::NeuroTrace{T}, idxs::Array{Int64,1}) where T
         for (ch, swp) in enumerate(idxs)
             if swp != 0
                 t_series = trace.t[findall(trace.t .>= 0.0)]
-                data = trace[idxs[1], findall(trace.t .> 0), ch]
+                data = trace[swp, findall(trace.t .> 0), ch]
                 #println(argmin(data))
                 t_peak[ch] = t_series[argmin(data)]
             end
