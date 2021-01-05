@@ -15,10 +15,7 @@ format5 = ("\\", ~, ~, ~, ~, ("_", (" ", ~, :Rearing), :Sample_size), :Drugs, ch
 format6 = ("\\", ~, ~, ~, ~, ("_", (" ", ~, :Rearing), :Sample_size), :Drugs, check_color, ("_", :Month, :Day, :Year, :Genotype, check_age, ~, check_pc, ~))
 format7 = ("\\", ~, ~, ~, ~, ("_", (" ", ~, :Rearing), :Sample_size), check_color, :Drugs, ("_", :Month, :Day ,:Year, :Animal, :Genotype, check_age, ~, ~))
 
-# file_odd = "D:\\Data\\ERG\\Data from paul\\P9 (NR)_8\\UV\\b-waves\\2_15_20_m2_WT_P9_ND_Green.abf"
-# println(file_odd)
-# nt = formatted_split(file_odd, format7)
-# We can start with the path and data analysis, then parse the files after
+#Create the dataframe
 data_analysis = DataFrame(
     Path = String[], 
     Year = Int64[], Month = Int64[], Day = Int64[], 
@@ -26,9 +23,11 @@ data_analysis = DataFrame(
     Channel = String[], 
     Rmax = Float64[], Rdim = Float64[], t_peak = Float64[]
     )
+    
 fail_files = Int64[]
 files_missing_stimuli = Int64[]
-for (i,path) in enumerate(paths)
+#Walk through every file in the path
+for (i,path) in enumerate(paths[20:21])
     println("$(round(i/length(paths), digits = 3)*100)% progress made")
     try
         data = try
@@ -40,7 +39,6 @@ for (i,path) in enumerate(paths)
         end
         nt = formatted_split(path, format1, format2, format3, format4, format5, format6, format7)
         
-        #println(haskey(nt, :Photoreceptors))
         if nt.Age == 8 || nt.Age == 9
             println("Photoreceptors equals both")
             Photoreceptors = "Both"
@@ -53,7 +51,7 @@ for (i,path) in enumerate(paths)
             end
         end
         
-        t_pre = 1.0
+        t_pre = 0.2
         if Photoreceptors == "cones" || Photoreceptors == "Both"
             #Cone responses are under 300ms
             t_post = 0.3
@@ -77,19 +75,13 @@ for (i,path) in enumerate(paths)
             animal = nt[:Animal]
         end
 
-
-        if findstimRng(data)[1] == 1
-            println("Don't baseline")
-            #push!(files_missing_stimuli, i)
-        else
-            baseline_cancel!(data) #Baseline data
-        end #Baseline data
         truncate_data!(data; t_pre = t_pre, t_post = t_post)
+        baseline_cancel!(data)
+
         filter_data = lowpass_filter(data) #Lowpass filter using a 40hz 8-pole 
         rmaxes = saturated_response(filter_data; saturated_thresh = saturated_thresh)
         rdims, dim_idx = dim_response(filter_data, rmaxes)
         t_peak = time_to_peak(data, dim_idx)
-        println(t_peak)
         t_dom = pepperburg_analysis(data, rmaxes)
 
         for i = 1:(eachchannel(data)|>length)
@@ -115,8 +107,9 @@ for (i,path) in enumerate(paths)
         push!(fail_files, i)
     end
 end
-data_analysis  = data_analysis |> @orderby_descending(_.Rearing) |> @thenby(_.Age) |> @thenby_descending(_.Photoreceptors) |> @thenby(_.Wavelength) |> @thenby_descending(_.Rmax) |> DataFrame
+#%%
 
+#data_analysis[15, :Path]
 #paths[fail_files]
 
 #%% Make and export the dataframe 
@@ -133,7 +126,7 @@ rdims_sem = Float64[]
 tpeaks = Float64[]
 tpeaks_sem = Float64[]
 for row in eachrow(all_categories)
-    println(row)
+    #println(row)
     Qi = data_analysis |>
         @filter(_.Age == row.Age) |>
         @filter(_.Photoreceptors == row.Photoreceptors) |> 
@@ -176,9 +169,10 @@ b_wave = data_analysis |> @filter(_.Drugs == "b-waves") |> DataFrame
 #%% If there is something that is a cause for concern, put it here
 concern = data_analysis |> 
     @filter(_.Age == 30) |> 
-    @filter(_.Photoreceptors == "cones") |> 
+    #@filter(_.Photoreceptors == "cones") |> 
     @filter(_.Drugs == "a-waves") |> 
-    #@filter(_.Rearing == "(DR)") |> 
+    @filter(_.Rearing == "(DR)") |> @orderby(_.Wavelength) |> 
+    #@map({_.Path, _.Rearing, _.Age, _.Photoreceptors, _.Wavelength, _.Rmax, _.Rdim, _.t_peak}) |> 
     DataFrame
 #%% Save data
 save_path = joinpath(target_folder,"data.xlsx")
@@ -208,9 +202,8 @@ end
 
 
 #%% Plot anything that seems odd (single file plotting)
-#path = paths[fail_files[4]]
-path = "D:\\Data\\ERG\\Data from paul\\Adult (DR) cones_16\\Green\\a-waves\\11_21_19_DR_P37_m1_D_Cones_Green.abf"
-println(path)
+path = "D:\\Data\\ERG\\Data from paul\\Adult (DR) cones_16\\UV\\a-waves\\11_21_19_DR_P37_m1_D_Cones_Blue.abf"
+findall(x -> x == path, paths)
 data_ex = try
     #Some files may have a stimulus channel
     extract_abf(path; swps = -1)
@@ -231,10 +224,9 @@ else
         Photoreceptors = "Both"
     end
 end
-
 t_pre = 0.2
 if Photoreceptors == "cones" || Photoreceptors == "Both"
-    t_post = 0.3
+    t_post = 1.0
     saturated_thresh = Inf
 else
     t_post = 1.0
@@ -242,20 +234,14 @@ else
 end
 
 truncate_data!(data_ex; t_pre = t_pre, t_post = t_post)
+baseline_cancel!(data_ex)
 filter_data = lowpass_filter(data_ex) #Lowpass filter using a 40hz 8-pole 
-
-if findstimRng(data_ex)[1] == 1
-    println("Don't baseline")
-else
-    baseline_cancel!(data_ex) #Baseline data
-end
-
 rmaxes = saturated_response(filter_data; saturated_thresh = saturated_thresh)
 rdims, dim_idx = dim_response(filter_data, rmaxes)
 t_peak = time_to_peak(data_ex, dim_idx)
 ppbg_thresh = rmaxes .* 0.60;
 t_dom = pepperburg_analysis(data_ex, rmaxes)
-
+println(t_peak .*1000)
 #data_ex = filter_data
 fig1 = plot(data_ex, label = "", title = data_ex.ID, layout = grid(2,1), c = :black)
 if dim_idx[1] != 0
@@ -269,8 +255,8 @@ end
 #hline!(fig1[1], [rmaxes[1]], c = :green, label = "Rmax")
 #hline!(fig1[2], [rmaxes[2]], c = :green, label = "Rmax")
 #Plot rdim thresholds
-hline!(fig1[1], [rdims[1]], c = :red, label = "Rdim")
-hline!(fig1[2], [rdims[2]], c = :red, label = "Rdim")
+#hline!(fig1[1], [rdims[1]], c = :red, label = "Rdim")
+#hline!(fig1[2], [rdims[2]], c = :red, label = "Rdim")
 vline!(fig1[1], [t_peak[1]], c = :blue, label = "Tpeak")
 vline!(fig1[2], [t_peak[2]], c = :blue, label = "Tpeak")
 #plot!(fig1[1], t_dom[:,1], repeat([ppbg_thresh[1]], size(data_ex,1)), marker = :square, c = :grey, label = "Pepperburg", lw = 2.0)
