@@ -42,6 +42,7 @@ function baseline_cancel(trace::NeuroTrace; mode::Symbol = :mean, region = :pres
                     baseline_adjust = sum(trace[swp, rng_begin:rng_end, ch])/(rng_end-rng_begin)
                     data.data_array[swp,:, ch] .= trace.data_array[swp,:,ch] .- baseline_adjust
                 else
+                    #println("Either no stimulus channel exists, or prestimulus regions is too small") #Uncomment this to detect when a datapoint has no stim
                     data.data_array[swp,:,ch] .= trace[swp,:,ch]
                 end
             end
@@ -57,6 +58,7 @@ function baseline_cancel(trace::NeuroTrace; mode::Symbol = :mean, region = :pres
                     pfit = Polynomials.fit(trace.t[rng_begin:rng_end], trace[swp, rng_begin:rng_end , ch], 1)
                     data.data_array[swp, :, ch] .= trace[swp, :, ch] - pfit.(trace.t)
                 else
+                    #println("Either no stimulus channel exists, or prestimulus regions is too small") #Uncomment this to detect when a datapoint has no stim
                     data.data_array[swp,:,ch] .= trace[swp,:,ch]
                 end
             end
@@ -99,6 +101,8 @@ function baseline_cancel!(trace::NeuroTrace; mode::Symbol = :mean, region = :pre
                 if ch != trace.stim_ch && (rng_end - rng_begin) != 0
                     baseline_adjust = sum(trace[swp, rng_begin:rng_end, ch])/(rng_end-rng_begin)
                     trace.data_array[swp,:, ch] .= trace.data_array[swp,:,ch] .- baseline_adjust
+                else
+                    #println("Data has no region prestimulus") #Uncomment this to detect when a datapoint has no stim
                 end
             end
         end
@@ -113,6 +117,8 @@ function baseline_cancel!(trace::NeuroTrace; mode::Symbol = :mean, region = :pre
                     pfit = Polynomials.fit(trace.t[rng_begin:rng_end], trace[swp, rng_begin:rng_end , ch], 1)
                     #println(ch + pfit.(trace.t) |> size)
                     trace.data_array[swp, :, ch] .= trace[swp, :, ch] - pfit.(trace.t)
+                else 
+                    #println("Data has no region prestimulus") #Uncomment this to detect when a datapoint has no stim
                 end
             end
         end
