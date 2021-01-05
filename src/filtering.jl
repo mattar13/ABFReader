@@ -6,6 +6,7 @@ This function adjusts the baseline, similar to how it is done in clampfit.
     - The mean of the whole trace
     - The slope of a region
     - The slope of the whole trace
+It catches the baseline if the stimulus is at the beginning of the 
 """
 function baseline_cancel(trace::NeuroTrace; mode::Symbol = :mean, region = :prestim, cust_rng = (1,10))
     if isa(region, Tuple{Float64, Float64})
@@ -34,10 +35,10 @@ function baseline_cancel(trace::NeuroTrace; mode::Symbol = :mean, region = :pres
         for swp in 1:size(trace,1)
             for ch in 1:size(trace,3)
                 #never adjust the stim
-                if ch != trace.stim_ch
-                    if !isnothing(rng_end_arr)
-                        rng_end = rng_end_arr[swp]
-                    end
+                if !isnothing(rng_end_arr)
+                    rng_end = rng_end_arr[swp]
+                end
+                if ch != trace.stim_ch && rng_end - rng_begin != 0.0
                     baseline_adjust = sum(trace[swp, rng_begin:rng_end, ch])/(rng_end-rng_begin)
                     data.data_array[swp,:, ch] .= trace.data_array[swp,:,ch] .- baseline_adjust
                 else
@@ -49,10 +50,10 @@ function baseline_cancel(trace::NeuroTrace; mode::Symbol = :mean, region = :pres
 		for swp in 1:size(trace,1)
             for ch in 1:size(trace,3)
                 #never adjust the stim
-                if ch != trace.stim_ch
-                    if !isnothing(rng_end_arr)
-                        rng_end = rng_end_arr[swp]
-                    end
+                if !isnothing(rng_end_arr)
+                    rng_end = rng_end_arr[swp]
+                end
+                if ch != trace.stim_ch && rng_end - rng_begin != 0.0
                     pfit = Polynomials.fit(trace.t[rng_begin:rng_end], trace[swp, rng_begin:rng_end , ch], 1)
                     data.data_array[swp, :, ch] .= trace[swp, :, ch] - pfit.(trace.t)
                 else
@@ -92,10 +93,10 @@ function baseline_cancel!(trace::NeuroTrace; mode::Symbol = :mean, region = :pre
         for swp in 1:size(trace,1)
             for ch in 1:size(trace,3)
                 #never adjust the stim
-                if ch != trace.stim_ch
-                    if !isnothing(rng_end_arr)
-                        rng_end = rng_end_arr[swp]
-                    end
+                if !isnothing(rng_end_arr)
+                    rng_end = rng_end_arr[swp]
+                end
+                if ch != trace.stim_ch && (rng_end - rng_begin) != 0
                     baseline_adjust = sum(trace[swp, rng_begin:rng_end, ch])/(rng_end-rng_begin)
                     trace.data_array[swp,:, ch] .= trace.data_array[swp,:,ch] .- baseline_adjust
                 end
@@ -105,10 +106,10 @@ function baseline_cancel!(trace::NeuroTrace; mode::Symbol = :mean, region = :pre
 		 for swp in 1:size(trace,1)
             for ch in 1:size(trace,3)
                 #never adjust the stim
-                if ch != trace.stim_ch
-                    if !isnothing(rng_end_arr)
-                        rng_end = rng_end_arr[swp]
-                    end
+                if !isnothing(rng_end_arr)
+                    rng_end = rng_end_arr[swp]
+                end
+                if ch != trace.stim_ch && (rng_end - rng_begin) != 0
                     pfit = Polynomials.fit(trace.t[rng_begin:rng_end], trace[swp, rng_begin:rng_end , ch], 1)
                     #println(ch + pfit.(trace.t) |> size)
                     trace.data_array[swp, :, ch] .= trace[swp, :, ch] - pfit.(trace.t)
