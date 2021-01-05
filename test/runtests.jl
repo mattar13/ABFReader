@@ -109,3 +109,6 @@ hline!(p2[2], [rdims2[2]], c = :red)
 plot(p1, p2, layout = grid(1,2))
 
 #%% Sandbox area
+# TODO: Build the equation for the Ih curve fitting
+# TODO: Build the equation for Recovery time constant
+# TODO: Build the equation fot Amplification
