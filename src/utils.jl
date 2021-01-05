@@ -325,8 +325,6 @@ function findstimRng(trace::NeuroTrace)
     stim_rng
 end
 
-
-
 """
 This function truncates the data based on the amount of time.
     It uses the unit of time that the original NeuroTrace file is in. 
