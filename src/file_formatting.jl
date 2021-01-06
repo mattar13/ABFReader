@@ -119,6 +119,17 @@ function formatted_split(string::String, format::Tuple; dlm = "_", parse_numbers
                     push!(nt_vals, inside_split[in_key])
                 end
             end
+        elseif isa(nt_key, Array{T} where T <: Tuple) #This is for if a multiple options for the nested split is provided
+            #println("Nested Split")
+            inside_split = formatted_split(nt_val, nt_key...)
+            for in_key in keys(inside_split)
+                if in_key == :misc
+                    push!(misc_vals, inside_split[:misc]...)
+                else
+                    push!(nt_keys, in_key)
+                    push!(nt_vals, inside_split[in_key])
+                end
+            end
         elseif nt_key == :misc 
             #If the key is misc, then the formatting will expect unlabeled arguments
             allow_misc = true
