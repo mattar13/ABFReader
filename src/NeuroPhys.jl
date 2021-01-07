@@ -14,7 +14,7 @@ using Dates
 #Functions that can help with file extraction
 include("file_formatting.jl")
 export formatted_split
-export check_age, check_color, check_pc
+export check_age, check_color, check_pc, check_geno
 export parse_abf, extract_abf 
 export number_extractor, filename_extractor
 
