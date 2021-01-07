@@ -97,6 +97,7 @@ function formatted_split(string::String, format::Tuple; dlm = "_", parse_numbers
     #First we go looking through all formats
     for (idx, nt_key) in enumerate(format)
         nt_val = split_str[idx] |> String
+        #println("Format: $nt_key | Value: $nt_val")
         if nt_key == ~
             #if the key is ~, ignore this string
             #println("Ignore key")
@@ -189,12 +190,26 @@ function formatted_split(string::String, formats::Array{T} where T <: Tuple; kwa
 end
 
 function check_age(x::String)
-    x = NeuroPhys.number_seperator(x)[1][1]
-    #println(x)
-    if x > 30
+    if x == "Adult"
         return (:Age, 30)
     else
-        return (:Age, x)
+        x = number_seperator(x)[1][1]
+        #println(x)
+        if x > 30
+            return (:Age, 30)
+        else
+            return (:Age, x)
+        end
+    end
+end
+
+function check_geno(x; possible = ["WT", "KO", "HT", "UN"]) 
+    if x ∈ possible 
+        return (:Genotype, x)
+    elseif x == "DR" #This is a weird error Paul made in his filenames
+        return (:Genotype, "WT")
+    else
+        throw(error("Incorrect Genotype"))
     end
 end
 
@@ -211,9 +226,9 @@ This function works well with the formatted_split.
     If there is a color it turns it into the wavelength
 """
 function check_color(x::String)
-    if x == "Green"
+    if x == "Green" || x == "525Green"
         return (:Wavelength, 525)
-    elseif x == "Blue" || x == "UV"
+    elseif x == "Blue" || x == "UV" || x == "365UV"
         return (:Wavelength, 365)
     end
 end
