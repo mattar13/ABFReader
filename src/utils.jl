@@ -332,7 +332,7 @@ This function truncates the data based on the amount of time.
 
     Tip: For 
 """
-function truncate_data(trace::NeuroTrace; t_pre = 0.5, t_post = 3.0)
+function truncate_data(trace::NeuroTrace; t_pre = 0.2, t_post = 1.0)
     data = deepcopy(trace)
     #Search for the stimulus. if there is no stimulus, then just set the stim to 0.0
     t_stim_start, t_stim_end = findstimRng(trace)
@@ -345,7 +345,7 @@ function truncate_data(trace::NeuroTrace; t_pre = 0.5, t_post = 3.0)
     return data
 end
 
-function truncate_data!(trace::NeuroTrace; t_pre = 0.5, t_post = 3.0)
+function truncate_data!(trace::NeuroTrace; t_pre = 0.2, t_post = 3.0)
 	dt = trace.dt
     t_stim_start, t_stim_end = findstimRng(trace)
     
@@ -432,9 +432,9 @@ function concat!(data::NeuroTrace{T}, data_add::NeuroTrace{T}; mode = :pad, posi
 end
 
 function concat(path_arr::Array{String,1}; kwargs...)
-    data = extract_abf(path_arr[1], kwargs...)
+    data = extract_abf(path_arr[1]; kwargs...)
     for path in path_arr[2:end]
-        data_add = extract_abf(path, kwargs...)
+        data_add = extract_abf(path; kwargs...)
         concat!(data, data_add; kwargs...)
     end
     return data
