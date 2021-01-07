@@ -121,7 +121,7 @@ function formatted_split(string::String, format::Tuple; dlm = "_", parse_numbers
             end
         elseif isa(nt_key, Array{T} where T <: Tuple) #This is for if a multiple options for the nested split is provided
             #println("Nested Split")
-            inside_split = formatted_split(nt_val, nt_key...)
+            inside_split = formatted_split(nt_val, nt_key) #Removed the need for a splat
             for in_key in keys(inside_split)
                 if in_key == :misc
                     push!(misc_vals, inside_split[:misc]...)
@@ -174,7 +174,7 @@ function formatted_split(string::String, format::Tuple; dlm = "_", parse_numbers
 end
 
 #Basically this is what you pick when you aren't sure which format is correct out of a few options
-function formatted_split(string::String, formats...; kwargs...)
+function formatted_split(string::String, formats::Array{T} where T <: Tuple; kwargs...)
     for (i, format) in enumerate(formats)
         #println(format)
         try
