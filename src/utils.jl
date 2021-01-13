@@ -345,7 +345,7 @@ function truncate_data(trace::NeuroTrace; t_pre = 0.2, t_post = 1.0)
     return data
 end
 
-function truncate_data!(trace::NeuroTrace; t_pre = 0.2, t_post = 3.0)
+function truncate_data!(trace::NeuroTrace; t_pre = 0.2, t_post = 1.0)
 	dt = trace.dt
     t_stim_start, t_stim_end = findstimRng(trace)
     
