@@ -4,10 +4,10 @@ using NeuroPhys
 using DataFrames, Query, XLSX
 using StatsBase, Statistics
 #%% Recapitulating Pauls data
+#target_folder = "D:\\Data\\ERG\\Gnat"
 target_folder = "D:\\Data\\ERG\\Gnat"
 paths = target_folder |> parse_abf
 #Pauls data is in one of several different formats
-#%%
 exp_opt = [
     ("_", (" ", ~, :Rearing, check_pc), :Sample_size), 
     ("_", (" ", ~, :Rearing), :Sample_size),
@@ -76,12 +76,16 @@ for (i,path) in enumerate(paths)
         if nt.Experimenter == "Matt" #I have files organized by intensities
             #We need to first pass through each file and record all of the experiments
             println(path)
+
             push!(all_traces, 
                 (path, nt.Year, nt.Month, nt.Day, 
-                nt.Animal, nt.Age, nt.Genotype, nt.Drugs, nt.Wavelength, 
+                nt.Animal, nt.Age, nt.Genotype, 
+                nt.Drugs == "Drugs" ? "a-waves" : "b-waves", 
+                nt.Wavelength, 
                 nt.ND, nt.Intensity, nt.Stim_time)
             )
         elseif nt.Experimenter == "Paul" #He has files organized by concatenations
+            #continue #Lets focus just on my experiments
             data = try
                 #Some files may have a stimulus channel
                 extract_abf(path; swps = -1)
@@ -151,10 +155,14 @@ for (i,path) in enumerate(paths)
     end
 end
 
+#%%
+data_analysis
 #%% Walk though all files in my style and add them to the data_analysis DataFrame
+
 all_experiments = all_traces |> @unique({_.Year, _.Month, _.Day, _.Animal, _.Wavelength, _.Drugs}) |> DataFrame
 for (i, exp) in enumerate(eachrow(all_experiments))
     println("$(round(i/size(all_experiments, 1), digits = 3)*100)% progress made")
+    
     #Isolate all individual experiments
     Qi = all_traces |>
         @filter(_.Year == exp.Year) |>
@@ -165,9 +173,17 @@ for (i, exp) in enumerate(eachrow(all_experiments))
         @filter(_.Drugs == exp.Drugs) |>
         @map({_.Path, _.ND, _.Intensity, _.Stim_Time}) |> 
         DataFrame
-    path_arr = Qi[!,:Path]
-    #Concatenate the files by file
-    data = concat(path_arr; swps = -1) #Extract the concatenation file from the list of files
+
+    data = extract_abf(Qi[1, :Path])
+    for single_path in Qi[2:end,:Path] #Some of the files need to be averaged
+        single_path = extract_abf(single_path)
+        if size(single_path)[1] > 1
+            println("Needs to average traces")
+            average_sweeps!(single_path)
+        end
+        concat!(data, single_path)
+        println(size(data,1))
+    end
     #println(size(data))
     truncate_data!(data)
     baseline_cancel!(data)
@@ -191,8 +207,6 @@ for (i, exp) in enumerate(eachrow(all_experiments))
 end
 data_analysis
 #%%
-data_analysis
-#%%
 #paths[fail_files] #These are the files that have failed
 #%% Make and export the dataframe 
 all_categories = data_analysis |> 
@@ -210,6 +224,7 @@ tpeaks_sem = Float64[]
 for row in eachrow(all_categories)
     #println(row)
     Qi = data_analysis |>
+        @filter(_.Genotype == row.Genotype) |>
         @filter(_.Age == row.Age) |>
         @filter(_.Photoreceptors == row.Photoreceptors) |> 
         @filter(_.Drugs != "b-waves") |> 
@@ -243,18 +258,20 @@ all_categories[:, :Rdim] = rdims
 all_categories[:, :Rdim_SEM] = rdims_sem
 all_categories[:, :T_Peak] = tpeaks
 all_categories[:, :T_Peak_SEM] = tpeaks_sem
-all_categories  = all_categories |> @orderby_descending(_.Rearing) |> @thenby(_.Drugs) |> @thenby(_.Age) |> @thenby_descending(_.Photoreceptors) |> @thenby(_.Wavelength) |> DataFrame
+#%%
+all_categories  = all_categories |> @orderby_descending(_.Genotype) |> @thenby(_.Rearing) |> @thenby(_.Drugs) |> @thenby(_.Age) |> @thenby_descending(_.Photoreceptors) |> @thenby(_.Wavelength) |> DataFrame
 #%%
 a_wave = data_analysis |> @filter(_.Drugs == "a-waves") |> DataFrame
 b_wave = data_analysis |> @filter(_.Drugs == "b-waves") |> DataFrame
 
 #%% If there is something that is a cause for concern, put it here
 concern = data_analysis |> 
-    @filter(_.Age == 8) |> 
-    #@filter(_.Photoreceptors == "cones") |> 
-    @filter(_.Drugs == "a-waves") |>
+    @filter(_.Age == 30) |> 
+    @filter(_.Genotype == "WT") |>
+    @filter(_.Photoreceptors == "rods") |> 
+    #@filter(_.Drugs == "a-waves") |>
     #@filter(_.Wavelength == 525) |>  
-    @filter(_.Rearing == "(NR)") |> 
+    @filter(_.Rearing == "(DR)") |> 
     @orderby(_.Wavelength) |> 
     DataFrame
 #%% Save data
@@ -263,6 +280,7 @@ try
     XLSX.writetable(save_path, 
         #Summary = (collect(eachcol(summary_data)), names(summary_data)), 
         Full_Data = (collect(eachcol(data_analysis)), names(data_analysis)),
+        Gnat_Experiments = (collect(eachcol(all_experiments)), names(all_experiments)),
         A_Waves =  (collect(eachcol(a_wave)), names(a_wave)),
         B_Waves =  (collect(eachcol(b_wave)), names(b_wave)),
         All_Categories = (collect(eachcol(all_categories)), names(all_categories)),
@@ -274,7 +292,8 @@ catch
     rm(save_path)
     XLSX.writetable(save_path, 
         #Summary = (collect(eachcol(summary_data)), names(summary_data)), 
-        Full_Data = (collect(eachcol(data_analysis)), names(data_analysis)),
+        All_Data = (collect(eachcol(data_analysis)), names(data_analysis)),
+        Gnat_Experiments = (collect(eachcol(all_experiments)), names(all_experiments)),
         A_Waves =  (collect(eachcol(a_wave)), names(a_wave)),
         B_Waves =  (collect(eachcol(b_wave)), names(b_wave)) ,
         All_Categories = (collect(eachcol(all_categories)), names(all_categories)),
