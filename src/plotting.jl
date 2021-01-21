@@ -13,6 +13,7 @@ This function plots by channel. This is the most basic functionality of the trac
 
         for swp in 1:size(nt,1)
             for ch in 1:size(nt,3)-1
+
                 if time_adjusted 
                     t_series = nt.t .- nt.t[findstimRng(nt)[swp, 1]]
                 else
