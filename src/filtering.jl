@@ -1,14 +1,17 @@
 ####################These functions are for filtering and adjusting the traces################
 """
 This function adjusts the baseline, similar to how it is done in clampfit. 
-    it can cancel baseline based on: 
-    - The mean of a region
-    - The mean of the whole trace
-    - The slope of a region
-    - The slope of the whole trace
+    To change the mode of the function use the keyword argument mode
+        it can cancel baseline based on: 
+    - :mean -> the average voltage of a region
+    - :slope -> the linear slope of a region
+    To choose a region use the keyword region
+    - :prestim -> measures all time before the stimulus
+    - :whole -> measures the entire trace
+    - (start, end) -> a custom region
 It catches the baseline if the stimulus is at the beginning of the 
 """
-function baseline_cancel(trace::NeuroTrace; mode::Symbol = :mean, region = :prestim, cust_rng = (1,10))
+function baseline_cancel(trace::NeuroTrace; mode::Symbol = :mean, region = :prestim)
     if isa(region, Tuple{Float64, Float64})
         rng_begin = round(Int, region[1]/dt)+1
         if region[2] > trace.t[end]
