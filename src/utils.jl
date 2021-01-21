@@ -136,6 +136,12 @@ length(trace::NeuroTrace) = size(trace,2)
 getindex(trace::NeuroTrace, I...) = trace.data_array[I...]
 setindex!(trace::NeuroTrace, v, I...) = trace.data_array[I...] = v
 
+import Base: +, -, *, / #Import these basic functions to help 
++(trace::NeuroTrace, val::Real) = trace.data_array = trace.data_array .+ val
+-(trace::NeuroTrace, val::Real) = trace.data_array = trace.data_array .- val
+*(trace::NeuroTrace, val::Real) = trace.data_array = trace.data_array .* val
+/(trace::NeuroTrace, val::Real) = trace.data_array = trace.data_array ./ val
+
 #This function allows you to enter in a timestamp and get the data value relating to it
 function getindex(trace::NeuroTrace, timestamp::Float64) 
     if timestamp > trace.t[end]
@@ -333,6 +339,7 @@ This function truncates the data based on the amount of time.
     Tip: For 
 """
 function truncate_data(trace::NeuroTrace; t_pre = 0.2, t_post = 1.0)
+    dt = trace.dt
     data = deepcopy(trace)
     #Search for the stimulus. if there is no stimulus, then just set the stim to 0.0
     t_stim_start, t_stim_end = findstimRng(trace)
