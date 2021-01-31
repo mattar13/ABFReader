@@ -240,7 +240,7 @@ function average_sweeps(trace::NeuroTrace)
     
     data = deepcopy(trace)
     for ch in 1:size(trace,3)
-        data[:,:,ch] .= sum(trace[:,:,ch], dims = 1)/size(trace,1)
+        data[:,:,ch] .= sum(trace.data_array[:,:,ch], dims = 1)/size(trace,1)
     end
     return data
 end
