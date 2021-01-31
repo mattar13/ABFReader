@@ -382,6 +382,7 @@ The files in path array or super folder are concatenated into a single NeuroTrac
 
 function concat(data::NeuroTrace{T}, data_add::NeuroTrace{T}; mode = :pad, position = :post, avg_swps = true, kwargs...) where T
     new_data = deepcopy(data)
+    push!(new_data.filename, data_add.filename)
     if size(data,2) > size(data_add,2)
         #println("Original data larger $(size(data,2)) > $(size(data_add,2))")
         n_vals = abs(size(data,2) - size(data_add,2))
