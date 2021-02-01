@@ -20,13 +20,13 @@ export number_extractor, filename_extractor
 
 #Utility files contain file extraction and abf editing functions
 include("utils.jl")
-export NeuroTrace, getchannel, getsweep, getstim, findstimRng
+export Experiment, getchannel, getsweep, getstim, findstimRng
 export eachchannel, eachsweep
 export truncate_data, truncate_data!
 export concat, concat!
 
 
-#filtering are any functions that return a NeuroTrace file and alter the old one
+#filtering are any functions that return a Experiment file and alter the old one
 include("filtering.jl") 
 export baseline_cancel, baseline_cancel! 
 export lowpass_filter, lowpass_filter!
@@ -34,7 +34,7 @@ export notch_filter, notch_filter!
 export cwt_filter, cwt_filter!
 export average_sweeps, average_sweeps!
 export normalize, normalize!
-#Analysis functions return a single number or numbers related to the NeuroTrace
+#Analysis functions return a single number or numbers related to the Experiment
 include("analysis.jl")
 export RSQ
 export calculate_basic_stats

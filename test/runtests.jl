@@ -1,19 +1,20 @@
 #%% Test to see if the importing works
 println("Beginning testing")
-#%%
 using Revise
 using NeuroPhys
 using Distributions, StatsBase, StatsPlots, Polynomials
 println("Exporting succeeded")
-#%%
+#%% Add a new file format
+
+
+#%% File formatting
 format = ("\\", ~, ~, ~, ~, ("_", (" ", ~, :Rearing, :Photoreceptors), :Sample_size), [:Wavelength, NeuroPhys.color_func], :Drugs, ("_", :Month, :Day, :Year, :Genotype, :Age, :Animal))
 string = "D:\\Data\\ERG\\Data from paul\\Adult (NR) rods_14\\Green\\a-waves\\10_14_19_WT_P33_m1_D_Rods_Green(shifted).abf"
 nt = formatted_split(string, format)
 println("Formatted Strings function works")
 
 #%% Test the exporting and filtering of .abf files
-#target_path1 = "test\\to_filter.abf"
-target_path1 = "D:\\Data\\ERG\\Data from paul\\P10 (NR) cones_5\\UV\\b-waves\\2_16_20_m1_WT_P10_Cones_ND_Blue.abf"
+target_path1 = "test\\to_filter.abf"
 target_path2 = "test\\to_analyze.abf"
 data1 = extract_abf(target_path1); #Extract the data for filtering
 data2 = extract_abf(target_path2; stim_ch = 3, swps = -1, chs = [1,3,5]); #Extract the data for concatenation analysis

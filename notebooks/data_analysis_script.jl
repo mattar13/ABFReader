@@ -4,7 +4,6 @@ using NeuroPhys
 using DataFrames, Query, XLSX
 using StatsBase, Statistics
 #%% Recapitulating Pauls data
-#target_folder = "D:\\Data\\ERG\\Gnat"
 target_folder = "D:\\Data\\ERG\\Gnat"
 paths = target_folder |> parse_abf
 #Pauls data is in one of several different formats
@@ -215,12 +214,10 @@ all_categories = data_analysis |>
     @map({_.Age, _.Genotype, _.Photoreceptors, _.Drugs, _.Wavelength, _.Rearing}) |>
     DataFrame
 
-rmaxes = Float64[]
-rmaxes_sem = Float64[]
-rdims = Float64[]
-rdims_sem = Float64[]
-tpeaks = Float64[]
-tpeaks_sem = Float64[]
+rmaxes = Float64[]; rmaxes_sem = Float64[]
+rdims = Float64[]; rdims_sem = Float64[]
+tpeaks = Float64[]; tpeaks_sem = Float64[]
+
 for row in eachrow(all_categories)
     #println(row)
     Qi = data_analysis |>
@@ -252,6 +249,7 @@ for row in eachrow(all_categories)
     push!(tpeaks_sem, tpeak_sem)
     #println(length(eachrow(Qi)))
 end
+
 all_categories[:, :Rmax] = rmaxes
 all_categories[:, :Rmax_SEM] = rmaxes_sem
 all_categories[:, :Rdim] = rdims
@@ -266,12 +264,12 @@ b_wave = data_analysis |> @filter(_.Drugs == "b-waves") |> DataFrame
 
 #%% If there is something that is a cause for concern, put it here
 concern = data_analysis |> 
-    @filter(_.Age == 30) |> 
-    @filter(_.Genotype == "WT") |>
-    @filter(_.Photoreceptors == "rods") |> 
-    #@filter(_.Drugs == "a-waves") |>
+    #@filter(_.Age == 30) |> 
+    @filter(_.Genotype == "KO") |>
+    #@filter(_.Photoreceptors == "rods") |> 
+    @filter(_.Drugs == "a-waves") |>
     #@filter(_.Wavelength == 525) |>  
-    @filter(_.Rearing == "(DR)") |> 
+    #@filter(_.Rearing == "(DR)") |> 
     @orderby(_.Wavelength) |> 
     DataFrame
 #%% Save data
@@ -303,65 +301,6 @@ catch
 end
 
 
-#%% Plot anything that seems odd (single file plotting)
-path = "D:\\Data\\ERG\\Data from paul\\P10 (DR) rods_cones_10\\Green\\a-waves\\7_2_19_DR_P10_D_Rods_Green_REFORMAT.abf"
-#findall(x -> x == path, paths)
-data_ex = try
-    #Some files may have a stimulus channel
-    extract_abf(path; swps = -1)
-catch 
-    #Some files may not
-    extract_abf(path; stim_ch = -1, swps = -1, chs = -1)
-end
-#Readout of all the categories of the file
-nt = formatted_split(path, format1, format2, format3, format4, format5, format6, format7)
-if nt.Age == 8 || nt.Age == 9
-    println("Photoreceptors equals both")
-    Photoreceptors = "Both"
-else
-    if haskey(nt, :Photoreceptors)
-        Photoreceptors = nt.Photoreceptors
-    else
-        println("No key equaling Photoreceptors")
-        Photoreceptors = "Both"
-    end
-end
-t_pre = 0.2
-if Photoreceptors == "cones" || Photoreceptors == "Both"
-    t_post = 0.3
-    saturated_thresh = Inf
-else
-    t_post = 1.0
-    saturated_thresh = :determine
-end
-
-truncate_data!(data_ex; t_pre = t_pre, t_post = t_post)
-baseline_cancel!(data_ex)
-filter_data = lowpass_filter(data_ex) #Lowpass filter using a 40hz 8-pole 
-rmaxes = saturated_response(filter_data; saturated_thresh = saturated_thresh)
-rdims, dim_idx = dim_response(filter_data, rmaxes)
-t_peak = time_to_peak(data_ex, dim_idx)
-ppbg_thresh = rmaxes .* 0.60;
-t_dom = pepperburg_analysis(data_ex, rmaxes)
-#data_ex = filter_data
-fig1 = plot(data_ex, label = "", title = data_ex.ID, layout = grid(2,1), c = :black)
-if dim_idx[1] != 0
-    plot!(fig1[1], data_ex.t, data_ex[dim_idx[1], :, 1], c = :red)
-end
-
-if dim_idx[2] != 0
-    plot!(fig1[2], data_ex.t, data_ex[dim_idx[2], :, 2], c = :red)
-end
-
-#hline!(fig1[1], [rmaxes[1]], c = :green, label = "Rmax")
-#hline!(fig1[2], [rmaxes[2]], c = :green, label = "Rmax")
-#Plot rdim thresholds
-#hline!(fig1[1], [rdims[1]], c = :red, label = "Rdim")
-#hline!(fig1[2], [rdims[2]], c = :red, label = "Rdim")
-vline!(fig1[1], [t_peak[1]], c = :blue, label = "Tpeak")
-vline!(fig1[2], [t_peak[2]], c = :blue, label = "Tpeak")
-#plot!(fig1[1], t_dom[:,1], repeat([ppbg_thresh[1]], size(data_ex,1)), marker = :square, c = :grey, label = "Pepperburg", lw = 2.0)
-#plot!(fig1[2], t_dom[:,2], repeat([ppbg_thresh[2]], size(data_ex,1)), marker = :square, c = :grey, label = "Pepperburg", lw = 2.0)
 
 #%% If you want to plot all of the graphs in the concern section, do it here
 for (i,row) in enumerate(eachrow(concern))
@@ -423,3 +362,27 @@ for (i,row) in enumerate(eachrow(concern))
     #plot!(fig1[2], t_dom[:,2], repeat([ppbg_thresh[2]], size(data_ex,1)), marker = :square, c = :grey, label = "Pepperburg", lw = 2.0)
     savefig(fig1, "D:\\Data\\ERG\\Data from paul\\$(data_ex.ID)_graph.png")
 end
+
+#%% Data plotting
+file_ex = "D:\\Data\\ERG\\Gnat\\Paul\\Adult (DR) cones_16\\Green\\a-waves\\11_20_19_DR_P36_m1_D_Cones_Green.abf"
+data_ex = extract_abf(file_ex)
+truncate_data!(data_ex)
+plot(data_ex)
+#%% Plot unconcatenated files (in my format)
+
+file_to_concat = "D:\\Data\\ERG\\Gnat\\Matt\\2020_08_22_ERG\\Mouse1_P10_KO\\Drugs\\365UV\\"
+data_concat = concat(file_to_concat)
+truncate_data!(data_concat)
+#baseline_cancel!(data_concat)
+plot(data_concat)
+#%%
+println(sum(data_concat.data_array[5, :, 1])/size(data_concat, 2))
+#%%
+trace_4 = extract_abf(data_concat.filename[5])
+truncate_data!(trace_4)
+plot(trace_4.data_array[1,:,3])
+#%%
+findstimRng(data_concat)
+#%%
+stim = data_concat.data_array[5,:,3]
+plot(stim)

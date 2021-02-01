@@ -1,7 +1,7 @@
 """
 This function plots by channel. This is the most basic functionality of the trace plot
 """
-@recipe function f(nt::NeuroTrace; stim_plot = :include, time_adjusted = true)
+@recipe function f(nt::Experiment; stim_plot = :include, time_adjusted = true)
     grid := false
     if nt.stim_ch == -1
         #If there is no stimulus, always use the subplot

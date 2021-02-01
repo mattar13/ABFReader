@@ -11,7 +11,7 @@ This function adjusts the baseline, similar to how it is done in clampfit.
     - (start, end) -> a custom region
 It catches the baseline if the stimulus is at the beginning of the 
 """
-function baseline_cancel(trace::NeuroTrace; mode::Symbol = :mean, region = :prestim)
+function baseline_cancel(trace::Experiment; mode::Symbol = :mean, region = :prestim)
     if isa(region, Tuple{Float64, Float64})
         rng_begin = round(Int, region[1]/dt)+1
         if region[2] > trace.t[end]
@@ -72,7 +72,7 @@ function baseline_cancel(trace::NeuroTrace; mode::Symbol = :mean, region = :pres
     return data
 end
 
-function baseline_cancel!(trace::NeuroTrace; mode::Symbol = :mean, region = :prestim)
+function baseline_cancel!(trace::Experiment; mode::Symbol = :mean, region = :prestim)
     if isa(region, Tuple{Float64, Float64})
         rng_begin = round(Int, region[1]/trace.dt)+1
         if region[2] > trace.t[end]
@@ -101,9 +101,13 @@ function baseline_cancel!(trace::NeuroTrace; mode::Symbol = :mean, region = :pre
                 if !isnothing(rng_end_arr)
                     rng_end = rng_end_arr[swp]
                 end
+                println(rng_end - rng_begin)
                 if ch != trace.stim_ch && (rng_end - rng_begin) != 0
-                    baseline_adjust = sum(trace[swp, rng_begin:rng_end, ch])/(rng_end-rng_begin)
+                    println(swp)
+                    baseline_adjust = sum(trace.data_array[swp, rng_begin:rng_end, ch])/(rng_end-rng_begin)
+                    println(baseline_adjust)
                     trace.data_array[swp,:, ch] .= trace.data_array[swp,:,ch] .- baseline_adjust
+                    println(sum(trace.data_array[swp, rng_begin:rng_end, ch])/(rng_end-rng_begin))
                 else
                     #println("Data has no region prestimulus") #Uncomment this to detect when a datapoint has no stim
                 end
@@ -131,7 +135,7 @@ end
 """
 This function applies a n-pole lowpass filter
 """
-function lowpass_filter(trace::NeuroTrace; freq = 40.0, pole = 8)
+function lowpass_filter(trace::Experiment; freq = 40.0, pole = 8)
     
     responsetype = Lowpass(freq; fs =  1/trace.dt)
     designmethod = Butterworth(8)
@@ -150,7 +154,7 @@ function lowpass_filter(trace::NeuroTrace; freq = 40.0, pole = 8)
     return data
 end
 
-function lowpass_filter!(trace::NeuroTrace; freq = 40.0, pole = 8)
+function lowpass_filter!(trace::Experiment; freq = 40.0, pole = 8)
     
     responsetype = Lowpass(freq; fs =  1/trace.dt)
     designmethod = Butterworth(8)
@@ -165,9 +169,9 @@ function lowpass_filter!(trace::NeuroTrace; freq = 40.0, pole = 8)
     end
 end
 
-lowpass_filter(trace::NeuroTrace, freq; pole = 8) = lowpass_filter(trace; freq = freq, pole = pole)
+lowpass_filter(trace::Experiment, freq; pole = 8) = lowpass_filter(trace; freq = freq, pole = pole)
 
-function notch_filter(trace::NeuroTrace; pole = 8, center = 60.0, std = 0.1)
+function notch_filter(trace::Experiment; pole = 8, center = 60.0, std = 0.1)
     
     responsetype = Bandstop(center-std, center+std; fs = 1/trace.dt)
 	designmethod = Butterworth(8)
@@ -186,7 +190,7 @@ function notch_filter(trace::NeuroTrace; pole = 8, center = 60.0, std = 0.1)
     return data
 end
 
-function notch_filter!(trace::NeuroTrace; pole = 8, center = 60.0, std = 0.1)
+function notch_filter!(trace::Experiment; pole = 8, center = 60.0, std = 0.1)
     
     responsetype = Bandstop(center-std, center+std; fs = 1/trace.dt)
 	designmethod = Butterworth(8)
@@ -201,7 +205,7 @@ function notch_filter!(trace::NeuroTrace; pole = 8, center = 60.0, std = 0.1)
     end
 end
 
-function cwt_filter(trace::NeuroTrace; wave = WT.dog2, periods = 1:7, return_cwt = true)
+function cwt_filter(trace::Experiment; wave = WT.dog2, periods = 1:7, return_cwt = true)
     
     data = similar(trace.data_array)
     stim_begin, stim_end = findstimRng(trace)
@@ -220,7 +224,7 @@ function cwt_filter(trace::NeuroTrace; wave = WT.dog2, periods = 1:7, return_cwt
     data
 end
 
-function cwt_filter!(trace::NeuroTrace; wave = WT.dog2, periods = 1:9)
+function cwt_filter!(trace::Experiment; wave = WT.dog2, periods = 1:9)
     
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
@@ -236,7 +240,7 @@ end
 """
 If the traces contain multiple runs, then this file averages the data
 """
-function average_sweeps(trace::NeuroTrace)
+function average_sweeps(trace::Experiment)
     
     data = deepcopy(trace)
     for ch in 1:size(trace,3)
@@ -245,9 +249,9 @@ function average_sweeps(trace::NeuroTrace)
     return data
 end
 
-average_sweeps!(trace::NeuroTrace) = trace.data_array = sum(trace, dims = 1)/size(trace,1) 
+average_sweeps!(trace::Experiment) = trace.data_array = sum(trace, dims = 1)/size(trace,1) 
 
-function normalize(trace::NeuroTrace; rng = (-1,0))
+function normalize(trace::Experiment; rng = (-1,0))
     data = deepcopy(trace)
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
@@ -260,7 +264,7 @@ function normalize(trace::NeuroTrace; rng = (-1,0))
     return data
 end
 
-function normalize!(trace::NeuroTrace; rng = (-1,0))
+function normalize!(trace::Experiment; rng = (-1,0))
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
             #never adjust the stim

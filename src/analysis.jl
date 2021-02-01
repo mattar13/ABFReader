@@ -20,7 +20,7 @@ end
 """
 This function calculates the min, max, mean, and std of each trace
 """
-function calculate_basic_stats(data::NeuroTrace)
+function calculate_basic_stats(data::Experiment)
     stim_begin, stim_end = findstimRng(data)
     ch_idxs = findall(x -> x!=data.stim_ch, 1:size(data,3))
     pre_stim = data[:, 1:stim_end, ch_idxs]
@@ -46,7 +46,7 @@ This function uses a histogram method to find the saturation point.
     - Does this same function work for the Rmax of nonsaturated responses?
     - Setting the saturated threshold to infinity will completely disregard the histogram method
 """
-function saturated_response(trace::NeuroTrace; saturated_thresh = :determine, polarity::Int64 = -1, precision = 500, z = 1.3, kwargs...)
+function saturated_response(trace::Experiment; saturated_thresh = :determine, polarity::Int64 = -1, precision = 500, z = 1.3, kwargs...)
     if isa(saturated_thresh, Symbol)
         saturated_thresh = size(trace,1)/precision/2
     end
@@ -110,7 +110,7 @@ This function only works on concatenated files with more than one trace
     In the rdim calculation, it is better to adjust the higher percent
     Example: no traces in 20-30% range, try 20-40%
 """
-function dim_response(trace::NeuroTrace{T}, rmaxes::Array{T, 1}; return_idx = true, polarity::Int64 = -1, rmax_lin = [0.10, 0.40]) where T
+function dim_response(trace::Experiment{T}, rmaxes::Array{T, 1}; return_idx = true, polarity::Int64 = -1, rmax_lin = [0.10, 0.40]) where T
     #We need
     if size(trace,1) == 1
         throw(ErrorException("There is no sweeps to this file, and Rdim will not work"))
@@ -155,12 +155,12 @@ function dim_response(trace::NeuroTrace{T}, rmaxes::Array{T, 1}; return_idx = tr
 end
 
 #This dispatch is for if there has been no rmax provided. 
-dim_response(trace::NeuroTrace; z = 0.0, rdim_percent = 0.15) = dim_response(trace, saturated_response(trace; z = z), rdim_percent = rdim_percent)
+dim_response(trace::Experiment; z = 0.0, rdim_percent = 0.15) = dim_response(trace, saturated_response(trace; z = z), rdim_percent = rdim_percent)
 
 """
 This function calculates the time to peak using the dim response properties of the concatenated file
 """
-function time_to_peak(trace::NeuroTrace{T}, idxs::Array{Int64,1}) where T
+function time_to_peak(trace::Experiment{T}, idxs::Array{Int64,1}) where T
     if size(trace,1) == 1
         throw(ErrorException("There is no sweeps to this file, and Tpeak will not work"))
     elseif eachchannel(trace)|> length != size(idxs,1)
@@ -179,7 +179,7 @@ function time_to_peak(trace::NeuroTrace{T}, idxs::Array{Int64,1}) where T
     end
 end
 
-function get_response(trace::NeuroTrace, rmaxes::Array{T,1}) where T
+function get_response(trace::Experiment, rmaxes::Array{T,1}) where T
     responses = zeros(eachsweep(trace) |> length, eachchannel(trace) |> length)
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
@@ -200,7 +200,7 @@ This function conducts a Pepperburg analysis on a single trace.
     1) A rmax is provided, does not need to calculate rmaxes
     2) No rmax is provided, so one is calculated
 """
-function pepperburg_analysis(trace::NeuroTrace{T}, rmaxes::Array{T, 1}; recovery_percent = 0.60, kwargs...) where T
+function pepperburg_analysis(trace::Experiment{T}, rmaxes::Array{T, 1}; recovery_percent = 0.60, kwargs...) where T
     if size(trace,1) == 1
         throw(error("Pepperburg will not work on single sweeps"))
     end
@@ -223,4 +223,4 @@ function pepperburg_analysis(trace::NeuroTrace{T}, rmaxes::Array{T, 1}; recovery
     t_dom[:, 1:end .!= trace.stim_ch]
 end
 
-pepperburg_analysis(trace::NeuroTrace{T}; kwargs...) where T = pepperburg_analysis(trace, saturated_response(trace; kwargs...); kwargs...)    
+pepperburg_analysis(trace::Experiment{T}; kwargs...) where T = pepperburg_analysis(trace, saturated_response(trace; kwargs...); kwargs...)    

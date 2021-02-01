@@ -1,7 +1,6 @@
 
 """
-TODO: I want to add in a different category for ERG experiments. 
-This file contains the ABF data traces. 
+This file contains the ABF data traces. It is a generic experiment which doesn't include any other specifics. 
 
 To see all fields of the pyABF data: 
 >> PyCall.inspect[:getmembers](trace_file)
@@ -16,8 +15,7 @@ Fields:
     labels: The labels for [X (Time), Y (Membrane Voltage), Command, DigitalOut]
     stimulus_ch: If there is a channel to set as the stimulus, this will remember that channel, otherwise, this is set to -1
 """
-mutable struct NeuroTrace{T}
-    #pyABF_file::PyObject #Don't know yet if this will be helpful or just take up space
+mutable struct Experiment{T}
     ID::String
     protocol::String
     t::Array{T, 1}
@@ -33,8 +31,11 @@ mutable struct NeuroTrace{T}
 end
 
 """
+TODO: I need to do a massive restructure. 
+1) ERG files need to be a seperate object. This will allow for more extensive stimulus protocols
+2) I need to do something different with stimulus files
 This function extracts an ABF file from a path
-    - It creates a NeuroTrace object which 
+    - It creates a Experiment object which 
 """
 function extract_abf(::Type{T}, abf_path::String; stim_ch = 3, swps = -1, chs = ["Vm_prime","Vm_prime4", "IN 7"], verbose = false) where T <: Real
     if length(abf_path |> splitpath) > 1
@@ -106,7 +107,7 @@ function extract_abf(::Type{T}, abf_path::String; stim_ch = 3, swps = -1, chs = 
         end
         data_array[swp_idx, :, ch_idx] = data
     end
-    NeuroTrace{T}(
+    Experiment{T}(
         trace_file.abfID, 
         trace_file.protocol,
         t, 
@@ -126,24 +127,24 @@ extract_abf(abf_path::String ; kwargs...) = extract_abf(Float64, abf_path ; kwar
 
 import Base: size, length, getindex, setindex, sum, copy, maximum, minimum, push!
 
-#Extending for NeuroTrace
-size(trace::NeuroTrace) = size(trace.data_array)
-size(trace::NeuroTrace, dim::Int64) = size(trace.data_array, dim)
+#Extending for Experiment
+size(trace::Experiment) = size(trace.data_array)
+size(trace::Experiment, dim::Int64) = size(trace.data_array, dim)
 
-length(trace::NeuroTrace) = size(trace,2)
+length(trace::Experiment) = size(trace,2)
  
-#Extending get index for NeuroTrace
-getindex(trace::NeuroTrace, I...) = trace.data_array[I...]
-setindex!(trace::NeuroTrace, v, I...) = trace.data_array[I...] = v
+#Extending get index for Experiment
+getindex(trace::Experiment, I...) = trace.data_array[I...]
+setindex!(trace::Experiment, v, I...) = trace.data_array[I...] = v
 
 import Base: +, -, *, / #Import these basic functions to help 
-+(trace::NeuroTrace, val::Real) = trace.data_array = trace.data_array .+ val
--(trace::NeuroTrace, val::Real) = trace.data_array = trace.data_array .- val
-*(trace::NeuroTrace, val::Real) = trace.data_array = trace.data_array .* val
-/(trace::NeuroTrace, val::Real) = trace.data_array = trace.data_array ./ val
++(trace::Experiment, val::Real) = trace.data_array = trace.data_array .+ val
+-(trace::Experiment, val::Real) = trace.data_array = trace.data_array .- val
+*(trace::Experiment, val::Real) = trace.data_array = trace.data_array .* val
+/(trace::Experiment, val::Real) = trace.data_array = trace.data_array ./ val
 
 #This function allows you to enter in a timestamp and get the data value relating to it
-function getindex(trace::NeuroTrace, timestamp::Float64) 
+function getindex(trace::Experiment, timestamp::Float64) 
     if timestamp > trace.t[end]
         trace[:, end, :]
     else
@@ -151,7 +152,7 @@ function getindex(trace::NeuroTrace, timestamp::Float64)
     end
 end
 
-function getindex(trace::NeuroTrace, timestamp_rng::StepRangeLen{Float64}) 
+function getindex(trace::Experiment, timestamp_rng::StepRangeLen{Float64}) 
     println(timestamp_rng)
     if timestamp_rng[1] == 0.0
         start_idx = 1
@@ -178,7 +179,7 @@ This function pushes traces to the datafile
     - Sweeps are 
 
 """
-function push!(nt::NeuroTrace{T}, item::AbstractArray{T}; new_name = "Unnamed") where T<:Real
+function push!(nt::Experiment{T}, item::AbstractArray{T}; new_name = "Unnamed") where T<:Real
     
     #All of these options assume the new data point length matches the old one
     if size(item, 2) == size(nt,2) && size(item,3) == size(nt,3)
@@ -201,12 +202,12 @@ function push!(nt::NeuroTrace{T}, item::AbstractArray{T}; new_name = "Unnamed") 
     end
 end
 
-function push!(nt_push_to::NeuroTrace, nt_added::NeuroTrace) 
+function push!(nt_push_to::Experiment, nt_added::Experiment) 
     push!(nt_push_to.filename, nt_added.filename...)
     push!(nt_push_to, nt_added.data_array)
 end
 
-function pad(trace::NeuroTrace{T}, n_add::Int64; position::Symbol = :post, dims::Int64 = 2, val::T = 0.0) where T
+function pad(trace::Experiment{T}, n_add::Int64; position::Symbol = :post, dims::Int64 = 2, val::T = 0.0) where T
     data = deepcopy(trace)    
     addon_size = collect(size(trace))
     addon_size[dims] = n_add
@@ -219,7 +220,7 @@ function pad(trace::NeuroTrace{T}, n_add::Int64; position::Symbol = :post, dims:
     return data
 end
 
-function pad!(trace::NeuroTrace{T}, n_add::Int64; position::Symbol = :post, dims::Int64 = 2, val::T = 0.0) where T
+function pad!(trace::Experiment{T}, n_add::Int64; position::Symbol = :post, dims::Int64 = 2, val::T = 0.0) where T
     addon_size = collect(size(trace))
     addon_size[dims] = n_add
     addon = fill(val, addon_size...)
@@ -230,7 +231,7 @@ function pad!(trace::NeuroTrace{T}, n_add::Int64; position::Symbol = :post, dims
     end
 end
 
-function chop(trace::NeuroTrace, n_chop::Int64; position::Symbol = :post, dims::Int64 = 2) 
+function chop(trace::Experiment, n_chop::Int64; position::Symbol = :post, dims::Int64 = 2) 
     data = copy(trace)
     resize_size = collect(size(trace))
     resize_size[dims] = (size(trace, dims)-n_chop)
@@ -239,32 +240,32 @@ function chop(trace::NeuroTrace, n_chop::Int64; position::Symbol = :post, dims::
     return data
 end
 
-function chop!(trace::NeuroTrace, n_chop::Int64; position::Symbol = :post, dims::Int64 = 2) 
+function chop!(trace::Experiment, n_chop::Int64; position::Symbol = :post, dims::Int64 = 2) 
     resize_size = collect(size(trace))
     resize_size[dims] = (size(trace, dims)-n_chop)
     resize_size = map(x -> 1:x, resize_size)
     trace.data_array = trace.data_array[resize_size...]
 end
 
-minimum(trace::NeuroTrace; kwargs...) = minimum(trace.data_array; kwargs...)
+minimum(trace::Experiment; kwargs...) = minimum(trace.data_array; kwargs...)
 
-maximum(trace::NeuroTrace; kwargs...) = maximum(trace.data_array; kwargs...)
+maximum(trace::Experiment; kwargs...) = maximum(trace.data_array; kwargs...)
 
-sum(trace::NeuroTrace; kwargs...) = sum(trace.data_array; kwargs...)
+sum(trace::Experiment; kwargs...) = sum(trace.data_array; kwargs...)
 
-copy(nt::NeuroTrace) = NeuroTrace([getfield(nt, fn) for fn in fieldnames(nt |> typeof)]...)
+copy(nt::Experiment) = Experiment([getfield(nt, fn) for fn in fieldnames(nt |> typeof)]...)
 
 """
 This gets the channel based on either the name or the index of the channel
 """
-getchannel(trace::NeuroTrace, idx::Int64) = trace.data_array[:,:,idx] |> vec
-getchannel(trace::NeuroTrace, idx_arr::Array{Int64}) = trace.data_array[:,:,idx_arr]
-getchannel(trace::NeuroTrace, name::String) = getchannel(trace, findall(x -> x==name, trace.chNames)[1])
+getchannel(trace::Experiment, idx::Int64) = trace.data_array[:,:,idx] |> vec
+getchannel(trace::Experiment, idx_arr::Array{Int64}) = trace.data_array[:,:,idx_arr]
+getchannel(trace::Experiment, name::String) = getchannel(trace, findall(x -> x==name, trace.chNames)[1])
 
 """
 This iterates through all of the channels
 """
-function eachchannel(trace::NeuroTrace; include_stim = false) 
+function eachchannel(trace::Experiment; include_stim = false) 
     if include_stim == true
         return Iterators.map(idx -> getchannel(trace, idx), 1:size(trace,3))
     else
@@ -276,18 +277,18 @@ end
 """
 This gets the sweep from the data based on the sweep index
 """
-getsweep(trace::NeuroTrace, idx::Int64) = trace.data_array[idx, :, :] |> vec
-getsweep(trace::NeuroTrace, idx_arr::Array{Int64}) = trace.data_array[idx_arr, :, :]
+getsweep(trace::Experiment, idx::Int64) = trace.data_array[idx, :, :] |> vec
+getsweep(trace::Experiment, idx_arr::Array{Int64}) = trace.data_array[idx_arr, :, :]
 
 """
 This iterates through all sweeps
 """
-eachsweep(trace::NeuroTrace) = Iterators.map(idx -> getsweep(trace, idx), 1:size(trace,1))
+eachsweep(trace::Experiment) = Iterators.map(idx -> getsweep(trace, idx), 1:size(trace,1))
 
 """
 This gets the stimulus trace only if it has been set
 """
-function getstim(trace::NeuroTrace; threshold::Float64 = 0.2) 
+function getstim(trace::Experiment; threshold::Float64 = 0.2) 
     if trace.stim_ch != -1 
         if !isnothing(threshold)
             return trace[:, :, trace.stim_ch] .> threshold
@@ -302,7 +303,7 @@ end
 """
 This returns the indexes where the stimulus is occurring
 """
-function findstimRng(trace::NeuroTrace) 
+function findstimRng(trace::Experiment) 
     stim_rng = ones(Int, size(trace,1), 2)
     if trace.stim_ch == -1
         #println("Stim not set")
@@ -333,12 +334,12 @@ end
 
 """
 This function truncates the data based on the amount of time.
-    It uses the unit of time that the original NeuroTrace file is in. 
+    It uses the unit of time that the original Experiment file is in. 
     It returns a new data file versus altering the old data file
 
     Tip: For 
 """
-function truncate_data(trace::NeuroTrace; t_pre = 0.2, t_post = 1.0)
+function truncate_data(trace::Experiment; t_pre = 0.2, t_post = 1.0)
     dt = trace.dt
     data = deepcopy(trace)
     #Search for the stimulus. if there is no stimulus, then just set the stim to 0.0
@@ -352,7 +353,7 @@ function truncate_data(trace::NeuroTrace; t_pre = 0.2, t_post = 1.0)
     return data
 end
 
-function truncate_data!(trace::NeuroTrace; t_pre = 0.2, t_post = 1.0)
+function truncate_data!(trace::Experiment; t_pre = 0.2, t_post = 1.0)
 	dt = trace.dt
     t_stim_start, t_stim_end = findstimRng(trace)
     
@@ -369,7 +370,7 @@ function truncate_data!(trace::NeuroTrace; t_pre = 0.2, t_post = 1.0)
 end
 
 """
-The files in path array or super folder are concatenated into a single NeuroTrace file
+The files in path array or super folder are concatenated into a single Experiment file
 - There are a few modes
     - pre_pad will add zeros at the beginning of a data array that is too short
     - post_pad will add zeros at the end of a data array that is too short
@@ -380,9 +381,8 @@ The files in path array or super folder are concatenated into a single NeuroTrac
         - If a majority of arrays are shorter, it will chop the longer ones
 """
 
-function concat(data::NeuroTrace{T}, data_add::NeuroTrace{T}; mode = :pad, position = :post, avg_swps = true, kwargs...) where T
+function concat(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, position = :post, avg_swps = true, kwargs...) where T
     new_data = deepcopy(data)
-    push!(new_data.filename, data_add.filename)
     if size(data,2) > size(data_add,2)
         #println("Original data larger $(size(data,2)) > $(size(data_add,2))")
         n_vals = abs(size(data,2) - size(data_add,2))
@@ -411,7 +411,7 @@ function concat(data::NeuroTrace{T}, data_add::NeuroTrace{T}; mode = :pad, posit
     return new_data
 end
 
-function concat!(data::NeuroTrace{T}, data_add::NeuroTrace{T}; mode = :pad, position = :post, avg_swps = true, kwargs...) where T
+function concat!(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, position = :post, avg_swps = true, kwargs...) where T
     if size(data,2) > size(data_add,2)
         #println("Original data larger $(size(data,2)) > $(size(data_add,2))")
         n_vals = abs(size(data,2) - size(data_add,2))
@@ -454,7 +454,7 @@ exclude(A, exclusions) = A[filter(x -> !(x ∈ exclusions), eachindex(A))]
 """
 This function opens the .abf file in clampfit if it is installed
 """
-function openABF(trace::NeuroTrace)
+function openABF(trace::Experiment)
     pyABF = pyimport("pyabf")
     pyABF.ABF(trace.filename).launchInClampFit()
 end
