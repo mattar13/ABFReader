@@ -237,6 +237,7 @@ check_color(x) = x
 ########################### These are some functions that will make parsing folder names easier ##############
 
 
+########################### These are some common formats I use
 
 """
 This extracts info from each filename.
