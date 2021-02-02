@@ -20,6 +20,7 @@ export number_extractor, filename_extractor
 
 #Utility files contain file extraction and abf editing functions
 include("utils.jl")
+export StimulusProtocol
 export Experiment, getchannel, getsweep, getstim, findstimRng
 export eachchannel, eachsweep
 export truncate_data, truncate_data!

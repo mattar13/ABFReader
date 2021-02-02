@@ -1,4 +1,13 @@
 
+mutable struct StimulusProtocol{T}
+    channel::Int64
+    type::Symbol
+    index_range::Tuple{Int64, Int64}
+    timestamps::Tuple{T, T}
+end
+
+StimulusProtocol(ch::Int64, type::Symbol) = StimulusProtocol(ch, type, (1, 1), (0.0, 0.0))
+
 """
 This file contains the ABF data traces. It is a generic experiment which doesn't include any other specifics. 
 
@@ -26,8 +35,7 @@ mutable struct Experiment{T}
     chNames::Array{String, 1}
     chUnits::Array{String, 1}
     labels::Array{String, 1}
-    stim_ch::Union{Array{Int64}, Int64}
-    stim_protocol::Dict{Symbol, Tuple{Float64, Float64}}
+    stim_ch::StimulusProtocol
     filename::Array{String,1}
 end
 
@@ -38,7 +46,13 @@ TODO: I need to do a massive restructure.
 This function extracts an ABF file from a path
     - It creates a Experiment object which 
 """
-function extract_abf(::Type{T}, abf_path::String; stim_ch = 3, swps = -1, chs = ["Vm_prime","Vm_prime4", "IN 7"], verbose = false) where T <: Real
+function extract_abf(::Type{T}, abf_path::String; 
+        stim_ch::Union{StimulusProtocol{T},Array{StimulusProtocol{T}}} = StimulusProtocol(-1, :test_flash), 
+        swps = -1, 
+        chs = ["Vm_prime","Vm_prime4", "IN 7"], 
+        verbose = false
+    ) where T <: Real
+
     if length(abf_path |> splitpath) > 1
         full_path = abf_path
     else
@@ -108,6 +122,11 @@ function extract_abf(::Type{T}, abf_path::String; stim_ch = 3, swps = -1, chs = 
         end
         data_array[swp_idx, :, ch_idx] = data
     end
+    #set up the stimulus protocol
+    if stim_ch.channel != -1
+        println(stim_ch.type)
+    end
+
     Experiment{T}(
         trace_file.abfID, 
         trace_file.protocol,
@@ -119,7 +138,7 @@ function extract_abf(::Type{T}, abf_path::String; stim_ch = 3, swps = -1, chs = 
         chNames, 
         chUnits, 
         labels, 
-        stim_ch, 
+        stim_ch,
         [full_path]
         )
 end
