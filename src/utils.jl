@@ -26,7 +26,8 @@ mutable struct Experiment{T}
     chNames::Array{String, 1}
     chUnits::Array{String, 1}
     labels::Array{String, 1}
-    stim_ch::Union{String, Int64}
+    stim_ch::Union{Array{Int64}, Int64}
+    stim_protocol::Dict{Symbol, Tuple{Float64, Float64}}
     filename::Array{String,1}
 end
 
@@ -442,7 +443,9 @@ end
 function concat(path_arr::Array{String,1}; kwargs...)
     data = extract_abf(path_arr[1]; kwargs...)
     for path in path_arr[2:end]
+        println(path)
         data_add = extract_abf(path; kwargs...)
+        println(findstimRng(data_add))
         concat!(data, data_add; kwargs...)
     end
     return data
