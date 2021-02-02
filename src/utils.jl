@@ -1,12 +1,12 @@
 
 mutable struct StimulusProtocol{T}
-    channel::Int64
     type::Symbol
-    index_range::Tuple{Int64, Int64}
-    timestamps::Tuple{T, T}
+    sweep::Int64
+    index_range::Tuple{Int64,Int64}
+    timestamps::Tuple{T,T}
 end
 
-StimulusProtocol(ch::Int64, type::Symbol) = StimulusProtocol(ch, type, (1, 1), (0.0, 0.0))
+StimulusProtocol(type::Symbol) = StimulusProtocol(type, 1, (1, 1), (0.0, 0.0))
 
 """
 This file contains the ABF data traces. It is a generic experiment which doesn't include any other specifics. 
@@ -35,7 +35,7 @@ mutable struct Experiment{T}
     chNames::Array{String, 1}
     chUnits::Array{String, 1}
     labels::Array{String, 1}
-    stim_ch::StimulusProtocol
+    stim_protocol::Array{StimulusProtocol}
     filename::Array{String,1}
 end
 
@@ -47,12 +47,16 @@ This function extracts an ABF file from a path
     - It creates a Experiment object which 
 """
 function extract_abf(::Type{T}, abf_path::String; 
-        stim_ch::Union{StimulusProtocol{T},Array{StimulusProtocol{T}}} = StimulusProtocol(-1, :test_flash), 
+        stim_ch::Union{Array{Int64}, Int64, String, Array{String}} = "IN 7", 
+        stim_name::Union{Array{String}, Array{Symbol}, String, Symbol} = :test,
+        stimulus_threshold::Float64 = 0.2,
         swps = -1, 
         chs = ["Vm_prime","Vm_prime4", "IN 7"], 
         verbose = false
     ) where T <: Real
 
+    #We need to make sure the stimulus names provided match the stimulus channels
+    
     if length(abf_path |> splitpath) > 1
         full_path = abf_path
     else
@@ -98,6 +102,7 @@ function extract_abf(::Type{T}, abf_path::String;
 
     #Set up the data array
     t = T.(trace_file.sweepX);
+    #We won't include the stimulus channels in the data analysis
     data_array = zeros(T, n_data_sweeps, n_data_points, n_data_channels)
     labels = [trace_file.sweepLabelX, trace_file.sweepLabelY, trace_file.sweepLabelC, trace_file.sweepLabelD]
     if verbose 
@@ -107,7 +112,8 @@ function extract_abf(::Type{T}, abf_path::String;
         println("$n_channels Channels available: $(trace_file.channelList)")
     end
     
-    
+    #convert the stimulus channel into an array to make this part easier
+
     for (swp_idx, swp) in enumerate(data_sweeps), (ch_idx, ch) in enumerate(data_channels)
         trace_file.setSweep(sweepNumber = swp, channel = ch);
         data = Float64.(trace_file.sweepY);
@@ -123,8 +129,50 @@ function extract_abf(::Type{T}, abf_path::String;
         data_array[swp_idx, :, ch_idx] = data
     end
     #set up the stimulus protocol
-    if stim_ch.channel != -1
-        println(stim_ch.type)
+    if isa(stim_ch, String)
+        stim_ch = findall(x -> x == stim_ch, chNames)
+        if isempty(stim_ch)
+            println("No stimulus exists")
+            stim_name = [:none]
+        else
+            stim_name = [stim_name]
+        end
+    elseif isa(stim_ch, Array{String})
+        stim_chs = Int64[]
+        stim_names = Symbol[]
+        for (idx, ch) in enumerate(stim_ch)
+            stim_ch_i = findall(x -> x == ch, chNames)
+            if !isempty(stim_ch_i)
+                push!(stim_chs, stim_ch_i[1])
+                push!(stim_names, stim_name[idx])
+            end
+        end
+        stim_ch = stim_chs
+        stim_name = stim_names      
+    elseif isa(stim_ch, Real)
+        stim_ch = [stim_ch]
+        stim_name = [stim_name]
+    elseif stim_ch == -1
+        #This is if there is no stimulus channel
+    end
+
+    @assert length(stim_ch) == length(stim_name)
+
+    stim_protocol = Array{StimulusProtocol}([])
+    for (idx, ch) in enumerate(stim_ch), swp in 1:size(data_array,1)
+        println(swp)
+        #we need to get the stimulus channel and extract the data
+        stimulus_idxs = findall(data_array[swp,:,ch] .> stimulus_threshold)
+        stim_begin = stimulus_idxs[1]
+        stim_end = stimulus_idxs[end]
+        stim_time_start = stim_begin*(t[2]-t[1])
+        stim_time_end = stim_end*(t[2]-t[1])
+        stim = StimulusProtocol(
+            stim_name[idx], swp, 
+            (stim_begin, stim_end), 
+            (stim_time_start, stim_time_end)    
+        )
+        push!(stim_protocol, stim)
     end
 
     Experiment{T}(
@@ -138,7 +186,7 @@ function extract_abf(::Type{T}, abf_path::String;
         chNames, 
         chUnits, 
         labels, 
-        stim_ch,
+        stim_protocol,
         [full_path]
         )
 end
