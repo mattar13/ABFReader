@@ -52,7 +52,8 @@ function extract_abf(::Type{T}, abf_path::String;
         stimulus_threshold::Float64 = 0.2,
         swps = -1, 
         chs = ["Vm_prime","Vm_prime4", "IN 7"], 
-        verbose = false
+        verbose = false, 
+        time_adjusted = true
     ) where T <: Real
 
     #We need to make sure the stimulus names provided match the stimulus channels
@@ -156,17 +157,22 @@ function extract_abf(::Type{T}, abf_path::String;
         #This is if there is no stimulus channel
     end
 
-    @assert length(stim_ch) == length(stim_name)
-
     stim_protocol = Array{StimulusProtocol}([])
     for (idx, ch) in enumerate(stim_ch), swp in 1:size(data_array,1)
-        println(swp)
+        #println(swp)
         #we need to get the stimulus channel and extract the data
         stimulus_idxs = findall(data_array[swp,:,ch] .> stimulus_threshold)
         stim_begin = stimulus_idxs[1]
         stim_end = stimulus_idxs[end]
         stim_time_start = stim_begin*(t[2]-t[1])
         stim_time_end = stim_end*(t[2]-t[1])
+        if time_adjusted 
+            #This section automatically adjusts the time based on the stimulus start
+            #t .-= stim_time_end
+            #println(stim_time_end)
+            #stim_time_start -= stim_time_end
+            #stim_time_end = 0.0
+        end
         stim = StimulusProtocol(
             stim_name[idx], swp, 
             (stim_begin, stim_end), 
@@ -354,87 +360,64 @@ This iterates through all sweeps
 eachsweep(trace::Experiment) = Iterators.map(idx -> getsweep(trace, idx), 1:size(trace,1))
 
 """
-This gets the stimulus trace only if it has been set
-"""
-function getstim(trace::Experiment; threshold::Float64 = 0.2) 
-    if trace.stim_ch != -1 
-        if !isnothing(threshold)
-            return trace[:, :, trace.stim_ch] .> threshold
-        else
-            return trace[:, :, trace.stim_ch] 
-        end
-    else
-        println("Stim not set")
-    end
-end
-
-"""
-This returns the indexes where the stimulus is occurring
-"""
-function findstimRng(trace::Experiment) 
-    stim_rng = ones(Int, size(trace,1), 2)
-    if trace.stim_ch == -1
-        #println("Stim not set")
-        nothing
-    else
-        stim_trace = getstim(trace; threshold = 0.2)
-        stim_points = findall(x -> x == true, stim_trace)
-        if !isempty(stim_points)
-            for I in stim_points
-                swp = I[1]
-                val = I[2]
-                if stim_rng[swp, 1] == 1
-                    stim_rng[swp, 1] = val
-                elseif stim_rng[swp, 1] < val
-                    stim_rng[swp, 2] = val
-                elseif stim_rng[swp, 1] > val
-                    #There was an order error, swap the two values
-                    stim_rng[swp, 2] = stim_rng[swp, 1]
-                    stim_rng[swp, 1] = val
-                end
-            end
-        else
-            nothing
-        end
-    end
-    stim_rng
-end
-
-"""
 This function truncates the data based on the amount of time.
-    It uses the unit of time that the original Experiment file is in. 
-    It returns a new data file versus altering the old data file
-
-    Tip: For 
+    In most cases we want to truncate this data by the start of the stimulus. 
+    This is because the start of the stimulus should be the same response in all experiments. (0.0) 
 """
 function truncate_data(trace::Experiment; t_pre = 0.2, t_post = 1.0)
     dt = trace.dt
     data = deepcopy(trace)
+    data.data_array = zeros(size(trace,1), Int(t_post/dt)+Int(t_pre/dt)+1, size(trace,3)) #readjust the size of the data
     #Search for the stimulus. if there is no stimulus, then just set the stim to 0.0
-    t_stim_start, t_stim_end = findstimRng(trace)
-    t_start = t_stim_start - (t_pre/dt) |> Int64
-    t_start = t_start > 0 ? t_start : 1
-    t_end = (t_stim_start  + (t_post/dt)) |> Int64
-    t_end = t_end < size(trace,2) ? t_end : size(trace,2)
-    data.t = trace.t[t_start:t_end] .- trace.t[t_stim_start]
-    data.data_array = trace.data_array[:, t_start:t_end, :]
+    for swp in 1:size(trace, 1)
+
+        stim_protocol = trace.stim_protocol[swp]
+        #We are going to iterate through each sweep and truncate it
+        if truncate_based_on == :stimulus_beginning
+            #This will set the beginning of the stimulus as the truncation location
+            truncate_loc = stim_protocol.index_range[1]
+        elseif truncate_based_on == :stimulus_end
+            #This will set the beginning of the simulus as the truncation 
+            truncate_loc = stim_protocol.index_range[2]
+        end
+        t_start = round(Int, truncate_loc - (t_pre/dt)) #Index of truncated start point
+        t_start = t_start >= 0 ? t_start : 1 #If the bounds are negative indexes then reset the bounds to index 1
+
+        t_end = round(Int, truncate_loc + (t_post/dt)) #Index of truncated end point
+        t_end = t_end < size(trace,2) ? t_end : size(trace,2) #If the indexes are greater than the number of datapoints then reset the indexes to n
+        data.data_array[swp, :, :] = trace.data_array[swp, t_start:t_end, :]
+    end
     return data
 end
 
-function truncate_data!(trace::Experiment; t_pre = 0.2, t_post = 1.0)
-	dt = trace.dt
-    t_stim_start, t_stim_end = findstimRng(trace)
-    
-    t_start = round(Int, t_stim_start - (t_pre/dt)) #Index of truncated start point
-    t_start = t_start >= 0 ? t_start : 1 #If the bounds are negative indexes then reset the bounds to index 1
-    
-    t_end = round(Int, t_stim_start  + (t_post/dt)) #Index of truncated end point
-    t_end = t_end < size(trace,2) ? t_end : size(trace,2) #If the indexes are greater than the number of datapoints then reset the indexes to n
-
-    #set the new time points to all the points between the indexes
-	trace.t = trace.t[t_start:t_end] .- trace.t[t_stim_start]
-	trace.data_array = trace[:, t_start:t_end, :]
-	return trace
+function truncate_data!(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_based_on = :stimulus_beginning)
+    dt = trace.dt
+    temp_data = zeros(size(trace,1), Int(t_post/dt)+Int(t_pre/dt)+1, size(trace,3))
+    for swp in 1:size(trace, 1)
+        stim_protocol = trace.stim_protocol[swp]
+        #We are going to iterate through each sweep and truncate it
+        if truncate_based_on == :stimulus_beginning
+            #This will set the beginning of the stimulus as the truncation location
+            truncate_loc = stim_protocol.index_range[1]
+        elseif truncate_based_on == :stimulus_end
+            #This will set the beginning of the simulus as the truncation 
+            truncate_loc = stim_protocol.index_range[2]
+        end
+        stim_begin_adjust = stim_protocol.index_range[1] - truncate_loc
+        stim_end_adjust = stim_protocol.index_range[2] - truncate_loc
+        trace.stim_protocol[swp].index_range = (stim_begin_adjust, stim_end_adjust)
+        
+        t_start = round(Int, truncate_loc - (t_pre/dt)) #Index of truncated start point
+        t_start = t_start >= 0 ? t_start : 1 #If the bounds are negative indexes then reset the bounds to index 1
+        
+        t_end = round(Int, truncate_loc + (t_post/dt)) #Index of truncated end point
+        t_end = t_end < size(trace,2) ? t_end : size(trace,2) #If the indexes are greater than the number of datapoints then reset the indexes to n
+        temp_data[swp, :, :] = trace.data_array[swp, t_start:t_end, :]
+    end
+    #println(truncate_locs)
+    #change the time 
+    trace.t = range(-t_pre, t_post, length = length(trace.t))
+	trace.data_array = temp_data
 end
 
 """
