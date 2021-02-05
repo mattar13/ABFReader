@@ -50,10 +50,10 @@ function extract_abf(::Type{T}, abf_path::String;
         stim_ch::Union{Array{Int64}, Int64, String, Array{String}} = "IN 7", 
         stim_name::Union{Array{String}, Array{Symbol}, String, Symbol} = :test,
         stimulus_threshold::Float64 = 0.2,
+        keep_stimulus_channel = false,
         swps = -1, 
         chs = ["Vm_prime","Vm_prime4", "IN 7"], 
-        verbose = false, 
-        time_adjusted = true
+        verbose = false
     ) where T <: Real
 
     #We need to make sure the stimulus names provided match the stimulus channels
@@ -161,18 +161,14 @@ function extract_abf(::Type{T}, abf_path::String;
     for (idx, ch) in enumerate(stim_ch), swp in 1:size(data_array,1)
         #println(swp)
         #we need to get the stimulus channel and extract the data
+        if ch ∉ stim_ch && keep_stimulus_channel == false
+
+        end
         stimulus_idxs = findall(data_array[swp,:,ch] .> stimulus_threshold)
         stim_begin = stimulus_idxs[1]
         stim_end = stimulus_idxs[end]
         stim_time_start = stim_begin*(t[2]-t[1])
         stim_time_end = stim_end*(t[2]-t[1])
-        if time_adjusted 
-            #This section automatically adjusts the time based on the stimulus start
-            #t .-= stim_time_end
-            #println(stim_time_end)
-            #stim_time_start -= stim_time_end
-            #stim_time_end = 0.0
-        end
         stim = StimulusProtocol(
             stim_name[idx], swp, 
             (stim_begin, stim_end), 
@@ -181,6 +177,13 @@ function extract_abf(::Type{T}, abf_path::String;
         push!(stim_protocol, stim)
     end
 
+    keep_channels = findall(x -> x ∉ stim_ch, collect(1:length(chNames)))
+    
+    if keep_stimulus_channel == false
+        data_array = data_array[:,:,keep_channels]
+    end
+
+    println(data_array |> size)
     Experiment{T}(
         trace_file.abfID, 
         trace_file.protocol,
