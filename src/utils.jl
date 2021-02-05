@@ -367,9 +367,10 @@ This function truncates the data based on the amount of time.
     In most cases we want to truncate this data by the start of the stimulus. 
     This is because the start of the stimulus should be the same response in all experiments. (0.0) 
 """
-function truncate_data(trace::Experiment; t_pre = 0.2, t_post = 1.0)
+function truncate_data(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_based_on = :stimulus_beginning)
     dt = trace.dt
     data = deepcopy(trace)
+    size_of_array = 0
     for swp in 1:size(trace, 1)
         stim_protocol = trace.stim_protocol[swp]
         #We are going to iterate through each sweep and truncate it
