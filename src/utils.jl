@@ -367,10 +367,7 @@ This function truncates the data based on the amount of time.
 function truncate_data(trace::Experiment; t_pre = 0.2, t_post = 1.0)
     dt = trace.dt
     data = deepcopy(trace)
-    data.data_array = zeros(size(trace,1), Int(t_post/dt)+Int(t_pre/dt)+1, size(trace,3)) #readjust the size of the data
-    #Search for the stimulus. if there is no stimulus, then just set the stim to 0.0
     for swp in 1:size(trace, 1)
-
         stim_protocol = trace.stim_protocol[swp]
         #We are going to iterate through each sweep and truncate it
         if truncate_based_on == :stimulus_beginning
@@ -380,19 +377,42 @@ function truncate_data(trace::Experiment; t_pre = 0.2, t_post = 1.0)
             #This will set the beginning of the simulus as the truncation 
             truncate_loc = stim_protocol.index_range[2]
         end
-        t_start = round(Int, truncate_loc - (t_pre/dt)) #Index of truncated start point
-        t_start = t_start >= 0 ? t_start : 1 #If the bounds are negative indexes then reset the bounds to index 1
+        idxs_begin = Int(t_pre/dt); 
+        idxs_end = Int(t_post/dt)+1
+        
+        stim_begin_adjust = idxs_begin + (stim_protocol.index_range[1]-truncate_loc)
+        stim_end_adjust = idxs_end + (stim_protocol.index_range[2]-truncate_loc)
+        data.stim_protocol[swp].index_range = (stim_begin_adjust, stim_end_adjust)
 
-        t_end = round(Int, truncate_loc + (t_post/dt)) #Index of truncated end point
+        t_begin_adjust = stim_protocol.timestamps[1] - trace.t[truncate_loc+1]
+        t_end_adjust = stim_protocol.timestamps[2] - trace.t[truncate_loc+1]
+        data.stim_protocol[swp].timestamps = (t_begin_adjust, t_end_adjust)
+
+        t_start = round(Int, truncate_loc - idxs_begin) #Index of truncated start point
+        t_start = t_start > 0 ? t_start : 1 #If the bounds are negative indexes then reset the bounds to index 1
+
+        t_end = round(Int, truncate_loc + idxs_end) #Index of truncated end point
         t_end = t_end < size(trace,2) ? t_end : size(trace,2) #If the indexes are greater than the number of datapoints then reset the indexes to n
-        data.data_array[swp, :, :] = trace.data_array[swp, t_start:t_end, :]
+        if size_of_array == 0
+            size_of_array = t_end - t_start
+        elseif size_of_array != (t_end - t_start)
+            println("Check here")
+            println(size_of_array)
+            println(t_end - t_start)
+            throw(error("Inconsistant array size"))
+        else
+            data.data_array[swp, 1:t_end-t_start+1, :] .= trace.data_array[swp, t_start:t_end, :]
+            #println("truncated array is consistant with new array")
+        end
     end
-    return data
+    data.data_array = trace.data_array[:, 1:size_of_array, :] #remake the array with only the truncated data
+    data.t = range(-t_pre, t_post, length = size_of_array)
+    return data 
 end
 
 function truncate_data!(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_based_on = :stimulus_beginning)
     dt = trace.dt
-    temp_data = zeros(size(trace,1), Int(t_post/dt)+Int(t_pre/dt)+1, size(trace,3))
+    size_of_array = 0
     for swp in 1:size(trace, 1)
         stim_protocol = trace.stim_protocol[swp]
         #We are going to iterate through each sweep and truncate it
@@ -403,21 +423,36 @@ function truncate_data!(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_b
             #This will set the beginning of the simulus as the truncation 
             truncate_loc = stim_protocol.index_range[2]
         end
-        stim_begin_adjust = stim_protocol.index_range[1] - truncate_loc
-        stim_end_adjust = stim_protocol.index_range[2] - truncate_loc
+        idxs_begin = Int(t_pre/dt); 
+        idxs_end = Int(t_post/dt)+1
+        
+        stim_begin_adjust = idxs_begin + (stim_protocol.index_range[1]-truncate_loc)
+        stim_end_adjust = idxs_end + (stim_protocol.index_range[2]-truncate_loc)
         trace.stim_protocol[swp].index_range = (stim_begin_adjust, stim_end_adjust)
-        
-        t_start = round(Int, truncate_loc - (t_pre/dt)) #Index of truncated start point
-        t_start = t_start >= 0 ? t_start : 1 #If the bounds are negative indexes then reset the bounds to index 1
-        
-        t_end = round(Int, truncate_loc + (t_post/dt)) #Index of truncated end point
+
+        t_begin_adjust = stim_protocol.timestamps[1] - trace.t[truncate_loc+1]
+        t_end_adjust = stim_protocol.timestamps[2] - trace.t[truncate_loc+1]
+        trace.stim_protocol[swp].timestamps = (t_begin_adjust, t_end_adjust)
+
+        t_start = round(Int, truncate_loc - idxs_begin) #Index of truncated start point
+        t_start = t_start > 0 ? t_start : 1 #If the bounds are negative indexes then reset the bounds to index 1
+
+        t_end = round(Int, truncate_loc + idxs_end) #Index of truncated end point
         t_end = t_end < size(trace,2) ? t_end : size(trace,2) #If the indexes are greater than the number of datapoints then reset the indexes to n
-        temp_data[swp, :, :] = trace.data_array[swp, t_start:t_end, :]
+        if size_of_array == 0
+            size_of_array = t_end - t_start
+        elseif size_of_array != (t_end - t_start)
+            println("Check here")
+            println(size_of_array)
+            println(t_end - t_start)
+            throw(error("Inconsistant array size"))
+        else
+            trace.data_array[swp, 1:t_end-t_start+1, :] .= trace.data_array[swp, t_start:t_end, :]
+            #println("truncated array is consistant with new array")
+        end
     end
-    #println(truncate_locs)
-    #change the time 
-    trace.t = range(-t_pre, t_post, length = length(trace.t))
-	trace.data_array = temp_data
+    trace.data_array = trace.data_array[:, 1:size_of_array, :] #remake the array with only the truncated data
+    trace.t = range(-t_pre, t_post, length = size_of_array)
 end
 
 """
