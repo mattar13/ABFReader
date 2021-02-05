@@ -153,9 +153,6 @@ function notch_filter!(trace::Experiment; pole = 8, center = 60.0, std = 0.1)
 end
 
 function cwt_filter(trace::Experiment; wave = WT.dog2, periods = 1:7, return_cwt = true)
-    
-    data = similar(trace.data_array)
-    stim_begin, stim_end = findstimRng(trace)
     data = deepcopy(trace)
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
