@@ -10,122 +10,83 @@ This function adjusts the baseline, similar to how it is done in clampfit.
     - :whole -> measures the entire trace
     - (start, end) -> a custom region
 It catches the baseline if the stimulus is at the beginning of the 
-"""
+    """
 function baseline_cancel(trace::Experiment; mode::Symbol = :mean, region = :prestim)
-    if isa(region, Tuple{Float64, Float64})
-        rng_begin = round(Int, region[1]/dt)+1
-        if region[2] > trace.t[end]
-            rng_end = length(trace.t)
-        else
-            rng_end = round(Int, region[2]/dt)+1
-        end
-        rng_end_arr = nothing
-    elseif isa(region, Tuple{Int64, Int64})
-        rng_begin, rng_end = region
-        rng_end_arr = nothing
-    elseif region == :whole
-        rng_begin = 1
-        rng_end = length(trace)
-        rng_end_arr = nothing
-    elseif region == :prestim
-        rng_begin = 1
-        rng_end = nothing
-        rng_end_arr = findstimRng(trace)[:, 1]
-    end
-
     data = deepcopy(trace)
-    if mode == :mean
-        for swp in 1:size(trace,1)
-            for ch in 1:size(trace,3)
-                #never adjust the stim
-                if !isnothing(rng_end_arr)
-                    rng_end = rng_end_arr[swp]
-                end
-                if ch != trace.stim_ch && rng_end - rng_begin != 0.0
-                    baseline_adjust = sum(trace[swp, rng_begin:rng_end, ch])/(rng_end-rng_begin)
+    for swp in 1:size(trace,1)
+        if isa(region, Tuple{Float64, Float64})
+            rng_begin = round(Int, region[1]/trace.dt)+1
+            if region[2] > trace.t[end]
+                rng_end = length(trace.t)
+            else
+                rng_end = round(Int, region[2]/trace.dt)+1
+            end
+        elseif isa(region, Tuple{Int64, Int64})
+            rng_begin, rng_end = region
+        elseif region == :whole
+            rng_begin = 1
+            rng_end = length(trace)
+        elseif region == :prestim
+            rng_begin = 1
+            rng_end = trace.stim_protocol[swp].index_range[1] #Get the first stimulus index
+        end
+        for ch in 1:size(trace,3)
+            if mode == :mean
+                if (rng_end - rng_begin) != 0
+                    baseline_adjust = sum(trace.data_array[swp, rng_begin:rng_end, ch])/(rng_end-rng_begin)
+                    #Now subtract the baseline scaling value
                     data.data_array[swp,:, ch] .= trace.data_array[swp,:,ch] .- baseline_adjust
                 else
-                    #println("Either no stimulus channel exists, or prestimulus regions is too small") #Uncomment this to detect when a datapoint has no stim
-                    data.data_array[swp,:,ch] .= trace[swp,:,ch]
+                    println("no pre-stimulus range exists")
                 end
-            end
-        end
-    elseif mode == :slope
-		for swp in 1:size(trace,1)
-            for ch in 1:size(trace,3)
-                #never adjust the stim
-                if !isnothing(rng_end_arr)
-                    rng_end = rng_end_arr[swp]
-                end
-                if ch != trace.stim_ch && rng_end - rng_begin != 0.0
+            elseif mode == :slope
+                if (rng_end - rng_begin) != 0
                     pfit = Polynomials.fit(trace.t[rng_begin:rng_end], trace[swp, rng_begin:rng_end , ch], 1)
+                    #Now offset the array by the linear range
                     data.data_array[swp, :, ch] .= trace[swp, :, ch] - pfit.(trace.t)
                 else
-                    #println("Either no stimulus channel exists, or prestimulus regions is too small") #Uncomment this to detect when a datapoint has no stim
-                    data.data_array[swp,:,ch] .= trace[swp,:,ch]
+                    println("no pre-stimulus range exists")
                 end
             end
         end
-	else
-		data = trace.data_array
     end
     return data
 end
 
 function baseline_cancel!(trace::Experiment; mode::Symbol = :mean, region = :prestim)
-    if isa(region, Tuple{Float64, Float64})
-        rng_begin = round(Int, region[1]/trace.dt)+1
-        if region[2] > trace.t[end]
-            rng_end = length(trace.t)
-        else
-            rng_end = round(Int, region[2]/trace.dt)+1
-        end
-        rng_end_arr = nothing
-    elseif isa(region, Tuple{Int64, Int64})
-        rng_begin, rng_end = region
-        rng_end_arr = nothing
-    elseif region == :whole
-        rng_begin = 1
-        rng_end = length(trace)
-        rng_end_arr = nothing
-    elseif region == :prestim
-        rng_begin = 1
-        rng_end = nothing
-        rng_end_arr = findstimRng(trace)[:, 1]
-    end
-    
-    if mode == :mean
-        for swp in 1:size(trace,1)
-            for ch in 1:size(trace,3)
-                #never adjust the stim
-                if !isnothing(rng_end_arr)
-                    rng_end = rng_end_arr[swp]
-                end
-                println(rng_end - rng_begin)
-                if ch != trace.stim_ch && (rng_end - rng_begin) != 0
-                    println(swp)
-                    baseline_adjust = sum(trace.data_array[swp, rng_begin:rng_end, ch])/(rng_end-rng_begin)
-                    println(baseline_adjust)
-                    trace.data_array[swp,:, ch] .= trace.data_array[swp,:,ch] .- baseline_adjust
-                    println(sum(trace.data_array[swp, rng_begin:rng_end, ch])/(rng_end-rng_begin))
-                else
-                    #println("Data has no region prestimulus") #Uncomment this to detect when a datapoint has no stim
-                end
+    for swp in 1:size(trace,1)
+        if isa(region, Tuple{Float64, Float64})
+            rng_begin = round(Int, region[1]/trace.dt)+1
+            if region[2] > trace.t[end]
+                rng_end = length(trace.t)
+            else
+                rng_end = round(Int, region[2]/trace.dt)+1
             end
+        elseif isa(region, Tuple{Int64, Int64})
+            rng_begin, rng_end = region
+        elseif region == :whole
+            rng_begin = 1
+            rng_end = length(trace)
+        elseif region == :prestim
+            rng_begin = 1
+            rng_end = trace.stim_protocol[swp].index_range[1] #Get the first stimulus index
         end
-    elseif mode == :slope
-		 for swp in 1:size(trace,1)
-            for ch in 1:size(trace,3)
-                #never adjust the stim
-                if !isnothing(rng_end_arr)
-                    rng_end = rng_end_arr[swp]
+        for ch in 1:size(trace,3)
+            if mode == :mean
+                if (rng_end - rng_begin) != 0
+                    baseline_adjust = sum(trace.data_array[swp, rng_begin:rng_end, ch])/(rng_end-rng_begin)
+                    #Now subtract the baseline scaling value
+                    trace.data_array[swp,:, ch] .= trace.data_array[swp,:,ch] .- baseline_adjust
+                else
+                    println("no pre-stimulus range exists")
                 end
-                if ch != trace.stim_ch && (rng_end - rng_begin) != 0
+            elseif mode == :slope
+                if (rng_end - rng_begin) != 0
                     pfit = Polynomials.fit(trace.t[rng_begin:rng_end], trace[swp, rng_begin:rng_end , ch], 1)
-                    #println(ch + pfit.(trace.t) |> size)
+                    #Now offset the array by the linear range
                     trace.data_array[swp, :, ch] .= trace[swp, :, ch] - pfit.(trace.t)
-                else 
-                    #println("Data has no region prestimulus") #Uncomment this to detect when a datapoint has no stim
+                else
+                    println("no pre-stimulus range exists")
                 end
             end
         end
@@ -143,12 +104,8 @@ function lowpass_filter(trace::Experiment; freq = 40.0, pole = 8)
     data = deepcopy(trace)
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
-            #never adjust the stim
-            if ch != trace.stim_ch
-                data.data_array[swp,:,ch] .= filt(digital_filter, trace[swp, :, ch])
-            else
-                data.data_array[swp,:,ch] .= trace[swp,:,ch]
-            end
+        #never adjust the stim
+            data.data_array[swp,:,ch] .= filt(digital_filter, trace[swp, :, ch])
         end
     end
     return data
@@ -161,10 +118,7 @@ function lowpass_filter!(trace::Experiment; freq = 40.0, pole = 8)
     digital_filter = digitalfilter(responsetype, designmethod)
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
-            #never adjust the stim
-            if ch != trace.stim_ch
-                trace.data_array[swp,:,ch] .= filt(digital_filter, trace[swp, :, ch])
-            end
+            trace.data_array[swp,:,ch] .= filt(digital_filter, trace[swp, :, ch])
         end
     end
 end
@@ -180,11 +134,7 @@ function notch_filter(trace::Experiment; pole = 8, center = 60.0, std = 0.1)
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
             #never adjust the stim
-            if ch != trace.stim_ch
-                data.data_array[swp,:,ch] .= filt(digital_filter, trace[swp, :, ch])
-            else
-                data.data_array[swp,:,ch] .= trace[swp,:,ch]
-            end
+            data.data_array[swp,:,ch] .= filt(digital_filter, trace[swp, :, ch])
         end
     end
     return data
@@ -197,10 +147,7 @@ function notch_filter!(trace::Experiment; pole = 8, center = 60.0, std = 0.1)
 	digital_filter = digitalfilter(responsetype, designmethod)
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
-            #never adjust the stim
-            if ch != trace.stim_ch
-                trace.data_array[swp,:,ch] .= filt(digital_filter, trace[swp, :, ch])
-            end
+            trace.data_array[swp,:,ch] .= filt(digital_filter, trace[swp, :, ch])
         end
     end
 end
@@ -212,13 +159,8 @@ function cwt_filter(trace::Experiment; wave = WT.dog2, periods = 1:7, return_cwt
     data = deepcopy(trace)
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
-            #never adjust the stim
-            if ch != trace.stim_ch
-                y = cwt(trace[swp, :, ch], wavelet(wave))
-                data.data_array[swp,:,ch] .= -sum(real.(y[:,periods]), dims = 2) |> vec;
-            else
-                data.data_array[swp,:,ch] .= trace[swp,:,ch]
-            end
+            y = cwt(trace[swp, :, ch], wavelet(wave))
+            data.data_array[swp,:,ch] .= -sum(real.(y[:,periods]), dims = 2) |> vec;
         end
     end
     data
@@ -228,11 +170,8 @@ function cwt_filter!(trace::Experiment; wave = WT.dog2, periods = 1:9)
     
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
-            #never adjust the stim
-            if ch != trace.stim_ch
-                y = cwt(trace[swp, :, ch], wavelet(wave))
-                trace.data_array[swp,:,ch] .= -sum(real.(y[:,periods]), dims = 2) |> vec;
-            end
+            y = cwt(trace[swp, :, ch], wavelet(wave))
+            trace.data_array[swp,:,ch] .= -sum(real.(y[:,periods]), dims = 2) |> vec;
         end
     end
 end
@@ -255,10 +194,7 @@ function normalize(trace::Experiment; rng = (-1,0))
     data = deepcopy(trace)
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
-            #never adjust the stim
-            if ch != trace.stim_ch
-                data[swp,:,ch] .= (trace[swp,:,ch] ./ minimum(trace[swp,:,ch], dims = 2))
-            end
+            data[swp,:,ch] .= (trace[swp,:,ch] ./ minimum(trace[swp,:,ch], dims = 2))
         end
     end
     return data
@@ -267,18 +203,17 @@ end
 function normalize!(trace::Experiment; rng = (-1,0))
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
-            #never adjust the stim
-            if ch != trace.stim_ch
-                if rng[1] < 0
-                    trace.data_array[swp,:,ch] .= (trace[swp,:,ch] ./ minimum(trace[swp,:,ch], dims = 2))
-                else
-                    trace.data_array[swp,:,ch] .= (trace[swp,:,ch] ./ maximum(trace[swp,:,ch], dims = 2))
-                end
+            if rng[1] < 0
+                trace.data_array[swp,:,ch] .= (trace[swp,:,ch] ./ minimum(trace[swp,:,ch], dims = 2))
+            else
+                trace.data_array[swp,:,ch] .= (trace[swp,:,ch] ./ maximum(trace[swp,:,ch], dims = 2))
             end
         end
     end
 end
 
+
+################## Check these functions because they might be deprecated #####################################
 function fft_spectrum(t, data::Array{T, 1}) where T <: Real
     #FFTW filtering
     x_fft = fft(data) |> fftshift
@@ -287,7 +222,6 @@ function fft_spectrum(t, data::Array{T, 1}) where T <: Real
     over_0 = findall(freqs .> 0);
     return freqs[over_0], x_fft[over_0] 
 end
-
 """
 This function removes the stimulus artifact. 
 The estimated duration of the stimulus artifact is 0.0025s or 25us
