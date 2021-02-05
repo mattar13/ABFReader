@@ -5,30 +5,26 @@ using NeuroPhys
 using Distributions, StatsBase, StatsPlots, Polynomials
 println("Exporting succeeded")
 
-#%% File formatting
-format = ("\\", ~, ~, ~, ~, ("_", (" ", ~, :Rearing, :Photoreceptors), :Sample_size), [:Wavelength, NeuroPhys.check_color], :Drugs, ("_", :Month, :Day, :Year, :Genotype, :Age, :Animal))
-string = "D:\\Data\\ERG\\Data from paul\\Adult (NR) rods_14\\Green\\a-waves\\10_14_19_WT_P33_m1_D_Rods_Green(shifted).abf"
-nt = formatted_split(string, format)
-println("Formatted Strings function works")
-
 #%% Test the exporting and filtering of .abf files
 target_path1 = "test\\to_filter.abf"
 target_path2 = "test\\to_analyze.abf"
 data1 = extract_abf(target_path1); #Extract the data for filtering
-data2 = extract_abf(target_path2; stim_ch = 3, swps = -1, chs = [1,3,5]); #Extract the data for concatenation analysis
+data2 = extract_abf(target_path2; swps = -1, chs = [1,3,5]); #Extract the data for concatenation analysis
 println("File extraction works")
-
-#%% Test differentiating between ERG and Experiment files
-
-
 #%% Test inline filtering functions
-#Filtering individual trace files
-truncate_data!(data1)
-truncate_data!(data2)
+truncate_data!(data1);
+truncate_data!(data2);
 baseline_cancel!(data1; mode = :slope, region = :prestim) #Cancel drift
 baseline_cancel!(data2; mode = :slope, region = :prestim) #Cancel drift for concatenation
 baseline_cancel!(data1; mode = :mean, region = :prestim) #Baseline data
 baseline_cancel!(data2; mode = :mean, region = :prestim) #Baseline data for concatenation
+lowpass_filter!(data1)
+lowpass_filter!(data2)
+notch_filter!(data1)
+notch_filter!(data2)
+cwt_filter!(data1)
+cwt_filter!(data2)
+average_sweeps!(data2)
 println("All inline filtering functions work")
 
 #%% Test filtering functions that are not inline
@@ -39,7 +35,6 @@ filter_data2 = lowpass_filter(data2) #Lowpass filter using a 40hz 8-pole filter
 # Use this data for time to peak
 cwt_data1 = cwt_filter(data1)
 cwt_data2 = cwt_filter(data2)
-
 drift_data1 = baseline_cancel(data1; mode = :slope) #Cancel drift
 baseline_data1 = baseline_cancel(drift_data1; mode = :mean) #Baseline data
 avg_data1 = average_sweeps(baseline_data1)
