@@ -21,19 +21,16 @@ end
 This function calculates the min, max, mean, and std of each trace
 """
 function calculate_basic_stats(data::Experiment)
-    stim_begin, stim_end = findstimRng(data)
-    ch_idxs = findall(x -> x!=data.stim_ch, 1:size(data,3))
-    pre_stim = data[:, 1:stim_end, ch_idxs]
-    post_stim = data[:, stim_end:size(data,2), ch_idxs]
-    mins = minimum(data.data_array, dims = 2)[:,1,1:2]
-    maxes = maximum(data.data_array, dims = 2)[:,1,1:2]
+    mins = minimum(data.data_array, dims = 2)[:,1,:]
+    maxes = maximum(data.data_array, dims = 2)[:,1,:]
     means = zeros(size(data,1), size(data,3))
     stds = zeros(size(data,1), size(data,3))
-    for i_swp in 1:size(data,1)
-        for i_ch in ch_idxs
-            means[i_swp, i_ch] = sum(pre_stim[i_swp, :, i_ch])/size(pre_stim,2)
-            stds[i_swp, i_ch] = std(pre_stim[i_swp, :, i_ch])
-        end
+    for swp in 1:size(data,1), ch in 1:size(data,3)
+        stim_begin, stim_end = data.stim_protocol[swp].index_range
+        pre_stim = data[:, 1:stim_begin, :]
+        post_stim = data[:, stim_begin:size(data,2), :]
+        means[swp, ch] = sum(pre_stim[swp, :, ch])/size(pre_stim,2)
+        stds[swp, ch] = std(pre_stim[swp, :, ch])
     end
     return mins, maxes, means, stds
 end
@@ -48,57 +45,56 @@ This function uses a histogram method to find the saturation point.
 """
 function saturated_response(trace::Experiment; saturated_thresh = :determine, polarity::Int64 = -1, precision = 500, z = 1.3, kwargs...)
     if isa(saturated_thresh, Symbol)
+        #Figure out if the saturated threshold needs to be determined
         saturated_thresh = size(trace,1)/precision/2
     end
-    rmaxs = zeros(eachchannel(trace)|>length)
+    #Make an empty array for recording the rmaxes
+    rmaxs = zeros(size(trace,3))
     for ch in 1:size(trace,3)
         data = Float64[]
-        if ch != trace.stim_ch
-            for swp in 1:size(trace,1)
-                stim_begin = findstimRng(trace)[swp, 1] #We don't want to pull values from before the stim
-                push!(data,  trace[:, stim_begin:size(trace,2), ch]...)
-            end
-            #We are going to concatenate all sweeps together into one histogram
-            mean = sum(data)/length(data)
-            deviation = z*std(data)
-            #Here we cutoff all points after the sweep returns to the mean
-            ##println(mean - deviation)
-            if polarity < 0
-                idxs = findall(data .< (mean - deviation))
-                if isempty(idxs)
-                    #This is a weird catch, but no points fall under the mean. 
-                    rmaxs[ch] = minimum(data)
-                    continue
-                end
-                data = data[idxs]
-                #For negative components
-                bins = LinRange(minimum(data), min(0.0, mean-deviation), precision)
-            elseif polarity > 0
-                idxs = findlast(data .> (mean + deviation))
-                if isempty(idxs)
-                    #This is a weird catch, but no points fall under the mean. 
-                    rmaxs[ch] = minimum(data)
-                    continue
-                end
-                data = data[idxs]
-                #For positive components
-                bins = LinRange(max(0.0, mean+deviation), maximum(data),  precision)
-            else
-                throw(error("Polarity incorrect"))
-            end
-            h = Distributions.fit(Histogram, data, bins; )
-            edges = collect(h.edges...)[2:end]
-            weights = h.weights./length(data)
-            
-            #println(maximum(weights))
-            #println(saturated_thresh)
-            #return edges, weights
-
-            if maximum(weights) > saturated_thresh
-                rmaxs[ch] = edges[argmax(weights)]
-            else
+        for swp in 1:size(trace,1)
+            stim_begin = trace.stim_protocol[swp].index_range[1] #We don't want to pull values from before the stim
+            push!(data,  trace[:, stim_begin:size(trace,2), ch]...)
+        end
+        #We are going to concatenate all sweeps together into one histogram
+        mean = sum(data)/length(data)
+        deviation = z*std(data)
+        #Here we cutoff all points after the sweep returns to the mean
+        if polarity < 0
+            idxs = findall(data .< (mean - deviation))
+            if isempty(idxs)
+                #This is a weird catch, but no points fall under the mean. 
                 rmaxs[ch] = minimum(data)
+                continue
             end
+            data = data[idxs]
+            #For negative components
+            bins = LinRange(minimum(data), min(0.0, mean-deviation), precision)
+        elseif polarity > 0
+            idxs = findlast(data .> (mean + deviation))
+            if isempty(idxs)
+                #This is a weird catch, but no points fall under the mean. 
+                rmaxs[ch] = minimum(data)
+                continue
+            end
+            data = data[idxs]
+            #For positive components
+            bins = LinRange(max(0.0, mean+deviation), maximum(data),  precision)
+        else
+            throw(error("Polarity incorrect"))
+        end
+        h = Distributions.fit(Histogram, data, bins; )
+        edges = collect(h.edges...)[2:end]
+        weights = h.weights./length(data)
+        
+        #println(maximum(weights))
+        #println(saturated_thresh)
+        #return edges, weights
+
+        if maximum(weights) > saturated_thresh
+            rmaxs[ch] = edges[argmax(weights)]
+        else
+            rmaxs[ch] = minimum(data)
         end
     end
     rmaxs |> vec
@@ -114,35 +110,32 @@ function dim_response(trace::Experiment{T}, rmaxes::Array{T, 1}; return_idx = tr
     #We need
     if size(trace,1) == 1
         throw(ErrorException("There is no sweeps to this file, and Rdim will not work"))
-    elseif eachchannel(trace)|> length != size(rmaxes,1)
+    elseif size(trace,3) != size(rmaxes,1)
         throw(ErrorException("The number of rmaxes is not equal to the channels of the dataset"))
     else
-        rdims = zeros(Float64, eachchannel(trace)|> length)
-        dim_idx = zeros(Int64, eachchannel(trace)|> length)
+        rdims = zeros(Float64, size(trace,3))
+        dim_idx = zeros(Int64, size(trace,3))
         for swp in 1:size(trace,1)
             for ch in 1:size(trace,3)
-                if ch != trace.stim_ch
-                    rmax_val = rmax_lin .* rmaxes[ch]
-                    if rmax_val[1] > rmax_val[2]
-                        rmax_val = reverse(rmax_val)
+                rmax_val = rmax_lin .* rmaxes[ch]
+                if rmax_val[1] > rmax_val[2]
+                    rmax_val = reverse(rmax_val)
+                end
+                #rdim_thresh = rmaxes[ch] * 0.15
+                
+                if polarity < 0
+                    minima = minimum(trace[swp, :, ch])
+                else
+                    minima = maximum(trace[swp, :, ch])
+                end
+                if rmax_val[1] < minima < rmax_val[2]
+                    if minima < rdims[ch] && polarity < 0
+                        rdims[ch] = minima
+                        dim_idx[ch] = swp 
+                    elseif minima > rdims[ch] && polarity > 0
+                        rdims[ch] = minima
+                        dim_idx[ch] = swp
                     end
-                    #rdim_thresh = rmaxes[ch] * 0.15
-                    
-                    if polarity < 0
-                        minima = minimum(trace[swp, :, ch])
-                    else
-                        minima = maximum(trace[swp, :, ch])
-                    end
-                    if rmax_val[1] < minima < rmax_val[2]
-                        if minima < rdims[ch] && polarity < 0
-                            rdims[ch] = minima
-                            dim_idx[ch] = swp 
-                        elseif minima > rdims[ch] && polarity > 0
-                            rdims[ch] = minima
-                            dim_idx[ch] = swp
-                        end
-                    end
-
                 end
             end
         end
@@ -163,10 +156,10 @@ This function calculates the time to peak using the dim response properties of t
 function time_to_peak(trace::Experiment{T}, idxs::Array{Int64,1}) where T
     if size(trace,1) == 1
         throw(ErrorException("There is no sweeps to this file, and Tpeak will not work"))
-    elseif eachchannel(trace)|> length != size(idxs,1)
+    elseif size(trace,3) != size(idxs,1)
         throw(ErrorException("The number of indexes is not equal to the channels of the dataset"))
     else
-        t_peak = zeros(eachchannel(trace)|> length)
+        t_peak = zeros(size(trace,3))
         for (ch, swp) in enumerate(idxs)
             if swp != 0
                 t_series = trace.t[findall(trace.t .>= 0.0)]
@@ -180,16 +173,14 @@ function time_to_peak(trace::Experiment{T}, idxs::Array{Int64,1}) where T
 end
 
 function get_response(trace::Experiment, rmaxes::Array{T,1}) where T
-    responses = zeros(eachsweep(trace) |> length, eachchannel(trace) |> length)
+    responses = zeros(size(trace,1), size(trace,3))
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
-            if ch != trace.stim_ch
-                minima = minimum(trace[swp, :, ch]) 
-                responses[swp, ch] = minima < rmaxes[ch] ? rmaxes[ch] : minima
-            end
+            minima = minimum(trace[swp, :, ch]) 
+            responses[swp, ch] = minima < rmaxes[ch] ? rmaxes[ch] : minima
         end
     end
-    responses[:, 1:end .!= trace.stim_ch] 
+    responses
 end
 
 #Pepperburg analysis
@@ -208,19 +199,16 @@ function pepperburg_analysis(trace::Experiment{T}, rmaxes::Array{T, 1}; recovery
     t_dom = zeros(size(trace,1), size(trace,3))
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
-            #We don't need to calculate this on stimulus channels
-            if ch != trace.stim_ch
-                not_recovered = findall(trace[swp, :, ch] .< r_rec[ch])
-                if isempty(not_recovered)
-                    #println("Trace never exceeded $(recovery_percent*100)% the Rmax")
-                    t_dom[swp, ch] = NaN
-                else
-                    t_dom[swp, ch] = trace.t[not_recovered[end]] - trace.t[findstimRng(trace)[swp, 1]]
-                end
+            not_recovered = findall(trace[swp, :, ch] .< r_rec[ch])
+            if isempty(not_recovered)
+                #println("Trace never exceeded $(recovery_percent*100)% the Rmax")
+                t_dom[swp, ch] = NaN
+            else
+                t_dom[swp, ch] = trace.t[not_recovered[end]] - trace.t[trace.stim_protocol[swp].index_range[1]]
             end
         end
     end
-    t_dom[:, 1:end .!= trace.stim_ch]
+    t_dom
 end
 
 pepperburg_analysis(trace::Experiment{T}; kwargs...) where T = pepperburg_analysis(trace, saturated_response(trace; kwargs...); kwargs...)    
