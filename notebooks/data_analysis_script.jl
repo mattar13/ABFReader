@@ -7,47 +7,6 @@ using StatsBase, Statistics
 target_folder = "D:\\Data\\ERG\\Gnat"
 paths = target_folder |> parse_abf
 #Pauls data is in one of several different formats
-exp_opt = [
-    ("_", (" ", ~, :Rearing, check_pc), :Sample_size), 
-    ("_", (" ", ~, :Rearing), :Sample_size),
-]
-
-file_opt  = [
-    ("_", :Month, :Day, :Year, check_geno, check_age, :Animal, ~, ~, ~), 
-    ("_", :Month, :Day, :Year, check_geno, check_age, :Animal, ~), 
-    ("_", :Month, :Day, :Year, :Animal, check_geno, check_age, ~,~,~), 
-    ("_", :Month, :Day, :Year, :Animal, check_geno, check_age, ~,~), 
-    ("_", :Month, :Day, :Year, check_geno, check_age, :Animal, ~, check_pc), 
-    ("_", :Month, :Day, :Year, check_geno, check_age, ~, check_pc, ~), 
-    ("_", :Month, :Day, :Year, :Animal, check_geno, check_age, ~, ~), 
-    ("_", :ND, :Intensity, :Stim_time, :ID), 
-    ("_", :ND, :Intensity, :Stim_time)
-]
-
-format_bank = [
-    ("\\", ~, ~, ~, :Project, :Experimenter, exp_opt, check_color, :Drugs, file_opt),
-    ("\\", ~, ~, ~, :Project, :Experimenter, exp_opt, :Drugs, check_color, file_opt), 
-    ("\\", ~, ~, ~, :Project, :Experimenter, ("_", :Year, :Month, :Day, ~), ("_", :Animal, check_age, :Genotype), :Drugs, check_color, file_opt)
-]
-
-
-mismatched_format = []
-for (i, path) in enumerate(paths)
-    try
-        test_split = formatted_split(path, format_bank)
-    catch error
-        push!(mismatched_format, i)
-        println("Format of file $i is not matching")
-        println(path)
-        println(error)
-    end
-end
-if isempty(mismatched_format)
-    println("All files can be formatted correctly")
-end
-
-paths[mismatched_format]
-#%%
 
 #Create the dataframe
 data_analysis = DataFrame(
@@ -66,92 +25,92 @@ all_traces = DataFrame(
 )
 fail_files = Int64[]
 files_missing_stimuli = Int64[]
+
 #Walk through every file in the path
 for (i,path) in enumerate(paths)
     println("$(round(i/length(paths), digits = 3)*100)% progress made")
     #I will need to find out how to extract the path and concatenate
-    try
-        nt = formatted_split(path, format_bank)
-        if nt.Experimenter == "Matt" #I have files organized by intensities
-            #We need to first pass through each file and record all of the experiments
-            println(path)
+    nt = formatted_split(path, format_bank)
+    if nt.Experimenter == "Matt" #I have files organized by intensities
+        #We need to first pass through each file and record all of the experiments
+        println(path)
 
-            push!(all_traces, 
-                (path, nt.Year, nt.Month, nt.Day, 
-                nt.Animal, nt.Age, nt.Genotype, 
-                nt.Drugs == "Drugs" ? "a-waves" : "b-waves", 
-                nt.Wavelength, 
-                nt.ND, nt.Intensity, nt.Stim_time)
-            )
-        elseif nt.Experimenter == "Paul" #He has files organized by concatenations
-            #continue #Lets focus just on my experiments
-            data = try
-                #Some files may have a stimulus channel
-                extract_abf(path; swps = -1)
-            catch 
-                #Some files may not
-                extract_abf(path; stim_ch = -1, swps = -1, chs = -1)
-            end
-            
-            if nt.Age == 8 || nt.Age == 9
-                println("Photoreceptors equals both")
-                Photoreceptors = "Both"
-            else
-                if haskey(nt, :Photoreceptors)
-                    Photoreceptors = nt.Photoreceptors
-                else
-                    println("No key equaling Photoreceptors")
-                    Photoreceptors = "Both"
-                end
-            end
-            
-            if Photoreceptors == "cones" || Photoreceptors == "Both"
-                #Cone responses are under 300ms
-                t_post = 0.3
-                saturated_thresh = Inf
-            else
-                #Rod Responses can last a bit longer, so a second is fine for the max time
-                t_post = 1.0
-                saturated_thresh = :determine
-            end
-            
-            if !haskey(nt, :Animal)
-                animal = 1
-            else
-                animal = nt[:Animal]
-            end
-
-            truncate_data!(data; t_post = t_post)
-            baseline_cancel!(data)
-
-            filter_data = lowpass_filter(data) #Lowpass filter using a 40hz 8-pole 
-            rmaxes = saturated_response(filter_data; saturated_thresh = saturated_thresh)
-            rdims, dim_idx = dim_response(filter_data, rmaxes)
-            t_peak = time_to_peak(data, dim_idx)
-            t_dom = pepperburg_analysis(data, rmaxes)
-
-            for i = 1:(eachchannel(data)|>length)
-                push!(data_analysis, (
-                        path, 
-                        nt[:Year], nt[:Month], nt[:Day], 
-                        animal, nt[:Age], nt[:Rearing], nt[:Wavelength], nt[:Genotype], nt[:Drugs], Photoreceptors,
-                        data.chNames[i],
-                        -rmaxes[i]*1000, -rdims[i]*1000, t_peak[i]*1000
-                    )
-                )
-            end
-            println("$(i): $path")
-        end
-    catch error
-        println("$(i): $path has failed")
-        if isa(error, BoundsError)
-            println("Bounds error")
-            push!(files_missing_stimuli, i)
+        push!(all_traces, 
+            (path, nt.Year, nt.Month, nt.Day, 
+            nt.Animal, nt.Age, nt.Genotype, 
+            nt.Drugs == "Drugs" ? "a-waves" : "b-waves", 
+            nt.Wavelength, 
+            nt.ND, nt.Intensity, nt.Stim_time)
+        )
+    elseif nt.Experimenter == "Paul" #He has files organized by concatenations
+        #continue #Lets focus just on my experiments
+        data = extract_abf(path; swps = -1)
+        #data = try
+            #Some files may have a stimulus channel
+        #    extract_abf(path; swps = -1)
+        #catch 
+        #    #Some files may not
+        #    extract_abf(path; swps = -1, chs = -1)
+        #end
+        
+        if nt.Age == 8 || nt.Age == 9
+            println("Photoreceptors equals both")
+            Photoreceptors = "Both"
         else
-            println(error)
+            if haskey(nt, :Photoreceptors)
+                Photoreceptors = nt.Photoreceptors
+            else
+                println("No key equaling Photoreceptors")
+                Photoreceptors = "Both"
+            end
         end
-        push!(fail_files, i)
+        
+        if Photoreceptors == "cones" || Photoreceptors == "Both"
+            #Cone responses are under 300ms
+            t_post = 0.3
+            saturated_thresh = Inf
+        else
+            #Rod Responses can last a bit longer, so a second is fine for the max time
+            t_post = 1.0
+            saturated_thresh = :determine
+        end
+        
+        if !haskey(nt, :Animal)
+            animal = 1
+        else
+            animal = nt[:Animal]
+        end
+
+        truncate_data!(data; t_post = t_post)
+        baseline_cancel!(data)
+
+        filter_data = lowpass_filter(data) #Lowpass filter using a 40hz 8-pole 
+        rmaxes = saturated_response(filter_data; saturated_thresh = saturated_thresh)
+        rdims, dim_idx = dim_response(filter_data, rmaxes)
+        t_peak = time_to_peak(data, dim_idx)
+        t_dom = pepperburg_analysis(data, rmaxes)
+
+        for i = 1:size(data,3)
+            push!(data_analysis, (
+                    path, 
+                    nt[:Year], nt[:Month], nt[:Day], 
+                    animal, nt[:Age], nt[:Rearing], nt[:Wavelength], nt[:Genotype], nt[:Drugs], Photoreceptors,
+                    data.chNames[i],
+                    -rmaxes[i]*1000, -rdims[i]*1000, t_peak[i]*1000
+                )
+            )
+        end
+        println("$(i): $path")
     end
+    #catch error
+    #    if isa(error, LoadError)
+    #        continue
+    #    else
+    #        println("$(i): $path has failed")
+    #        push!(fail_files, i)
+    #        throw(error) #This will terminate the process
+    #    end
+    #end
 end
 
 #%%
@@ -376,13 +335,6 @@ truncate_data!(data_concat)
 #baseline_cancel!(data_concat)
 plot(data_concat)
 #%%
-println(sum(data_concat.data_array[5, :, 1])/size(data_concat, 2))
-#%%
 trace_4 = extract_abf(data_concat.filename[5])
 truncate_data!(trace_4)
 plot(trace_4.data_array[1,:,3])
-#%%
-findstimRng(data_concat)
-#%%
-stim = data_concat.data_array[5,:,3]
-plot(stim)

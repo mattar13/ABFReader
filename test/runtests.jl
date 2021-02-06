@@ -18,13 +18,13 @@ baseline_cancel!(data1; mode = :slope, region = :prestim) #Cancel drift
 baseline_cancel!(data2; mode = :slope, region = :prestim) #Cancel drift for concatenation
 baseline_cancel!(data1; mode = :mean, region = :prestim) #Baseline data
 baseline_cancel!(data2; mode = :mean, region = :prestim) #Baseline data for concatenation
-lowpass_filter!(data1)
-lowpass_filter!(data2)
-notch_filter!(data1)
-notch_filter!(data2)
-cwt_filter!(data1)
-cwt_filter!(data2)
-average_sweeps!(data2)
+#lowpass_filter!(data1)
+#lowpass_filter!(data2)
+#notch_filter!(data1)
+#notch_filter!(data2)
+#cwt_filter!(data1)
+#cwt_filter!(data2)
+#average_sweeps!(data2)
 println("All inline filtering functions work")
 
 #%% Test filtering functions that are not inline
@@ -43,13 +43,9 @@ println("All filtering functions work")
 
 #%% Test the analysis
 mins, maxes, means, stds = calculate_basic_stats(data1);
-rmaxes1 = saturated_response(filter_data1)
 rmaxes2 = saturated_response(filter_data2)
-rdims1, dim_idx1 = dim_response(filter_data1, rmaxes1)
 rdims2, dim_idx2 = dim_response(filter_data2, rmaxes2)
-t_peak1 = time_to_peak(data1, dim_idx1)
 t_peak2 = time_to_peak(data2, dim_idx2)
-t_dom1 = pepperburg_analysis(data1, rmaxes1)
 t_dom2 = pepperburg_analysis(data2, rmaxes2)
 ppbg_thresh1 = rmaxes1 .* 0.60;
 ppbg_thresh2 = rmaxes2 .* 0.60;
