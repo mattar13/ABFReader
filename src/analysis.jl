@@ -53,7 +53,13 @@ function saturated_response(trace::Experiment; saturated_thresh = :determine, po
     for ch in 1:size(trace,3)
         data = Float64[]
         for swp in 1:size(trace,1)
-            stim_begin = trace.stim_protocol[swp].index_range[1] #We don't want to pull values from before the stim
+            if isempty(trace.stim_protocol)
+                #This catch is here for if no stim protocol has been set
+                #println("No stimulus protocol exists")
+                stim_begin = 1
+            else
+                stim_begin = trace.stim_protocol[swp].index_range[1] #We don't want to pull values from before the stim
+            end
             push!(data,  trace[:, stim_begin:size(trace,2), ch]...)
         end
         #We are going to concatenate all sweeps together into one histogram
