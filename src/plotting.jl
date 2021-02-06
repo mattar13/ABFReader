@@ -47,7 +47,7 @@ Plotting function.
                 yguide := "$(exp.chNames[ch])($(exp.chUnits[ch]))"
                 ()
             elseif plot_stim_mode == :overlay_vspan
-                alpha := 0.2
+                seriesalpha := 0.2
                 seriestype := vspan
                 y := [exp.stim_protocol[swp].timestamps...]
                 yguide := "$(exp.chNames[ch])($(exp.chUnits[ch]))"
