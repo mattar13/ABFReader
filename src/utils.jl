@@ -399,6 +399,7 @@ function truncate_data(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_ba
         t_end = t_end < size(trace,2) ? t_end : size(trace,2) #If the indexes are greater than the number of datapoints then reset the indexes to n
         if size_of_array == 0
             size_of_array = t_end - t_start
+            trace.data_array[swp, 1:t_end-t_start+1, :] .= trace.data_array[swp, t_start:t_end, :]
         elseif size_of_array != (t_end - t_start)
             println("Check here")
             println(size_of_array)
@@ -445,6 +446,7 @@ function truncate_data!(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_b
         t_end = t_end < size(trace,2) ? t_end : size(trace,2) #If the indexes are greater than the number of datapoints then reset the indexes to n
         if size_of_array == 0
             size_of_array = t_end - t_start
+            trace.data_array[swp, 1:t_end-t_start+1, :] .= trace.data_array[swp, t_start:t_end, :]
         elseif size_of_array != (t_end - t_start)
             println("Check here")
             println(size_of_array)
