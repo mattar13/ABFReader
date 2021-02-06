@@ -370,7 +370,7 @@ function truncate_data(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_ba
     data = deepcopy(trace)
     size_of_array = 0
     if isempty(trace.stim_protocol)
-        println("No explicit stimulus has been set")
+        #println("No explicit stimulus has been set")
         return data
     else
         for swp in 1:size(trace, 1)
@@ -422,7 +422,7 @@ function truncate_data!(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_b
     dt = trace.dt
     size_of_array = 0
     if isempty(trace.stim_protocol)
-        println("No explicit stimulus has been set")
+        #println("No explicit stimulus has been set")
     else
         for swp in 1:size(trace, 1)
             stim_protocol = trace.stim_protocol[swp]
