@@ -163,16 +163,20 @@ function extract_abf(::Type{T}, abf_path::String;
         #println(swp)
         #we need to get the stimulus channel and extract the data
         stimulus_idxs = findall(data_array[swp,:,ch] .> stimulus_threshold)
-        stim_begin = stimulus_idxs[1]
-        stim_end = stimulus_idxs[end]
-        stim_time_start = stim_begin*(t[2]-t[1])
-        stim_time_end = stim_end*(t[2]-t[1])
-        stim = StimulusProtocol(
-            stim_name[idx], swp, 
-            (stim_begin, stim_end), 
-            (stim_time_start, stim_time_end)    
-        )
-        push!(stim_protocol, stim)
+        if isempty(stimulus_idxs)
+            println("Could not find any stimulus")
+        else
+            stim_begin = stimulus_idxs[1]
+            stim_end = stimulus_idxs[end]
+            stim_time_start = stim_begin*(t[2]-t[1])
+            stim_time_end = stim_end*(t[2]-t[1])
+            stim = StimulusProtocol(
+                stim_name[idx], swp, 
+                (stim_begin, stim_end), 
+                (stim_time_start, stim_time_end)    
+            )
+            push!(stim_protocol, stim)
+        end
     end
 
     keep_channels = findall(x -> x ∉ stim_ch, collect(1:length(chNames)))
@@ -181,7 +185,6 @@ function extract_abf(::Type{T}, abf_path::String;
         data_array = data_array[:,:,keep_channels]
     end
 
-    println(data_array |> size)
     Experiment{T}(
         trace_file.abfID, 
         trace_file.protocol,
@@ -457,7 +460,8 @@ function truncate_data!(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_b
                 println("Check here")
                 println(size_of_array)
                 println(t_end - t_start)
-                throw(error("Inconsistant array size"))
+                println()
+                #throw(error("Inconsistant array size"))
             else
                 trace.data_array[swp, 1:t_end-t_start+1, :] .= trace.data_array[swp, t_start:t_end, :]
                 #println("truncated array is consistant with new array")
@@ -532,10 +536,13 @@ function concat!(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, posi
     if avg_swps == true && size(data_add,1) > 1
         avg_data_add = average_sweeps(data_add)
         push!(data, avg_data_add)
+        
     else
         #If you one or more sweeps to add in the second trace, this adds all of them
         push!(data, data_add)
     end
+    #add the new stimulus as well
+    push!(data.stim_protocol, data_add.stim_protocol...)
 end
 
 function concat(path_arr::Array{String,1}; kwargs...)
