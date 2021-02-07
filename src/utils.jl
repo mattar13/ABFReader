@@ -548,9 +548,7 @@ end
 function concat(path_arr::Array{String,1}; kwargs...)
     data = extract_abf(path_arr[1]; kwargs...)
     for path in path_arr[2:end]
-        println(path)
         data_add = extract_abf(path; kwargs...)
-        println(findstimRng(data_add))
         concat!(data, data_add; kwargs...)
     end
     return data
