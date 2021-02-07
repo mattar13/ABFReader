@@ -209,6 +209,9 @@ function pepperburg_analysis(trace::Experiment{T}, rmaxes::Array{T, 1}; recovery
             if isempty(not_recovered)
                 #println("Trace never exceeded $(recovery_percent*100)% the Rmax")
                 t_dom[swp, ch] = NaN
+            elseif isempty(trace.stim_protocol)
+                #println("No stimulus protocol exists")
+                t_dom[swp, ch] = trace.t[not_recovered[end]]
             else
                 t_dom[swp, ch] = trace.t[not_recovered[end]] - trace.t[trace.stim_protocol[swp].index_range[1]]
             end
