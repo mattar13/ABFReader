@@ -168,8 +168,8 @@ function extract_abf(::Type{T}, abf_path::String;
         else
             stim_begin = stimulus_idxs[1]
             stim_end = stimulus_idxs[end]
-            stim_time_start = stim_begin*(t[2]-t[1])
-            stim_time_end = stim_end*(t[2]-t[1])
+            stim_time_start = t[stim_begin]
+            stim_time_end = t[stim_end+1]
             stim = StimulusProtocol(
                 stim_name[idx], swp, 
                 (stim_begin, stim_end), 
@@ -440,12 +440,21 @@ function truncate_data!(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_b
             idxs_begin = round(Int, t_pre/dt); 
             idxs_end = round(Int, t_post/dt)+1
             
-            stim_begin_adjust = idxs_begin + (stim_protocol.index_range[1]-truncate_loc)
-            stim_end_adjust = idxs_end + (stim_protocol.index_range[2]-truncate_loc)
-            trace.stim_protocol[swp].index_range = (stim_begin_adjust, stim_end_adjust)
+            if truncate_loc == 1
+                #println("Stimulus set to first point")
+                t_pre = 0.0
+            elseif truncate_loc < idxs_begin #This means that the stimulus point is very close to the beginning
+                #println("Truncate location not far from the beginning")
+                t_pre = (idxs_begin - truncate_loc) *dt
+                #println(idxs_begin - truncate_loc)
+            else
+                stim_begin_adjust = idxs_begin + (stim_protocol.index_range[1]-truncate_loc)
+                stim_end_adjust = idxs_end + (stim_protocol.index_range[2]-truncate_loc)
+                trace.stim_protocol[swp].index_range = (stim_begin_adjust, stim_end_adjust)
+            end
 
-            t_begin_adjust = stim_protocol.timestamps[1] - trace.t[truncate_loc+1]
-            t_end_adjust = stim_protocol.timestamps[2] - trace.t[truncate_loc+1]
+            t_begin_adjust = stim_protocol.timestamps[1] - trace.t[truncate_loc]
+            t_end_adjust = stim_protocol.timestamps[2] - trace.t[truncate_loc]
             trace.stim_protocol[swp].timestamps = (t_begin_adjust, t_end_adjust)
 
             t_start = round(Int, truncate_loc - idxs_begin) #Index of truncated start point
