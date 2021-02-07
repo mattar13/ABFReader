@@ -189,29 +189,7 @@ function formatted_split(string::String, formats::Array{T} where T <: Tuple; kwa
     throw(error("No formats currently correct"))
 end
 
-#Here are the common formats I will be using 
-exp_opt = [
-    ("_", (" ", ~, :Rearing, check_pc), :Sample_size), 
-    ("_", (" ", ~, :Rearing), :Sample_size),
-]
 
-file_opt  = [
-    ("_", :Month, :Day, :Year, check_geno, check_age, :Animal, ~, ~, ~), 
-    ("_", :Month, :Day, :Year, check_geno, check_age, :Animal, ~), 
-    ("_", :Month, :Day, :Year, :Animal, check_geno, check_age, ~,~,~), 
-    ("_", :Month, :Day, :Year, :Animal, check_geno, check_age, ~,~), 
-    ("_", :Month, :Day, :Year, check_geno, check_age, :Animal, ~, check_pc), 
-    ("_", :Month, :Day, :Year, check_geno, check_age, ~, check_pc, ~), 
-    ("_", :Month, :Day, :Year, :Animal, check_geno, check_age, ~, ~), 
-    ("_", :ND, :Intensity, :Stim_time, :ID), 
-    ("_", :ND, :Intensity, :Stim_time)
-]
-
-format_bank = [
-    ("\\", ~, ~, ~, :Project, :Experimenter, exp_opt, check_color, :Drugs, file_opt),
-    ("\\", ~, ~, ~, :Project, :Experimenter, exp_opt, :Drugs, check_color, file_opt), 
-    ("\\", ~, ~, ~, :Project, :Experimenter, ("_", :Year, :Month, :Day, ~), ("_", :Animal, check_age, :Genotype), :Drugs, check_color, file_opt)
-]
 
 
 function check_age(x::String)
@@ -259,6 +237,31 @@ function check_color(x::String)
 end
 
 check_color(x) = x
+
+#Here are the common formats I will be using 
+exp_opt = [
+    ("_", (" ", ~, :Rearing, check_pc), :Sample_size), 
+    ("_", (" ", ~, :Rearing), :Sample_size),
+]
+
+file_opt  = [
+    ("_", :Month, :Day, :Year, check_geno, check_age, :Animal, ~, ~, ~), 
+    ("_", :Month, :Day, :Year, check_geno, check_age, :Animal, ~), 
+    ("_", :Month, :Day, :Year, :Animal, check_geno, check_age, ~,~,~), 
+    ("_", :Month, :Day, :Year, :Animal, check_geno, check_age, ~,~), 
+    ("_", :Month, :Day, :Year, check_geno, check_age, :Animal, ~, check_pc), 
+    ("_", :Month, :Day, :Year, check_geno, check_age, ~, check_pc, ~), 
+    ("_", :Month, :Day, :Year, :Animal, check_geno, check_age, ~, ~), 
+    ("_", :ND, :Intensity, :Stim_time, :ID), 
+    ("_", :ND, :Intensity, :Stim_time)
+]
+
+format_bank = [
+    ("\\", ~, ~, ~, :Project, :Experimenter, exp_opt, check_color, :Drugs, file_opt),
+    ("\\", ~, ~, ~, :Project, :Experimenter, exp_opt, :Drugs, check_color, file_opt), 
+    ("\\", ~, ~, ~, :Project, :Experimenter, ("_", :Year, :Month, :Day, ~), ("_", :Animal, check_age, :Genotype), :Drugs, check_color, file_opt)
+]
+
 ########################### These are some functions that will make parsing folder names easier ##############
 
 
