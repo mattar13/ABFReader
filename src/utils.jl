@@ -445,7 +445,7 @@ function truncate_data!(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_b
                 t_pre = 0.0
             elseif truncate_loc < idxs_begin #This means that the stimulus point is very close to the beginning
                 #println("Truncate location not far from the beginning")
-                t_pre = (idxs_begin - truncate_loc) *dt
+                t_pre = (idxs_begin - truncate_loc) * dt
                 #println(idxs_begin - truncate_loc)
             else
                 stim_begin_adjust = idxs_begin + (stim_protocol.index_range[1]-truncate_loc)
