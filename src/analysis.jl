@@ -112,7 +112,7 @@ This function only works on concatenated files with more than one trace
     In the rdim calculation, it is better to adjust the higher percent
     Example: no traces in 20-30% range, try 20-40%
 """
-function dim_response(trace::Experiment{T}, rmaxes::Array{T, 1}; return_idx = true, polarity::Int64 = -1, rmax_lin = [0.10, 0.40]) where T
+function dim_response(trace::Experiment{T}, rmaxes::Array{T, 1}; return_idx = true, polarity::Int64 = -1, rmax_lin = [0.10, 0.40]) where T <: Real
     #We need
     if size(trace,1) == 1
         throw(ErrorException("There is no sweeps to this file, and Rdim will not work"))
@@ -159,7 +159,7 @@ dim_response(trace::Experiment; z = 0.0, rdim_percent = 0.15) = dim_response(tra
 """
 This function calculates the time to peak using the dim response properties of the concatenated file
 """
-function time_to_peak(trace::Experiment{T}, idxs::Array{Int64,1}) where T
+function time_to_peak(trace::Experiment{T}, idxs::Array{Int64,1}) where T <: Real
     if size(trace,1) == 1
         throw(ErrorException("There is no sweeps to this file, and Tpeak will not work"))
     elseif size(trace,3) != size(idxs,1)
@@ -178,7 +178,7 @@ function time_to_peak(trace::Experiment{T}, idxs::Array{Int64,1}) where T
     end
 end
 
-function get_response(trace::Experiment, rmaxes::Array{T,1}) where T
+function get_response(trace::Experiment, rmaxes::Array{T,1}) where T <: Real
     responses = zeros(size(trace,1), size(trace,3))
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
@@ -197,11 +197,12 @@ This function conducts a Pepperburg analysis on a single trace.
     1) A rmax is provided, does not need to calculate rmaxes
     2) No rmax is provided, so one is calculated
 """
-function pepperburg_analysis(trace::Experiment{T}, rmaxes::Array{T, 1}; recovery_percent = 0.60, kwargs...) where T
+function pepperburg_analysis(trace::Experiment{T}, rmaxes::Array{T, 1}; recovery_percent = 0.60, kwargs...) where T <: Real
     if size(trace,1) == 1
         throw(error("Pepperburg will not work on single sweeps"))
     end
     r_rec = rmaxes .* recovery_percent
+    #try doing this  different way
     t_dom = zeros(size(trace,1), size(trace,3))
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
@@ -220,4 +221,39 @@ function pepperburg_analysis(trace::Experiment{T}, rmaxes::Array{T, 1}; recovery
     t_dom
 end
 
-pepperburg_analysis(trace::Experiment{T}; kwargs...) where T = pepperburg_analysis(trace, saturated_response(trace; kwargs...); kwargs...)    
+pepperburg_analysis(trace::Experiment{T}; kwargs...) where T <: Real= pepperburg_analysis(trace, saturated_response(trace; kwargs...); kwargs...)  
+
+
+"""
+The dominant time constant is calculated by fitting the normalized Rdim with the response recovery equation
+"""
+function dominant_tc(trace::Experiment{T}) where T <: Real
+    println("Not implemented yet")
+end
+
+"""
+The integration time is fit by integrating the dim flash response and dividing it by the dim flash response amplitude
+    - A key to note here is that the exact f(x) of the ERG trace is not completely known
+    - The integral is therefore a defininte integral and a sum of the area under the curve
+"""
+function integration_time(trace::Experiment{T}, dim_idx) where T <: Real
+    if size(trace,3) != length(dim_idx)
+        throw(error("Size of dim indexes does not match channel size for trace"))
+    else
+        int_time = T[]
+        for ch in 1:size(trace,3)
+            dim_trace = trace[dim_idx[ch], :, ch]
+            #The integral is calculated by taking the sum of all points (in μV) and dividing by the time range (in ms)
+             #We have to make sure this response is in μV
+            if trace.chUnits[ch] == "mV"
+                rdim = minimum(dim_trace)*1000
+                sum_data = sum(dim_trace.*1000)*(trace.dt*1000)
+            else
+                rdim = minimum(dim_trace)
+                sum_data = sum(dim_trace)*trace.dt
+            end
+            push!(int_time, sum_data/rdim)
+        end
+        return int_time
+    end
+end
