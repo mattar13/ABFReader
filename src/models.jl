@@ -110,5 +110,17 @@ Amplification is a time series, therefore it is a function of time
 [OUT 1]: Response
 
 """
-AMP(t, α, t_eff, rmax) = t > t_eff ? rmax * (1 - exp(-α*(t-t_eff)^2)) : 0.0 
+AMP(t, α, t_eff, rmax) = t > t_eff ? rmax * (1 - exp(-α*(t-t_eff)^2)) : 0.0
+
+"""
+# Recovery Time Constant (τRec)
+
+This function is a single exponential. 
+
+### Function usage
+[IN 1]:  Recovery(t, V⁰, τRec)
+
+[OUT 1]: Response  
+"""
+Recovery(t, V⁰, τRec) = V⁰ * exp(-t/τRec)
 
