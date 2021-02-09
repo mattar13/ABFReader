@@ -43,13 +43,13 @@ This function uses a histogram method to find the saturation point.
     - Does this same function work for the Rmax of nonsaturated responses?
     - Setting the saturated threshold to infinity will completely disregard the histogram method
 """
-function saturated_response(trace::Experiment; saturated_thresh = :determine, polarity::Int64 = -1, precision = 500, z = 1.3, kwargs...)
+function saturated_response(trace::Experiment{T}; saturated_thresh = :determine, polarity::Int64 = -1, precision = 500, z = 1.3, kwargs...) where T
     if isa(saturated_thresh, Symbol)
         #Figure out if the saturated threshold needs to be determined
         saturated_thresh = size(trace,1)/precision/2
     end
     #Make an empty array for recording the rmaxes
-    rmaxs = zeros(size(trace,3))
+    rmaxs = T[]
     for ch in 1:size(trace,3)
         data = Float64[]
         for swp in 1:size(trace,1)
@@ -70,7 +70,7 @@ function saturated_response(trace::Experiment; saturated_thresh = :determine, po
             idxs = findall(data .< (mean - deviation))
             if isempty(idxs)
                 #This is a weird catch, but no points fall under the mean. 
-                rmaxs[ch] = minimum(data)
+                push!(rmaxs, minimum(data))
                 continue
             end
             data = data[idxs]
@@ -80,7 +80,7 @@ function saturated_response(trace::Experiment; saturated_thresh = :determine, po
             idxs = findlast(data .> (mean + deviation))
             if isempty(idxs)
                 #This is a weird catch, but no points fall under the mean. 
-                rmaxs[ch] = minimum(data)
+                push!(rmaxsm, minimum(data))
                 continue
             end
             data = data[idxs]
@@ -98,9 +98,9 @@ function saturated_response(trace::Experiment; saturated_thresh = :determine, po
         #return edges, weights
 
         if maximum(weights) > saturated_thresh
-            rmaxs[ch] = edges[argmax(weights)]
+            push!(rmaxs, edges[argmax(weights)])
         else
-            rmaxs[ch] = minimum(data)
+            push!(rmaxs, minimum(data))
         end
     end
     rmaxs |> vec
@@ -119,7 +119,7 @@ function dim_response(trace::Experiment{T}, rmaxes::Array{T, 1}; return_idx = tr
     elseif size(trace,3) != size(rmaxes,1)
         throw(ErrorException("The number of rmaxes is not equal to the channels of the dataset"))
     else
-        rdims = zeros(Float64, size(trace,3))
+        rdims = zeros(T, size(trace,3))
         dim_idx = zeros(Int64, size(trace,3))
         for swp in 1:size(trace,1)
             for ch in 1:size(trace,3)
@@ -165,13 +165,13 @@ function time_to_peak(trace::Experiment{T}, idxs::Array{Int64,1}) where T <: Rea
     elseif size(trace,3) != size(idxs,1)
         throw(ErrorException("The number of indexes is not equal to the channels of the dataset"))
     else
-        t_peak = zeros(size(trace,3))
+        t_peak = T[]
         for (ch, swp) in enumerate(idxs)
             if swp != 0
                 t_series = trace.t[findall(trace.t .>= 0.0)]
                 data = trace[swp, findall(trace.t .>= 0), ch]
                 #println(argmin(data))
-                t_peak[ch] = t_series[argmin(data)]
+                push!(t_peak, t_series[argmin(data)])
             end
         end
         t_peak
@@ -203,7 +203,7 @@ function pepperburg_analysis(trace::Experiment{T}, rmaxes::Array{T, 1}; recovery
     end
     r_rec = rmaxes .* recovery_percent
     #try doing this  different way
-    t_dom = zeros(size(trace,1), size(trace,3))
+    t_dom = zeros(T, size(trace,1), size(trace,3))
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
             not_recovered = findall(trace[swp, :, ch] .< r_rec[ch])
@@ -227,8 +227,25 @@ pepperburg_analysis(trace::Experiment{T}; kwargs...) where T <: Real= pepperburg
 """
 The dominant time constant is calculated by fitting the normalized Rdim with the response recovery equation
 """
-function dominant_tc(trace::Experiment{T}) where T <: Real
-    println("Not implemented yet")
+function recovery_tau(trace::Experiment{T}, dim_idx::Array{Int64,1}; τRec::T = 1.0) where T <: Real
+    if size(trace,3) != length(dim_idx)
+        throw(error("Size of dim indexes does not match channel size for trace"))
+    else
+        tauRec = T[]
+        #This function uses the recovery model and takes t as a independent variable
+        model(x,p) = map(t -> Recovery(t, p[1], p[2]), x)
+        for ch in 1:size(trace,3)
+            xdata = trace.t
+            ydata = trace[dim_idx[ch], :, ch]
+            xdata = xdata[argmin(ydata):end] .- xdata[argmin(ydata)]
+            ydata = ydata[argmin(ydata):end]
+            p0 = [xdata[1], τRec]
+            fit = curve_fit(model, xdata, ydata, p0)
+            println(sum(fit.resid))
+            push!(tauRec, fit.param[2])
+        end
+        return tauRec
+    end
 end
 
 """
@@ -236,7 +253,7 @@ The integration time is fit by integrating the dim flash response and dividing i
     - A key to note here is that the exact f(x) of the ERG trace is not completely known
     - The integral is therefore a defininte integral and a sum of the area under the curve
 """
-function integration_time(trace::Experiment{T}, dim_idx) where T <: Real
+function integration_time(trace::Experiment{T}, dim_idx::Array{Int64,1}) where T <: Real
     if size(trace,3) != length(dim_idx)
         throw(error("Size of dim indexes does not match channel size for trace"))
     else
