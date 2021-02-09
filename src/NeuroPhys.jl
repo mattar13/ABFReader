@@ -44,6 +44,7 @@ export get_response
 export pepperburg_analysis
 export integration_time
 export recovery_tau
+export amplification
 export curve_fit #curve fitting from LsqFit
 #export filtering functions
 
@@ -52,7 +53,7 @@ include("models.jl")
 #Export the photon calculation and Rig-specific Photon equation
 export photons, Transferrance, stimulus_model
 #Export the Amplification and IR models
-export IR, IR_dev, AMP, Recovery
+export IR, IR_dev, AMP, REC
 
 include("plotting.jl")
 export plot, plot!, vline!, hline!, savefig, histogram, grid

@@ -103,7 +103,7 @@ function saturated_response(trace::Experiment{T}; saturated_thresh = :determine,
             push!(rmaxs, minimum(data))
         end
     end
-    rmaxs |> vec
+    rmaxs
 end
 
 """
@@ -227,13 +227,13 @@ pepperburg_analysis(trace::Experiment{T}; kwargs...) where T <: Real= pepperburg
 """
 The dominant time constant is calculated by fitting the normalized Rdim with the response recovery equation
 """
-function recovery_tau(trace::Experiment{T}, dim_idx::Array{Int64,1}; τRec::T = 1.0) where T <: Real
+function recovery_tau(trace::Experiment{T}, dim_idx::Array{Int64,1}; τRec::T = 1.0, report_residuals = false) where T <: Real
     if size(trace,3) != length(dim_idx)
         throw(error("Size of dim indexes does not match channel size for trace"))
     else
         tauRec = T[]
         #This function uses the recovery model and takes t as a independent variable
-        model(x,p) = map(t -> Recovery(t, p[1], p[2]), x)
+        model(x,p) = map(t -> REC(t, p[1], p[2]), x)
         for ch in 1:size(trace,3)
             xdata = trace.t
             ydata = trace[dim_idx[ch], :, ch]
@@ -241,7 +241,9 @@ function recovery_tau(trace::Experiment{T}, dim_idx::Array{Int64,1}; τRec::T = 
             ydata = ydata[argmin(ydata):end]
             p0 = [xdata[1], τRec]
             fit = curve_fit(model, xdata, ydata, p0)
-            println(sum(fit.resid))
+            if report_residuals 
+                println(sum((fit.resid).^2))
+            end
             push!(tauRec, fit.param[2])
         end
         return tauRec
@@ -273,4 +275,31 @@ function integration_time(trace::Experiment{T}, dim_idx::Array{Int64,1}) where T
         end
         return int_time
     end
+end
+
+function amplification(trace::Experiment{T}, rmaxes::Array{T,1}; A_initial = 100.0, report_residuals = true, GOF_limit = 0.90) where T <: Real
+    amp = zeros(T, size(trace,1), size(trace,3))
+    for swp in 1:size(trace,1), ch in 1:size(trace,3)
+        model(x, p) = map(t -> AMP(t, p[1], p[2], rmaxes[ch]), x)
+        xdata = trace.t
+        ydata = trace[swp,:,ch]
+        p0 = [A_initial, 0.0, rmaxes[ch]]
+        fit = curve_fit(model, xdata, ydata, p0)
+        SSE = sum(fit.resid.^2)
+        ȳ = sum(model(xdata, fit.param))/length(xdata)
+        SST = sum((ydata .- ȳ).^2)
+        GOF = 1- SSE/SST
+        if report_residuals
+            println("Goodness of fit: $GOF")
+            if GOF >= GOF_limit
+                println("This is an acceptable fit")
+            else
+                println("This fit is not good enough")
+            end
+        end
+        if GOF >= GOF_limit
+            amp[swp, ch] = fit.param[1]
+        end
+    end
+    return amp
 end

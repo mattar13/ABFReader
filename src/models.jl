@@ -122,5 +122,5 @@ This function is a single exponential.
 
 [OUT 1]: Response  
 """
-Recovery(t, V⁰, τRec) = V⁰ * exp(-t/τRec)
+REC(t, V⁰, τRec) = V⁰ * exp(-t/τRec)
 
