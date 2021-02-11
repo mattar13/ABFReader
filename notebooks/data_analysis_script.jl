@@ -95,9 +95,9 @@ for (i,path) in enumerate(paths)
             tau_rec = recovery_tau(filter_data, dim_idx)
             
             #tau_dom has multiple values
-            tau_dom = pepperburg_analysis(data, rmaxes)
+            #tau_dom = pepperburg_analysis(data, rmaxes)
             #Amplification also has multiple values
-            amp_val = amplification(filter_data, rmaxes)
+            #amp_val = amplification(filter_data, rmaxes)
 
             for i = 1:size(data,3)
                 push!(data_analysis, (
@@ -105,11 +105,10 @@ for (i,path) in enumerate(paths)
                         nt[:Year], nt[:Month], nt[:Day], 
                         animal, nt[:Age], nt[:Rearing], nt[:Wavelength], nt[:Genotype], nt[:Drugs], Photoreceptors,
                         data.chNames[i],
-                        -rmaxes[i]*1000, -rdims[i]*1000, t_peak[i]*1000, t_Int, tau_rec
+                        -rmaxes[i]*1000, -rdims[i]*1000, t_peak[i]*1000, t_Int[i], tau_rec[i]
                     )
                 )
             end
-            
         end
     catch error
             println("$(i): $path has failed")
@@ -140,7 +139,7 @@ for (i, exp) in enumerate(eachrow(all_experiments))
     data = extract_abf(Qi[1, :Path])
     #println(data.stim_protocol)
     for single_path in Qi[2:end,:Path] #Some of the files need to be averaged
-        single_path = extract_abf(single_path)
+    single_path = extract_abf(single_path)
         if size(single_path)[1] > 1
             println("Needs to average traces")
             average_sweeps!(single_path)
@@ -160,9 +159,9 @@ for (i, exp) in enumerate(eachrow(all_experiments))
     tau_rec = recovery_tau(filter_data, dim_idx)
             
     #tau_dom has multiple values
-    tau_dom = pepperburg_analysis(data, rmaxes)
+    #tau_dom = pepperburg_analysis(data, rmaxes)
     #Amplification also has multiple values
-    amp_val = amplification(filter_data, rmaxes)
+    #amp_val = amplification(filter_data, rmaxes)
     
     for i = 1:size(data,3)
         push!(data_analysis, (
@@ -170,14 +169,13 @@ for (i, exp) in enumerate(eachrow(all_experiments))
                 exp.Year, exp.Month, exp.Day, exp.Animal,
                 exp.Age, "(NR)", exp.Wavelength, exp.Genotype, exp.Drugs, "Both",
                 data.chNames[i],
-                -rmaxes[i]*1000, -rdims[i]*1000, t_peak[i]*1000, t_Int, tau_rec
+                -rmaxes[i]*1000, -rdims[i]*1000, t_peak[i]*1000, t_Int[i], tau_rec[i]
             )
         )
     end
     #println(rmaxes)
 end
 data_analysis
-#%%
 #paths[fail_files] #These are the files that have failed
 #%% Make and export the dataframe 
 all_categories = data_analysis |> 
@@ -199,7 +197,10 @@ for row in eachrow(all_categories)
         @filter(_.Drugs != "b-waves") |> 
         @filter(_.Rearing == row.Rearing) |>
         @filter(_.Wavelength == row.Wavelength) |> 
-        @map({_.Path, _.Age, _.Wavelength, _.Photoreceptors, _.Rearing, _.Rmax, _.Rdim, _.t_peak}) |> 
+        @map({
+                _.Path, _.Age, _.Wavelength, _.Photoreceptors, 
+                _.Rearing, _.Rmax, _.Rdim, _.t_peak
+            }) |> 
         DataFrame
     println(Qi)
     rmax_mean = sum(Qi.Rmax)/length(eachrow(Qi))
@@ -221,7 +222,7 @@ for row in eachrow(all_categories)
     push!(tpeaks_sem, tpeak_sem)
     #println(length(eachrow(Qi)))
 end
-
+println("All_Categories")
 all_categories[:, :Rmax] = rmaxes
 all_categories[:, :Rmax_SEM] = rmaxes_sem
 all_categories[:, :Rdim] = rdims
