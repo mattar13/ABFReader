@@ -14,7 +14,8 @@ data_analysis = DataFrame(
     Year = Int64[], Month = Int64[], Day = Int64[], 
     Animal = Any[], Age = Int64[], Rearing = String[], Wavelength = Int64[], Genotype = String[], Drugs = String[], Photoreceptors = String[],
     Channel = String[], 
-    Rmax = Float64[], Rdim = Float64[], t_peak = Float64[]
+    Rmax = Float64[], Rdim = Float64[], t_peak = Float64[],
+    tInt = Float64[], tau_rec = Float64[]
     )
 
 #If the experimenter is me, the files need to be analyzed differently
@@ -28,89 +29,93 @@ files_missing_stimuli = Int64[]
 
 #Walk through every file in the path
 for (i,path) in enumerate(paths)
-    println("$(round(i/length(paths), digits = 3)*100)% progress made")
-    #I will need to find out how to extract the path and concatenate
-    nt = formatted_split(path, format_bank)
-    if nt.Experimenter == "Matt" #I have files organized by intensities
-        #We need to first pass through each file and record all of the experiments
-        println(path)
+    try
+        println("$(round(i/length(paths), digits = 3)*100)% progress made")
+        #I will need to find out how to extract the path and concatenate
+        nt = formatted_split(path, format_bank)
+        if nt.Experimenter == "Matt" #I have files organized by intensities
+            #We need to first pass through each file and record all of the experiments
+            println(path)
 
-        push!(all_traces, 
-            (path, nt.Year, nt.Month, nt.Day, 
-            nt.Animal, nt.Age, nt.Genotype, 
-            nt.Drugs == "Drugs" ? "a-waves" : "b-waves", 
-            nt.Wavelength, 
-            nt.ND, nt.Intensity, nt.Stim_time)
-        )
-    elseif nt.Experimenter == "Paul" #He has files organized by concatenations
-        #continue #Lets focus just on my experiments
-        data = extract_abf(path; swps = -1)
-        #data = try
-            #Some files may have a stimulus channel
-        #    extract_abf(path; swps = -1)
-        #catch 
-        #    #Some files may not
-        #    extract_abf(path; swps = -1, chs = -1)
-        #end
-        
-        if nt.Age == 8 || nt.Age == 9
-            println("Photoreceptors equals both")
-            Photoreceptors = "Both"
-        else
-            if haskey(nt, :Photoreceptors)
-                Photoreceptors = nt.Photoreceptors
-            else
-                println("No key equaling Photoreceptors")
-                Photoreceptors = "Both"
-            end
-        end
-        
-        if Photoreceptors == "cones" || Photoreceptors == "Both"
-            #Cone responses are under 300ms
-            t_post = 0.3
-            saturated_thresh = Inf
-        else
-            #Rod Responses can last a bit longer, so a second is fine for the max time
-            t_post = 1.0
-            saturated_thresh = :determine
-        end
-        
-        if !haskey(nt, :Animal)
-            animal = 1
-        else
-            animal = nt[:Animal]
-        end
-
-        truncate_data!(data; t_post = t_post)
-        baseline_cancel!(data)
-
-        filter_data = lowpass_filter(data) #Lowpass filter using a 40hz 8-pole 
-        rmaxes = saturated_response(filter_data; saturated_thresh = saturated_thresh)
-        rdims, dim_idx = dim_response(filter_data, rmaxes)
-        t_peak = time_to_peak(data, dim_idx)
-        t_dom = pepperburg_analysis(data, rmaxes)
-
-        for i = 1:size(data,3)
-            push!(data_analysis, (
-                    path, 
-                    nt[:Year], nt[:Month], nt[:Day], 
-                    animal, nt[:Age], nt[:Rearing], nt[:Wavelength], nt[:Genotype], nt[:Drugs], Photoreceptors,
-                    data.chNames[i],
-                    -rmaxes[i]*1000, -rdims[i]*1000, t_peak[i]*1000
-                )
+            push!(all_traces, 
+                (path, nt.Year, nt.Month, nt.Day, 
+                nt.Animal, nt.Age, nt.Genotype, 
+                nt.Drugs == "Drugs" ? "a-waves" : "b-waves", 
+                nt.Wavelength, 
+                nt.ND, nt.Intensity, nt.Stim_time)
             )
+        elseif nt.Experimenter == "Paul" #He has files organized by concatenations
+            #continue #Lets focus just on my experiments
+            println("$(i): $path")
+            data = extract_abf(path; swps = -1)
+            #data = try
+                #Some files may have a stimulus channel
+            #    extract_abf(path; swps = -1)
+            #catch 
+            #    #Some files may not
+            #    extract_abf(path; swps = -1, chs = -1)
+            #end
+            
+            if nt.Age == 8 || nt.Age == 9
+                println("Photoreceptors equals both")
+                Photoreceptors = "Both"
+            else
+                if haskey(nt, :Photoreceptors)
+                    Photoreceptors = nt.Photoreceptors
+                else
+                    println("No key equaling Photoreceptors")
+                    Photoreceptors = "Both"
+                end
+            end
+            
+            if Photoreceptors == "cones" || Photoreceptors == "Both"
+                #Cone responses are under 300ms
+                t_post = 0.3
+                saturated_thresh = Inf
+            else
+                #Rod Responses can last a bit longer, so a second is fine for the max time
+                t_post = 1.0
+                saturated_thresh = :determine
+            end
+            
+            if !haskey(nt, :Animal)
+                animal = 1
+            else
+                animal = nt[:Animal]
+            end
+
+            truncate_data!(data; t_post = t_post)
+            baseline_cancel!(data)
+
+            filter_data = lowpass_filter(data) #Lowpass filter using a 40hz 8-pole 
+            rmaxes = saturated_response(filter_data; saturated_thresh = saturated_thresh)
+            rdims, dim_idx = dim_response(filter_data, rmaxes)
+            t_peak = time_to_peak(data, dim_idx)
+            t_Int = integration_time(filter_data, dim_idx)
+            tau_rec = recovery_tau(filter_data, dim_idx)
+            
+            #tau_dom has multiple values
+            tau_dom = pepperburg_analysis(data, rmaxes)
+            #Amplification also has multiple values
+            amp_val = amplification(filter_data, rmaxes)
+
+            for i = 1:size(data,3)
+                push!(data_analysis, (
+                        path, 
+                        nt[:Year], nt[:Month], nt[:Day], 
+                        animal, nt[:Age], nt[:Rearing], nt[:Wavelength], nt[:Genotype], nt[:Drugs], Photoreceptors,
+                        data.chNames[i],
+                        -rmaxes[i]*1000, -rdims[i]*1000, t_peak[i]*1000, t_Int, tau_rec
+                    )
+                )
+            end
+            
         end
-        println("$(i): $path")
+    catch error
+            println("$(i): $path has failed")
+            push!(fail_files, i)
+            #throw(error) #This will terminate the process
     end
-    #catch error
-    #    if isa(error, LoadError)
-    #        continue
-    #    else
-    #        println("$(i): $path has failed")
-    #        push!(fail_files, i)
-    #        throw(error) #This will terminate the process
-    #    end
-    #end
 end
 
 #%%
@@ -133,6 +138,7 @@ for (i, exp) in enumerate(eachrow(all_experiments))
         DataFrame
 
     data = extract_abf(Qi[1, :Path])
+    #println(data.stim_protocol)
     for single_path in Qi[2:end,:Path] #Some of the files need to be averaged
         single_path = extract_abf(single_path)
         if size(single_path)[1] > 1
@@ -140,7 +146,8 @@ for (i, exp) in enumerate(eachrow(all_experiments))
             average_sweeps!(single_path)
         end
         concat!(data, single_path)
-        println(size(data,1))
+        #println(data.stim_protocol)
+        #println(size(data))
     end
     #println(size(data))
     truncate_data!(data)
@@ -149,15 +156,21 @@ for (i, exp) in enumerate(eachrow(all_experiments))
     rmaxes = saturated_response(filter_data)#; saturated_thresh = saturated_thresh)
     rdims, dim_idx = dim_response(filter_data, rmaxes)
     t_peak = time_to_peak(data, dim_idx)
-    t_dom = pepperburg_analysis(data, rmaxes)
+    t_Int = integration_time(filter_data, dim_idx)
+    tau_rec = recovery_tau(filter_data, dim_idx)
+            
+    #tau_dom has multiple values
+    tau_dom = pepperburg_analysis(data, rmaxes)
+    #Amplification also has multiple values
+    amp_val = amplification(filter_data, rmaxes)
     
-    for i = 1:(eachchannel(data)|>length)
+    for i = 1:size(data,3)
         push!(data_analysis, (
                 exp.Path, 
                 exp.Year, exp.Month, exp.Day, exp.Animal,
                 exp.Age, "(NR)", exp.Wavelength, exp.Genotype, exp.Drugs, "Both",
                 data.chNames[i],
-                -rmaxes[i]*1000, -rdims[i]*1000, t_peak[i]*1000
+                -rmaxes[i]*1000, -rdims[i]*1000, t_peak[i]*1000, t_Int, tau_rec
             )
         )
     end
@@ -223,12 +236,13 @@ b_wave = data_analysis |> @filter(_.Drugs == "b-waves") |> DataFrame
 
 #%% If there is something that is a cause for concern, put it here
 concern = data_analysis |> 
-    #@filter(_.Age == 30) |> 
-    @filter(_.Genotype == "KO") |>
+    #@filter(_.Age == 14) |> 
+    @filter(_.Genotype != "WT") |>
     #@filter(_.Photoreceptors == "rods") |> 
     @filter(_.Drugs == "a-waves") |>
     #@filter(_.Wavelength == 525) |>  
     #@filter(_.Rearing == "(DR)") |> 
+    @orderby(_.Genotype) |>
     @orderby(_.Wavelength) |> 
     DataFrame
 #%% Save data
@@ -323,16 +337,17 @@ for (i,row) in enumerate(eachrow(concern))
 end
 
 #%% Data plotting
-file_ex = "D:\\Data\\ERG\\Gnat\\Paul\\Adult (DR) cones_16\\Green\\a-waves\\11_20_19_DR_P36_m1_D_Cones_Green.abf"
+file_ex = "D:\\Data\\ERG\\Gnat\\Paul\\P14 (DR) cones_11\\UV\\a-waves\\1_1_20_DR_P14_m2_D_Cones_Blue.abf"
 data_ex = extract_abf(file_ex)
-truncate_data!(data_ex)
+truncate_data!(data_ex; t_post = 1.0, t_pre = 1.0)
+println(data_ex.stim_protocol)
 plot(data_ex)
-#%% Plot unconcatenated files (in my format)
 
-file_to_concat = "D:\\Data\\ERG\\Gnat\\Matt\\2020_08_22_ERG\\Mouse1_P10_KO\\Drugs\\365UV\\"
+#%% Plot unconcatenated files (in my format)
+file_to_concat = "D:\\Data\\ERG\\Gnat\\Matt\\2020_08_14_ERG\\Mouse2_P8_HT\\Drugs\\365UV"
 data_concat = concat(file_to_concat)
 truncate_data!(data_concat)
-#baseline_cancel!(data_concat)
+baseline_cancel!(data_concat)
 plot(data_concat)
 #%%
 trace_4 = extract_abf(data_concat.filename[5])
