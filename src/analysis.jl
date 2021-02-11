@@ -9,7 +9,7 @@ function RSQ(poly::Polynomial, x, y)
 	1-SSE/SST
 end
 
-function RSQ(ŷ, y)
+function RSQ(ŷ::Array{T}, y::Array{T}) where T <: Real
 	ȳ = sum(ŷ)/length(ŷ)
 	SSE = sum((y-ŷ).^2)
 	SST = sum((y.-ȳ).^2)
@@ -20,7 +20,7 @@ end
 """
 This function calculates the min, max, mean, and std of each trace
 """
-function calculate_basic_stats(data::Experiment)
+function calculate_basic_stats(data::Experiment{T}) where T <: Real
     mins = minimum(data.data_array, dims = 2)[:,1,:]
     maxes = maximum(data.data_array, dims = 2)[:,1,:]
     means = zeros(size(data,1), size(data,3))
@@ -178,7 +178,7 @@ function time_to_peak(trace::Experiment{T}, idxs::Array{Int64,1}) where T <: Rea
     end
 end
 
-function get_response(trace::Experiment, rmaxes::Array{T,1}) where T <: Real
+function get_response(trace::Experiment{T}, rmaxes::Array{T,1}) where T <: Real
     responses = zeros(size(trace,1), size(trace,3))
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
@@ -277,14 +277,18 @@ function integration_time(trace::Experiment{T}, dim_idx::Array{Int64,1}) where T
     end
 end
 
-function amplification(trace::Experiment{T}, rmaxes::Array{T,1}; A_initial = 100.0, report_residuals = true, GOF_limit = 0.90) where T <: Real
+function amplification(
+        trace::Experiment{T}, rmaxes::Array{T,1}; 
+        report_residuals = true, GOF_limit = 0.90, 
+        lb = [-1.0, 0.0], ub = [Inf, Inf]
+    ) where T <: Real
     amp = zeros(T, size(trace,1), size(trace,3))
     for swp in 1:size(trace,1), ch in 1:size(trace,3)
         model(x, p) = map(t -> AMP(t, p[1], p[2], rmaxes[ch]), x)
         xdata = trace.t
         ydata = trace[swp,:,ch]
-        p0 = [A_initial, 0.0, rmaxes[ch]]
-        fit = curve_fit(model, xdata, ydata, p0)
+        p0 = [200.0, 0.001]        
+        fit = curve_fit(model, xdata, ydata, p0, lower = lb, upper = ub)
         SSE = sum(fit.resid.^2)
         ȳ = sum(model(xdata, fit.param))/length(xdata)
         SST = sum((ydata .- ȳ).^2)
