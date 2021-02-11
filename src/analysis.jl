@@ -159,19 +159,21 @@ dim_response(trace::Experiment; z = 0.0, rdim_percent = 0.15) = dim_response(tra
 """
 This function calculates the time to peak using the dim response properties of the concatenated file
 """
-function time_to_peak(trace::Experiment{T}, idxs::Array{Int64,1}) where T <: Real
+function time_to_peak(trace::Experiment{T}, dim_idx::Array{Int64,1}) where T <: Real
     if size(trace,1) == 1
         throw(ErrorException("There is no sweeps to this file, and Tpeak will not work"))
-    elseif size(trace,3) != size(idxs,1)
+    elseif size(trace,3) != size(dim_idx,1)
         throw(ErrorException("The number of indexes is not equal to the channels of the dataset"))
     else
         t_peak = T[]
-        for (ch, swp) in enumerate(idxs)
+        for (ch, swp) in enumerate(dim_idx)
             if swp != 0
                 t_series = trace.t[findall(trace.t .>= 0.0)]
                 data = trace[swp, findall(trace.t .>= 0), ch]
                 #println(argmin(data))
                 push!(t_peak, t_series[argmin(data)])
+            else
+                push!(t_peak, 0.0)
             end
         end
         t_peak
@@ -235,16 +237,20 @@ function recovery_tau(trace::Experiment{T}, dim_idx::Array{Int64,1}; τRec::T = 
         #This function uses the recovery model and takes t as a independent variable
         model(x,p) = map(t -> REC(t, p[1], p[2]), x)
         for ch in 1:size(trace,3)
-            xdata = trace.t
-            ydata = trace[dim_idx[ch], :, ch]
-            xdata = xdata[argmin(ydata):end] .- xdata[argmin(ydata)]
-            ydata = ydata[argmin(ydata):end]
-            p0 = [xdata[1], τRec]
-            fit = curve_fit(model, xdata, ydata, p0)
-            if report_residuals 
-                println(sum((fit.resid).^2))
+            if dim_idx[ch] == 0
+                push!(tauRec, 0.0)
+            else
+                xdata = trace.t
+                ydata = trace[dim_idx[ch], :, ch]
+                xdata = xdata[argmin(ydata):end] .- xdata[argmin(ydata)]
+                ydata = ydata[argmin(ydata):end]
+                p0 = [xdata[1], τRec]
+                fit = curve_fit(model, xdata, ydata, p0)
+                if report_residuals 
+                    println(sum((fit.resid).^2))
+                end
+                push!(tauRec, fit.param[2])
             end
-            push!(tauRec, fit.param[2])
         end
         return tauRec
     end
@@ -261,17 +267,21 @@ function integration_time(trace::Experiment{T}, dim_idx::Array{Int64,1}) where T
     else
         int_time = T[]
         for ch in 1:size(trace,3)
-            dim_trace = trace[dim_idx[ch], :, ch]
-            #The integral is calculated by taking the sum of all points (in μV) and dividing by the time range (in ms)
-             #We have to make sure this response is in μV
-            if trace.chUnits[ch] == "mV"
-                rdim = minimum(dim_trace)*1000
-                sum_data = sum(dim_trace.*1000)*(trace.dt*1000)
+            if dim_idx[ch] == 0
+                push!(int_time, 0.0)
             else
-                rdim = minimum(dim_trace)
-                sum_data = sum(dim_trace)*trace.dt
+                dim_trace = trace[dim_idx[ch], :, ch]
+                #The integral is calculated by taking the sum of all points (in μV) and dividing by the time range (in ms)
+                #We have to make sure this response is in μV
+                if trace.chUnits[ch] == "mV"
+                    rdim = minimum(dim_trace)*1000
+                    sum_data = sum(dim_trace.*1000)*(trace.dt*1000)
+                else
+                    rdim = minimum(dim_trace)
+                    sum_data = sum(dim_trace)*trace.dt
+                end
+                push!(int_time, sum_data/rdim)
             end
-            push!(int_time, sum_data/rdim)
         end
         return int_time
     end
@@ -279,7 +289,7 @@ end
 
 function amplification(
         trace::Experiment{T}, rmaxes::Array{T,1}; 
-        report_residuals = true, GOF_limit = 0.90, 
+        report_residuals = false, GOF_limit = 0.90, 
         lb = [-1.0, 0.0], ub = [Inf, Inf]
     ) where T <: Real
     amp = zeros(T, size(trace,1), size(trace,3))
@@ -296,9 +306,9 @@ function amplification(
         if report_residuals
             println("Goodness of fit: $GOF")
             if GOF >= GOF_limit
-                println("This is an acceptable fit")
+                #println("This is an acceptable fit")
             else
-                println("This fit is not good enough")
+                #println("This fit is not good enough")
             end
         end
         if GOF >= GOF_limit
