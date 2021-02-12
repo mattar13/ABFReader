@@ -45,7 +45,7 @@ Plotting function.
         exp::Experiment{T}; 
         to_plot = (:sweeps, :channels), 
         layout = (:channels, 1),
-        plot_stim_mode = :overlay_vline_start
+        plot_stim_mode = :overlay_vspan
     ) where T <: Real
     
     grid := false
@@ -69,20 +69,24 @@ Plotting function.
         @series begin
             subplot := ch
             seriescolor := :yellow
-            linewidth := 2.0
+            
             label := ""
             if plot_stim_mode == :overlay_vline_start
+                linewidth := 2.0
                 seriestype := :vline
                 y := [exp.stim_protocol[swp].timestamps[1]]
                 yguide := "$(exp.chNames[ch])($(exp.chUnits[ch]))"
                 ()
             elseif plot_stim_mode == :overlay_vline_end
+                linewidth := 2.0
                 seriestype := :vline
                 y := [exp.stim_protocol[swp].timestamps[2]]
                 yguide := "$(exp.chNames[ch])($(exp.chUnits[ch]))"
                 ()
             elseif plot_stim_mode == :overlay_vspan
-                seriesalpha := 0.2
+                linewidth := 1.0
+                linecolor := :yellow
+                seriesalpha := 0.5
                 seriestype := vspan
                 y := [exp.stim_protocol[swp].timestamps...]
                 yguide := "$(exp.chNames[ch])($(exp.chUnits[ch]))"
