@@ -98,7 +98,7 @@ function extract_abf(::Type{T}, abf_path::String;
     else #Choose all channels
         data_channels = trace_file.channelList
     end 
-        #Identify channel names
+
     chNames = trace_file.adcNames[(data_channels.+1)]
     chUnits = trace_file.adcUnits[(data_channels.+1)]
 
@@ -157,6 +157,7 @@ function extract_abf(::Type{T}, abf_path::String;
     elseif stim_ch == -1
         #This is if there is no stimulus channel
     end
+    #Identify channel names
 
     stim_protocol = Array{StimulusProtocol}([])
     for (idx, ch) in enumerate(stim_ch), swp in 1:size(data_array,1)
@@ -180,9 +181,12 @@ function extract_abf(::Type{T}, abf_path::String;
     end
 
     keep_channels = findall(x -> x ∉ stim_ch, collect(1:length(chNames)))
-    
+
+
     if keep_stimulus_channel == false
-        data_array = data_array[:,:,keep_channels]
+        data_array = data_array[:,:,keep_channels]    
+        chNames = chNames[keep_channels]
+        chUnits = chUnits[keep_channels]
     end
 
     Experiment{T}(
