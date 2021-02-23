@@ -546,6 +546,11 @@ function concat!(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, posi
         end
     end
 
+    if size(data,3) != size(data_add,3)
+        #We need to write a catch here to concatenate files with different numbers of channels
+        println("Here is the issue")
+    end
+
     if avg_swps == true && size(data_add,1) > 1
         avg_data_add = average_sweeps(data_add)
         push!(data, avg_data_add)
