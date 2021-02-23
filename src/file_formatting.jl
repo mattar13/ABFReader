@@ -238,6 +238,14 @@ end
 
 check_color(x) = x
 
+function throw_flag(x::String)
+    if x[1] =='b' #If the file is bad, put a b and the channe number to indicate what channel
+        flagged_idxs = map(x -> parse(Int, string(x)), split(x[2:end], "-"))
+        return (:Flag, flagged_idxs)
+    elseif x == "OLD"
+        throw(error("Skip this file"))
+    end
+end
 #Here are the common formats I will be using 
 exp_opt = [
     ("_", (" ", ~, :Rearing, check_pc), :Sample_size), 
@@ -245,15 +253,15 @@ exp_opt = [
 ]
 
 file_opt  = [
-    ("_", :Month, :Day, :Year, check_geno, check_age, :Animal, ~, ~, ~), 
-    ("_", :Month, :Day, :Year, check_geno, check_age, :Animal, ~), 
-    ("_", :Month, :Day, :Year, :Animal, check_geno, check_age, ~,~,~), 
-    ("_", :Month, :Day, :Year, :Animal, check_geno, check_age, ~,~), 
-    ("_", :Month, :Day, :Year, check_geno, check_age, :Animal, ~, check_pc), 
-    ("_", :Month, :Day, :Year, check_geno, check_age, ~, check_pc, ~), 
-    ("_", :Month, :Day, :Year, :Animal, check_geno, check_age, ~, ~), 
-    ("_", :ND, :Intensity, :Stim_time, :ID), 
-    ("_", :ND, :Intensity, :Stim_time)
+    (".", ("_", :Month, :Day, :Year, check_geno, check_age, :Animal, ~, ~, ~), :ext),
+    (".", ("_", :Month, :Day, :Year, check_geno, check_age, :Animal, ~), :ext),
+    (".", ("_", :Month, :Day, :Year, :Animal, check_geno, check_age, ~,~,~), :ext),
+    (".", ("_", :Month, :Day, :Year, :Animal, check_geno, check_age, ~,~), :ext),
+    (".", ("_", :Month, :Day, :Year, check_geno, check_age, :Animal, ~, check_pc), :ext),
+    (".", ("_", :Month, :Day, :Year, check_geno, check_age, ~, check_pc, ~), :ext),
+    (".", ("_", :Month, :Day, :Year, :Animal, check_geno, check_age, ~, ~), :ext),
+    (".", ("_", :ND, :Intensity, :Stim_time, :ID), :ext),
+    (".", ("_", :ND, :Intensity, :Stim_time), :ext)
 ]
 
 format_bank = [
