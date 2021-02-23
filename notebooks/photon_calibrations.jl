@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.12.10
+# v0.12.12
 
 using Markdown
 using InteractiveUtils
@@ -33,7 +33,7 @@ import NeuroPhys: stim_intensity, photons
 
 # ╔═╡ 4572cda0-1ece-11eb-33da-212c1c12cb49
 #In order to make this script work, this file is needed
-target_folder = "D:\\Data\\Calibrations\\525Green_Curve"
+target_folder = "E:\\Data\\Calibrations\\525Green_Curve"
 
 # ╔═╡ 03afd290-1ecf-11eb-2738-b5c190ada7a4
 stim_files = target_folder |> parse_abf
@@ -302,18 +302,18 @@ $ Photons = t_{stim} T ($γ I^2 + $β I + $α) $
 # ╠═7acebd60-1ee7-11eb-0cb9-1f9722a11f29
 # ╠═4572cda0-1ece-11eb-33da-212c1c12cb49
 # ╟─03afd290-1ecf-11eb-2738-b5c190ada7a4
-# ╟─7cbada1e-1ee0-11eb-39bb-5d77235312ae
+# ╠═7cbada1e-1ee0-11eb-39bb-5d77235312ae
 # ╟─f4a11470-2299-11eb-1f88-2545159a0c06
 # ╟─d83ad020-1ee1-11eb-31fc-e50fcf1030e0
 # ╟─982ba89e-229d-11eb-3736-0dac2acd1338
 # ╟─a9960350-229e-11eb-18a0-6525509d9176
-# ╟─0dbec790-21eb-11eb-1959-412f9c022bca
+# ╠═0dbec790-21eb-11eb-1959-412f9c022bca
 # ╟─d90c44e0-229a-11eb-2064-251e46b77c5c
 # ╠═41351910-22a1-11eb-2ace-f13567348a5f
 # ╟─312e8990-229f-11eb-177a-337c1d75ec08
-# ╠═485f37b0-22ca-11eb-16c6-9f11691d5b3b
+# ╟─485f37b0-22ca-11eb-16c6-9f11691d5b3b
 # ╟─53a812a0-237d-11eb-05d5-8b6b89581555
-# ╠═a4f3baa0-237e-11eb-07e1-b5d7faa6240f
+# ╟─a4f3baa0-237e-11eb-07e1-b5d7faa6240f
 # ╠═c8562f70-23e0-11eb-3077-5bfd6940070a
 # ╟─c4868470-1eeb-11eb-1b80-57d69a615902
 # ╟─739734a0-1ee7-11eb-074d-a1e6cd45c40b

@@ -26,6 +26,21 @@ baseline_cancel!(data2; mode = :mean, region = :prestim) #Baseline data for conc
 #cwt_filter!(data2)
 #average_sweeps!(data2)
 println("All inline filtering functions work")
+#%%
+x = (:sweeps, 1)
+trace_size = (12, 3000, 2)
+
+function layout_helper(x, trace_size)
+    if x == :sweeps
+        return trace_size[1]
+    elseif x == :channels
+        return trace_size[3]
+    elseif isa(x, Int64)
+        return x
+    end
+end
+
+map(xi -> g(xi, trace_size), x)
 
 #%% Test filtering functions that are not inline
 trunc_data1 = truncate_data(data1)
@@ -54,30 +69,6 @@ responses2 = get_response(data2, rmaxes2)
 t_Int = integration_time(filter_data2, dim_idx2)
 tau_rec = recovery_tau(filter_data2, dim_idx2)
 Amp_val = amplification(filter_data2, rmaxes2)
-#%% Move this to a plotting function eventually
-lb = [-1.0, 0.0]
-ub = [Inf, Inf]
-p = plot(filter_data2, c = :black, xlims = (0.0, 0.25))
-for swp in 1:size(filter_data2,1), ch in 1:size(filter_data2,3)
-    model(x, p) = map(t -> AMP(t, p[1], p[2], rmaxes2[ch]), x)
-    xdata = filter_data2.t
-    ydata = filter_data2[swp,:,ch]
-    p0 = [200.0, 0.01]
-    fit = curve_fit(model, xdata, ydata, p0, lower = lb, upper = ub)
-    SSE = sum(fit.resid.^2)
-    ȳ = sum(model(xdata, fit.param))/length(xdata)
-    SST = sum((ydata .- ȳ).^2)
-    GOF = 1- SSE/SST
-    #println("Goodness of fit: $()")
-    if GOF >= 0.50
-        println("A -> $(fit.param[1])")
-        println("t_eff -> $(fit.param[2])")
-        plot!(p[ch], xdata, x -> model(x, fit.param), c = :red)
-    end
-end
-p
-#%%
-#%%
 println("Data analysis works")
 
 #%% Test the plotting of the trace file
