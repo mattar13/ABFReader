@@ -51,12 +51,16 @@ Plotting function.
     grid := false
 
     layout := map(lay -> layout_helper(lay, size(exp)), layout)
-
+    #println(layout)
     swp_rng, ch_rng = map(subp -> subplot_selector(subp, size(exp)), to_plot)
-
+    #println(ch_rng)
     for swp in swp_rng, ch in ch_rng
-        xlabels = reshape(repeat([""], size(exp,3)-1), (1, size(exp,3)-1))
-        xlabels[end] = "Time ($(exp.tUnits))"
+        if size(exp,3) == 1
+            xlabels = "Time ($(exp.tUnits))"
+        else
+            xlabels = reshape(repeat([""], size(exp,3)-1), (1, size(exp,3)-1))
+            xlabels[end] = "Time ($(exp.tUnits))"
+        end
         xguide := xlabels
         @series begin
             label := ""
