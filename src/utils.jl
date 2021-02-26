@@ -434,6 +434,7 @@ function truncate_data!(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_b
         for swp in 1:size(trace, 1)
             stim_protocol = trace.stim_protocol[swp]
             #We are going to iterate through each sweep and truncate it
+            #println(trace.stim_protocol[swp].index_range)
             if truncate_based_on == :stimulus_beginning
                 #This will set the beginning of the stimulus as the truncation location
                 truncate_loc = stim_protocol.index_range[1]
@@ -441,44 +442,40 @@ function truncate_data!(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_b
                 #This will set the beginning of the simulus as the truncation 
                 truncate_loc = stim_protocol.index_range[2]
             end
-            idxs_begin = round(Int, t_pre/dt); 
-            idxs_end = round(Int, t_post/dt)+1
-            
-            if truncate_loc == 1
-                #println("Stimulus set to first point")
-                t_pre = 0.0
-            elseif truncate_loc < idxs_begin #This means that the stimulus point is very close to the beginning
-                #println("Truncate location not far from the beginning")
-                t_pre = (idxs_begin - truncate_loc) * dt
-                #println(idxs_begin - truncate_loc)
+
+            #println(truncate_loc)
+            idxs_begin = truncate_loc - round(Int, t_pre/dt); 
+            idxs_end = truncate_loc + round(Int, t_post/dt)+1
+            if idxs_begin < 1
+                idxs_begin = stim_protocol.index_range[1]
+                stim_begin_adjust = stim_protocol.index_range[1]
             else
-                stim_begin_adjust = idxs_begin + (stim_protocol.index_range[1]-truncate_loc)
-                stim_end_adjust = idxs_end + (stim_protocol.index_range[2]-truncate_loc)
-                trace.stim_protocol[swp].index_range = (stim_begin_adjust, stim_end_adjust)
+                stim_begin_adjust = truncate_loc
             end
+            stim_end_adjust = stim_begin_adjust + (stim_protocol.index_range[2]-stim_begin_adjust)
+            idxs_end = idxs_end < size(trace,2) ? idxs_end : size(trace,2)
+            trace.stim_protocol[swp].index_range = (stim_begin_adjust, stim_end_adjust)
 
-            t_begin_adjust = stim_protocol.timestamps[1] - trace.t[truncate_loc]
-            t_end_adjust = stim_protocol.timestamps[2] - trace.t[truncate_loc]
+            t_begin_adjust = stim_begin_adjust * dt
+            t_end_adjust = stim_end_adjust * dt
             trace.stim_protocol[swp].timestamps = (t_begin_adjust, t_end_adjust)
-
-            t_start = round(Int, truncate_loc - idxs_begin) #Index of truncated start point
-            t_start = t_start > 0 ? t_start : 1 #If the bounds are negative indexes then reset the bounds to index 1
-
-            t_end = round(Int, truncate_loc + idxs_end) #Index of truncated end point
-            t_end = t_end < size(trace,2) ? t_end : size(trace,2) #If the indexes are greater than the number of datapoints then reset the indexes to n
+            
+            #println(idxs_begin)
+            #println(idxs_end)
             if size_of_array == 0
-                size_of_array = t_end - t_start
-                trace.data_array[swp, 1:t_end-t_start+1, :] .= trace.data_array[swp, t_start:t_end, :]
-            elseif size_of_array != (t_end - t_start)
+                size_of_array = idxs_end - idxs_begin
+                trace.data_array[swp, 1:idxs_end-idxs_begin+1, :] .= trace.data_array[swp, idxs_begin:idxs_end, :]
+            elseif size_of_array != (idxs_end - idxs_begin)
                 #println("Check here")
                 #println(size_of_array)
                 #println(t_end - t_start)
                 throw(error("Inconsistant array size"))
             else
-                trace.data_array[swp, 1:t_end-t_start+1, :] .= trace.data_array[swp, t_start:t_end, :]
+                trace.data_array[swp, 1:idxs_end-idxs_begin+1, :] .= trace.data_array[swp, idxs_begin:idxs_end, :]
                 #println("truncated array is consistant with new array")
             end
         end
+        #while testing, don't change anything
         trace.data_array = trace.data_array[:, 1:size_of_array, :] #remake the array with only the truncated data
         trace.t = range(-t_pre, t_post, length = size_of_array)
     end
@@ -582,3 +579,68 @@ function openABF(trace::Experiment)
     pyABF.ABF(trace.filename).launchInClampFit()
 end
 
+function test_file_analysis(path; verbose = true)
+    #first test the extraction of the path name
+    nt = formatted_split(path, format_bank)
+    
+    if verbose
+        println("File format successful")
+    end
+
+    if nt.Experimenter == "Matt" #I have files organized by intensities
+
+    elseif nt.Experimenter == "Paul" #He has files organized by concatenations
+        data = extract_abf(path; swps = -1)
+            
+        if nt.Age == 8 || nt.Age == 9
+            println("Photoreceptors equals both")
+            Photoreceptors = "Both"
+        else
+            if haskey(nt, :Photoreceptors)
+                Photoreceptors = nt.Photoreceptors
+            else
+                println("No key equaling Photoreceptors")
+                Photoreceptors = "Both"
+            end
+        end
+        
+        if Photoreceptors == "cones" || Photoreceptors == "Both"
+            #Cone responses are under 300ms
+            t_post = 0.3
+            saturated_thresh = Inf
+        else
+            #Rod Responses can last a bit longer, so a second is fine for the max time
+            t_post = 1.0
+            saturated_thresh = :determine
+        end
+        
+        if !haskey(nt, :Animal)
+            animal = 1
+        else
+            animal = nt[:Animal]
+        end
+        if verbose 
+            println("Data successfully extracted")
+        end 
+
+        truncate_data!(data; t_post = t_post)
+        baseline_cancel!(data)
+        
+        if verbose 
+            println("Data successfully adjusted")
+        end
+
+        filter_data = lowpass_filter(data) #Lowpass filter using a 40hz 8-pole 
+        rmaxes = saturated_response(filter_data; saturated_thresh = saturated_thresh)
+        rdims, dim_idx = dim_response(filter_data, rmaxes)
+        t_peak = time_to_peak(data, dim_idx)
+        t_Int = integration_time(filter_data, dim_idx)
+        tau_rec = recovery_tau(filter_data, dim_idx)
+        
+        if verbose 
+            println("Data successfully analyzed")
+        end
+    end
+
+
+end
