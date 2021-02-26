@@ -450,12 +450,12 @@ function truncate_data!(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_b
                 idxs_begin = stim_protocol.index_range[1]
                 stim_begin_adjust = stim_protocol.index_range[1]
             else
-                stim_begin_adjust = truncate_loc
+                stim_begin_adjust = round(Int, t_pre/dt)
             end
-            stim_end_adjust = stim_begin_adjust + (stim_protocol.index_range[2]-stim_begin_adjust)
+            stim_end_adjust = stim_begin_adjust + (stim_protocol.index_range[2]-stim_protocol.index_range[1])
             idxs_end = idxs_end < size(trace,2) ? idxs_end : size(trace,2)
             trace.stim_protocol[swp].index_range = (stim_begin_adjust, stim_end_adjust)
-
+            println(trace.stim_protocol[swp])
             t_begin_adjust = stim_begin_adjust * dt
             t_end_adjust = stim_end_adjust * dt
             trace.stim_protocol[swp].timestamps = (t_begin_adjust, t_end_adjust)
