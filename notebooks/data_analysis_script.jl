@@ -7,7 +7,7 @@ using StatsBase, Statistics
 target_folder = "E:\\Data\\ERG\\Gnat"
 paths = target_folder |> parse_abf
 
-#Create the dataframe
+#This is the complete data analysis data frame
 data_analysis = DataFrame(
     Path = String[], 
     Year = Int64[], Month = Int64[], Day = Int64[], 
@@ -17,7 +17,7 @@ data_analysis = DataFrame(
     tInt = Float64[], tau_rec = Float64[]
     )
 
-#If the experimenter is me, the files need to be analyzed differently
+#This is the dataframe for the 
 all_traces = DataFrame(
     Path = String[], Year = Int64[], Month = Int64[], Day = Int64[], 
     Animal = Int64[], Age = Int64[], Genotype = String[], Drugs = String[], Wavelength = Int64[], 
@@ -26,7 +26,8 @@ all_traces = DataFrame(
 fail_files = Int64[]
 
 #Walk through every file in the path
-for (i,path) in enumerate(paths[1:10])
+paths = [file_ex]
+for (i,path) in enumerate(paths)
     try
         println("$(round(i/length(paths), digits = 3)*100)% progress made")
         #I will need to find out how to extract the path and concatenate
@@ -80,6 +81,7 @@ for (i,path) in enumerate(paths[1:10])
 
             filter_data = lowpass_filter(data) #Lowpass filter using a 40hz 8-pole 
             rmaxes = saturated_response(filter_data; saturated_thresh = saturated_thresh)
+            println(rmaxes)
             rdims, dim_idx = dim_response(filter_data, rmaxes)
             t_peak = time_to_peak(data, dim_idx)
             t_Int = integration_time(filter_data, dim_idx)
@@ -161,7 +163,6 @@ for (i, exp) in enumerate(eachrow(all_experiments))
     end
     #println(rmaxes)
 end
-data_analysis
 #paths[fail_files] #These are the files that have failed
 #%% Make and export the dataframe 
 all_categories = data_analysis |> 
@@ -238,15 +239,17 @@ all_categories  = all_categories |> @orderby(_.Drugs) |> @thenby_descending(_.Ge
 a_wave = data_analysis |> @orderby(_.Drugs) |> @thenby_descending(_.Genotype) |> @thenby_descending(_.Rearing) |>  @thenby(_.Age) |> @thenby_descending(_.Photoreceptors) |> @thenby(_.Wavelength) |> @filter(_.Drugs == "a-waves") |> DataFrame
 b_wave = data_analysis |> @orderby(_.Drugs) |> @thenby_descending(_.Genotype) |> @thenby_descending(_.Rearing) |>  @thenby(_.Age) |> @thenby_descending(_.Photoreceptors) |> @thenby(_.Wavelength) |> @filter(_.Drugs == "b-waves") |> DataFrame
 #%% If there is something that is a cause for concern, put it here
+
 concern = data_analysis |> 
-    #@filter(_.Age == 8) |> 
-    @filter(_.Genotype != "WT") |>
-    #@filter(_.Photoreceptors == "rods") |> 
+    @filter(_.Age == 14) |> 
+    @filter(_.Genotype == "WT") |>
+    @filter(_.Photoreceptors == "rods") |> 
     @filter(_.Drugs == "a-waves") |>
     #@filter(_.Wavelength == 525) |>  
     #@filter(_.Rearing == "(NR)") |> 
     @orderby(_.Drugs) |> @thenby_descending(_.Genotype) |> @thenby_descending(_.Rearing) |> @thenby(_.Age) |> @thenby(_.Wavelength) |> 
     DataFrame
+
 #%% Save data
 save_path = joinpath(target_folder,"data.xlsx")
 try
@@ -277,89 +280,34 @@ end
 println("Data file written")
 #%%
 
-
-#%% If you want to plot all of the graphs in the concern section, do it here
-for (i,row) in enumerate(eachrow(concern))
-    path = row[:Path]
-    data_ex = try
-        #Some files may have a stimulus channel
-        extract_abf(path; swps = -1)
-    catch 
-        #Some files may not
-        extract_abf(path; stim_ch = -1, swps = -1, chs = -1)
-    end
-    
-    nt = formatted_split(path, format1, format2, format3, format4, format5, format6, format7)
-    if nt.Age == 8 || nt.Age == 9
-        println("Photoreceptors equals both")
-        Photoreceptors = "Both"
-    else
-        if haskey(nt, :Photoreceptors)
-            Photoreceptors = nt.Photoreceptors
-        else
-            println("No key equaling Photoreceptors")
-            Photoreceptors = "Both"
-        end
-    end
-    t_pre = 0.2
-    if Photoreceptors == "cones" || Photoreceptors == "Both"
-        t_post = 0.3
-        saturated_thresh = Inf
-    else
-        t_post = 1.0
-        saturated_thresh = :determine
-    end
-    truncate_data!(data_ex; t_pre = t_pre, t_post = t_post)
-    baseline_cancel!(data_ex) #Baseline data
-    
-    filter_data = lowpass_filter(data_ex) #Lowpass filter using a 40hz 8-pole 
-    rmaxes = saturated_response(filter_data; saturated_thresh = saturated_thresh)
-    ppbg_thresh = rmaxes .* 0.60;
-    rdims, dim_idx = dim_response(filter_data, rmaxes)
-    t_peak = time_to_peak(data_ex, dim_idx)
-    t_dom = pepperburg_analysis(data_ex, rmaxes)
-
-    fig1 = plot(data_ex, label = "", title = data_ex.ID, layout = grid(2,1), size = (1000, 750), c = :black)
-    if dim_idx[1] != 0
-        plot!(fig1[1], data_ex.t, data_ex[dim_idx[1], :, 1], c = :red)
-    end
-
-    if dim_idx[2] != 0
-        plot!(fig1[2], data_ex.t, data_ex[dim_idx[2], :, 2], c = :red)
-    end
-
-    hline!(fig1[1], [rmaxes[1]], c = :green, label = "Rmax = $(rmaxes[1]*1000)")
-    hline!(fig1[2], [rmaxes[2]], c = :green, label = "Rmax = $(rmaxes[2]*1000)")
-    hline!(fig1[1], [rdims[1]], c = :red, label = "Rdim = $(rdims[1]*1000)")
-    hline!(fig1[2], [rdims[2]], c = :red, label = "Rdim = $(rdims[2]*1000)")
-    vline!(fig1[1], [t_peak[1]], c = :blue, label = "Tpeak = $(t_peak[1]*1000)")
-    vline!(fig1[2], [t_peak[2]], c = :blue, label = "Tpeak = $(t_peak[2]*1000)")
-    #plot!(fig1[1], t_dom[:,1], repeat([ppbg_thresh[1]], size(data_ex,1)), marker = :square, c = :grey, label = "Pepperburg", lw = 2.0)
-    #plot!(fig1[2], t_dom[:,2], repeat([ppbg_thresh[2]], size(data_ex,1)), marker = :square, c = :grey, label = "Pepperburg", lw = 2.0)
-    savefig(fig1, "D:\\Data\\ERG\\Data from paul\\$(data_ex.ID)_graph.png")
-end
-
-#%% Data plotting
-#D:\Data\ERG\Gnat\Paul\Adult (DR) cones_16\UV\a-waves\11_21_19_DR_P37_m1_D_Cones_Blue.abf
-concern[!,1]
+#%% Look at all of the fail files and try to work through their mistakes
+#check_paths = paths[fail_files]
+#focus = check_paths[6]
+#data = extract_abf(focus; swps = -1)
+#truncate_data!(data);
+#baseline_cancel!(data)
 #%%
-
-file_ex = "E:\\Data\\ERG\\Gnat\\Matt\\2020_08_14_ERG\\Mouse2_P8_HT\\Drugs\\365UV\\nd0_1p_1ms_EDIT.abf"
-data_ex = extract_abf(file_ex)
-truncate_data!(data_ex; t_post = 1.0, t_pre = 0.0)
-plot(data_ex)
+#file_ex = "E:\\Data\\ERG\\Gnat\\Paul\\P14 (NR) rods_12\\UV\\a-waves\\10_11_19_WT_P14_m2_Rods_D_Blue.abf"
+#data_ex = extract_abf(file_ex)
+#truncate_data!(data_ex; t_post = 1.0, t_pre = 0.3)
+#baseline_cancel!(data_ex)
+#filter_data = lowpass_filter(data_ex) #Lowpass filter using a 40hz 8-pole  
+#rmaxes = saturated_response(filter_data)#; saturated_thresh = saturated_thresh)
+#println(rmaxes)
+#p = plot(data_ex)
+#vline!(p[1], [data_ex.t[2001]], c = :red)
+#hline!(p[1], [rmaxes[1]])
+#hline!(p[2], [rmaxes[2]])
 #%%
-file_to_concat = joinpath(splitpath(concern[1,:Path])[1:end-1]...)
-data_concat = concat(file_to_concat)
-truncate_data!(data_concat)
-baseline_cancel!(data_concat)
+#file_to_concat = "E:\\Data\\ERG\\Gnat\\Matt\\2020_08_16_ERG\\Mouse3_P10_HT\\Drugs\\365UV"
+#data = concat(file_to_concat)
+#truncate_data!(data)
+#baseline_cancel!(data)
+#plot(data)
+#p = plot(data_concat)
+#max_val = sum(maximum(data_concat, dims = 2), dims = 1)/size(data_concat, 1)
+#min_val = sum(minimum(data_concat, dims = 2), dims = 1)/size(data_concat, 1)
 #%%
-data_concat.data_array
-#%%
-p = plot(data_concat)
-max_val = sum(maximum(data_concat, dims = 2), dims = 1)/size(data_concat, 1)
-min_val = sum(minimum(data_concat, dims = 2), dims = 1)/size(data_concat, 1)
-#%%
-hline!(p[1], [max_val[:,:,1]])
-hline!(p[1], [min_val[:,:,1]])
-hline!(p[2], [noise[2]])
+#hline!(p[1], [max_val[:,:,1]])
+#hline!(p[1], [min_val[:,:,1]])
+#hline!(p[2], [noise[2]])
