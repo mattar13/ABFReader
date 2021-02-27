@@ -428,6 +428,7 @@ end
 function truncate_data!(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_based_on = :stimulus_beginning)
     dt = trace.dt
     size_of_array = 0
+    overrun_time = 0 #This is for if t_pre is set too far before the stimulus
     if isempty(trace.stim_protocol)
         #println("No explicit stimulus has been set")
     else
@@ -448,42 +449,50 @@ function truncate_data!(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_b
             end
             trace.stim_protocol[swp].timestamps = (t_begin_adjust, t_end_adjust)
 
-            #println(truncate_loc)
-            idxs_begin = truncate_loc - round(Int, t_pre/dt); 
-            idxs_end = truncate_loc + round(Int, t_post/dt)+1
-            #println(idxs_begin)
-            if idxs_begin < 1
-                idxs_begin = stim_protocol.index_range[1]
+            #First lets calculate how many indexes we need before the stimulus
+            needed_before = round(Int, t_pre/dt)
+            needed_after = round(Int, t_post/dt)
+            #println("We need $needed_before and $needed_after indexes before and after")
+            have_before = truncate_loc
+            have_after = size(trace,2) - truncate_loc
+            #println("We have $have_before and $have_after indexes before and after")
+            
+            if needed_before > have_before
+                #println("Not enough indexes preceed the stimulus point")
+                extra_indexes = needed_before - have_before
+                overrun_time = extra_indexes * dt
+                #println("t_pre goes $extra_indexes indexes too far")
+                idxs_begin = 1
                 stim_begin_adjust = stim_protocol.index_range[1]
             else
+                #println("Enough indexes preceed the stimulus point")
+                idxs_begin = truncate_loc - round(Int, t_pre/dt); 
                 stim_begin_adjust = round(Int, t_pre/dt)+1
             end
+
+            if needed_after > have_after
+                #println("Not enough indexes proceed the stimulus point")
+                idxs_end = size(trace,2)
+            else
+                #println("Enough indexes proceed the stimulus point")
+                idxs_end = truncate_loc + round(Int, t_post/dt)+1
+            end
+
             stim_end_adjust = stim_begin_adjust + (stim_protocol.index_range[2]-stim_protocol.index_range[1])
             idxs_end = idxs_end < size(trace,2) ? idxs_end : size(trace,2)
             trace.stim_protocol[swp].index_range = (stim_begin_adjust, stim_end_adjust)
-            #println(trace.stim_protocol[swp])
+            println(trace.stim_protocol[swp])
             
-            #println(idxs_begin)
-            #println(idxs_end)
             if size_of_array == 0
                 size_of_array = idxs_end - idxs_begin
-                trace.data_array[swp, 1:idxs_end-idxs_begin+1, :] .= trace.data_array[swp, idxs_begin:idxs_end, :]
-            elseif size_of_array < (idxs_end - idxs_begin)
-                trace.data_array[swp, 1:idxs_end-idxs_begin+1, :] .= trace.data_array[swp, idxs_begin:idxs_end, :]
-                #throw(error("Inconsistant array size"))
-            elseif size_of_array > (idxs_end - idxs_begin)
-                #println("Final array larger than current array")
-                trace.data_array[swp, 1:idxs_end-idxs_begin+1, :] .= trace.data_array[swp, idxs_begin:idxs_end, :]
-                #throw(error("Inconsistant array size"))
-            else
-                trace.data_array[swp, 1:idxs_end-idxs_begin+1, :] .= trace.data_array[swp, idxs_begin:idxs_end, :]
-                #println("truncated array is consistant with new array")
             end
+            trace.data_array[swp, 1:idxs_end-idxs_begin+1, :] .= trace.data_array[swp, idxs_begin:idxs_end, :]
+        
             #println(size_of_array)
         end
         #while testing, don't change anything
         trace.data_array = trace.data_array[:, 1:size_of_array, :] #remake the array with only the truncated data
-        trace.t = range(-t_pre, t_post, length = size_of_array)
+        trace.t = range(-t_pre+overrun_time, t_post, length = size_of_array)
     end
 end
 
