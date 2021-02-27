@@ -481,7 +481,7 @@ function truncate_data!(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_b
             stim_end_adjust = stim_begin_adjust + (stim_protocol.index_range[2]-stim_protocol.index_range[1])
             idxs_end = idxs_end < size(trace,2) ? idxs_end : size(trace,2)
             trace.stim_protocol[swp].index_range = (stim_begin_adjust, stim_end_adjust)
-            println(trace.stim_protocol[swp])
+            #println(trace.stim_protocol[swp])
             
             if size_of_array == 0
                 size_of_array = idxs_end - idxs_begin
