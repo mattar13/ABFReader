@@ -438,10 +438,15 @@ function truncate_data!(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_b
             if truncate_based_on == :stimulus_beginning
                 #This will set the beginning of the stimulus as the truncation location
                 truncate_loc = stim_protocol.index_range[1]
+                t_begin_adjust = 0.0
+                t_end_adjust = stim_protocol.timestamps[2] - stim_protocol.timestamps[1]
             elseif truncate_based_on == :stimulus_end
                 #This will set the beginning of the simulus as the truncation 
                 truncate_loc = stim_protocol.index_range[2]
+                t_begin_adjust = stim_protocol.timestamps[1] - stim_protocol.timestamps[2]
+                t_end_adjust = 0.0
             end
+            trace.stim_protocol[swp].timestamps = (t_begin_adjust, t_end_adjust)
 
             #println(truncate_loc)
             idxs_begin = truncate_loc - round(Int, t_pre/dt); 
@@ -455,25 +460,25 @@ function truncate_data!(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_b
             stim_end_adjust = stim_begin_adjust + (stim_protocol.index_range[2]-stim_protocol.index_range[1])
             idxs_end = idxs_end < size(trace,2) ? idxs_end : size(trace,2)
             trace.stim_protocol[swp].index_range = (stim_begin_adjust, stim_end_adjust)
-            println(trace.stim_protocol[swp])
-            t_begin_adjust = stim_begin_adjust * dt
-            t_end_adjust = stim_end_adjust * dt
-            trace.stim_protocol[swp].timestamps = (t_begin_adjust, t_end_adjust)
+            #println(trace.stim_protocol[swp])
             
             #println(idxs_begin)
             #println(idxs_end)
             if size_of_array == 0
                 size_of_array = idxs_end - idxs_begin
                 trace.data_array[swp, 1:idxs_end-idxs_begin+1, :] .= trace.data_array[swp, idxs_begin:idxs_end, :]
-            elseif size_of_array != (idxs_end - idxs_begin)
-                #println("Check here")
-                #println(size_of_array)
-                #println(t_end - t_start)
-                throw(error("Inconsistant array size"))
+            elseif size_of_array < (idxs_end - idxs_begin)
+                trace.data_array[swp, 1:idxs_end-idxs_begin+1, :] .= trace.data_array[swp, idxs_begin:idxs_end, :]
+                #throw(error("Inconsistant array size"))
+            elseif size_of_array > (idxs_end - idxs_begin)
+                #println("Final array larger than current array")
+                trace.data_array[swp, 1:idxs_end-idxs_begin+1, :] .= trace.data_array[swp, idxs_begin:idxs_end, :]
+                #throw(error("Inconsistant array size"))
             else
                 trace.data_array[swp, 1:idxs_end-idxs_begin+1, :] .= trace.data_array[swp, idxs_begin:idxs_end, :]
                 #println("truncated array is consistant with new array")
             end
+            #println(size_of_array)
         end
         #while testing, don't change anything
         trace.data_array = trace.data_array[:, 1:size_of_array, :] #remake the array with only the truncated data
