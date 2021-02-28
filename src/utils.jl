@@ -53,7 +53,7 @@ function extract_abf(::Type{T}, abf_path::String;
         keep_stimulus_channel = false,
         swps = -1, 
         chs = ["Vm_prime","Vm_prime4", "IN 7"], 
-        verbose = false
+        verbose = false#, logging = false
     ) where T <: Real
 
     #We need to make sure the stimulus names provided match the stimulus channels
@@ -134,7 +134,9 @@ function extract_abf(::Type{T}, abf_path::String;
     if isa(stim_ch, String)
         stim_ch = findall(x -> x == stim_ch, chNames)
         if isempty(stim_ch)
-            println("No stimulus exists")
+            if verbose
+                println("No stimulus exists")
+            end
             stim_name = [:none]
         else
             stim_name = [stim_name]
@@ -165,7 +167,9 @@ function extract_abf(::Type{T}, abf_path::String;
         #we need to get the stimulus channel and extract the data
         stimulus_idxs = findall(data_array[swp,:,ch] .> stimulus_threshold)
         if isempty(stimulus_idxs)
-            println("Could not find any stimulus")
+            if verbose
+                println("Could not find any stimulus")
+            end
         else
             stim_begin = stimulus_idxs[1]
             stim_end = stimulus_idxs[end]

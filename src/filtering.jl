@@ -41,7 +41,9 @@ function baseline_cancel(trace::Experiment; mode::Symbol = :mean, region = :pres
                         #Now subtract the baseline scaling value
                         data.data_array[swp,:, ch] .= trace.data_array[swp,:,ch] .- baseline_adjust
                     else
-                        println("no pre-stimulus range exists")
+                        if verbose
+                            println("no pre-stimulus range exists")
+                        end
                     end
                 elseif mode == :slope
                     if (rng_end - rng_begin) != 0
