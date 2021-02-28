@@ -174,7 +174,7 @@ function extract_abf(::Type{T}, abf_path::String;
             stim_begin = stimulus_idxs[1]
             stim_end = stimulus_idxs[end]
             stim_time_start = t[stim_begin]
-            stim_time_end = t[stim_end+1]
+            stim_time_end = t[stim_end]
             stim = StimulusProtocol(
                 stim_name[idx], swp, 
                 (stim_begin, stim_end), 
