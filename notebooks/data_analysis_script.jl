@@ -1,12 +1,19 @@
+#%% This will make a log file so that any errors are recorded in the log
+log = open("Log.txt", "w")
+
 #%% Using this we can continually revise the file
+using Dates
+println(log, "[$(Dates.now())]: Script began")
 using Revise
 using NeuroPhys
 using DataFrames, Query, XLSX
 using StatsBase, Statistics
 
+#%%
 target_folder = "E:\\Data\\ERG\\Gnat"
 paths = target_folder |> parse_abf
-
+println(log, "Analysis on folder $target_folder")
+println(log, "$(lengths(paths)) files to be analyzed")
 #This is the complete data analysis data frame
 data_analysis = DataFrame(
     Path = String[], 
@@ -15,26 +22,25 @@ data_analysis = DataFrame(
     Channel = String[], 
     Rmax = Float64[], Rdim = Float64[], t_peak = Float64[],
     tInt = Float64[], tau_rec = Float64[]
-    )
+)
 
-#This is the dataframe for the 
+    #This is the dataframe for the 
 all_traces = DataFrame(
     Path = String[], Year = Int64[], Month = Int64[], Day = Int64[], 
     Animal = Int64[], Age = Int64[], Genotype = String[], Drugs = String[], Wavelength = Int64[], 
     ND = Int64[], Intensity = Int64[], Stim_Time = Int64[]
 )
 fail_files = Int64[]
-
+error_causes = String[]
+    
 #Walk through every file in the path
-for (i,path) in enumerate(paths)
+for (i,path) in enumerate(paths[1:10])
     try
-        println("$(round(i/length(paths), digits = 3)*100)% progress made")
+        println(log, "[$(Dates.now())]: Analyzing path $path. Path : $i of $(length(paths))")
         #I will need to find out how to extract the path and concatenate
         nt = formatted_split(path, format_bank)
         if nt.Experimenter == "Matt" #I have files organized by intensities
             #We need to first pass through each file and record all of the experiments
-            println(path)
-
             push!(all_traces, 
                 (path, nt.Year, nt.Month, nt.Day, 
                 nt.Animal, nt.Age, nt.Genotype, 
@@ -44,17 +50,16 @@ for (i,path) in enumerate(paths)
                 )
             )
         elseif nt.Experimenter == "Paul" #He has files organized by concatenations
-            println("$(i): $path")
             data = extract_abf(path; swps = -1)
             
             if nt.Age == 8 || nt.Age == 9
-                println("Photoreceptors equals both")
+                #println("Photoreceptors equals both")
                 Photoreceptors = "Both"
             else
                 if haskey(nt, :Photoreceptors)
                     Photoreceptors = nt.Photoreceptors
                 else
-                    println("No key equaling Photoreceptors")
+                    #println("No key equaling Photoreceptors")
                     Photoreceptors = "Both"
                 end
             end
@@ -101,68 +106,85 @@ for (i,path) in enumerate(paths)
                 )
             end
         end
+        println(log,  "[$(Dates.now())]: Analyzing path $i $path successful.")
     catch error
-            println("$(i): $path has failed")
-            push!(fail_files, i)
-            #throw(error) #This will terminate the process
+        println(log, "[$(Dates.now())]: Analyzing path $i $path has failed.")
+        println(log, error)
+        push!(error_causes, error)
+        push!(fail_files, i)
+        #throw(error) #This will terminate the process
     end
 end
 
 #%% Walk though all files in my style and add them to the data_analysis DataFrame
 all_experiments = all_traces |> @unique({_.Year, _.Month, _.Day, _.Animal, _.Wavelength, _.Drugs}) |> DataFrame
 for (i, exp) in enumerate(eachrow(all_experiments))
-    println("$(round(i/size(all_experiments, 1), digits = 3)*100)% progress made")
-    
-    #Isolate all individual experiments
-    Qi = all_traces |>
-        @filter(_.Year == exp.Year) |>
-        @filter(_.Month == exp.Month) |> 
-        @filter(_.Day == exp.Day) |>
-        @filter(_.Animal == exp.Animal) |> 
-        @filter(_.Wavelength == exp.Wavelength) |>
-        @filter(_.Drugs == exp.Drugs) |>
-        @map({_.Path, _.ND, _.Intensity, _.Stim_Time}) |> 
-        DataFrame
-    
-    data = extract_abf(Qi[1, :Path])
-    #println(data.stim_protocol)
-    for single_path in Qi[2:end,:Path] #Some of the files need to be averaged
-        single_path = extract_abf(single_path)
-        if size(single_path)[1] > 1
-            #println("Needs to average traces")
-            average_sweeps!(single_path)
+    println(log, "[$(Dates.now())]: Concatenating single trace experiment $i $(exp.Path).")
+    try
+        #Isolate all individual experiments
+        Qi = all_traces |>
+            @filter(_.Year == exp.Year) |>
+            @filter(_.Month == exp.Month) |> 
+            @filter(_.Day == exp.Day) |>
+            @filter(_.Animal == exp.Animal) |> 
+            @filter(_.Wavelength == exp.Wavelength) |>
+            @filter(_.Drugs == exp.Drugs) |>
+            @map({_.Path, _.ND, _.Intensity, _.Stim_Time}) |> 
+            DataFrame
+        
+        data = extract_abf(Qi[1, :Path])
+        #println(data.stim_protocol)
+        for single_path in Qi[2:end,:Path] #Some of the files need to be averaged
+            single_path = extract_abf(single_path)
+            if size(single_path)[1] > 1
+                #println("Needs to average traces")
+                average_sweeps!(single_path)
+            end
+            concat!(data, single_path)
         end
-        concat!(data, single_path)
-    end
-    truncate_data!(data)
-    baseline_cancel!(data)
-    filter_data = lowpass_filter(data) #Lowpass filter using a 40hz 8-pole  
-    rmaxes = saturated_response(filter_data)#; saturated_thresh = saturated_thresh)
-    rdims, dim_idx = dim_response(filter_data, rmaxes)
-    t_peak = time_to_peak(data, dim_idx)
-    t_Int = integration_time(filter_data, dim_idx)
-    tau_rec = recovery_tau(filter_data, dim_idx)
-            
-    #tau_dom has multiple values
-    #tau_dom = pepperburg_analysis(data, rmaxes)
-    #Amplification also has multiple values
-    #amp_val = amplification(filter_data, rmaxes)
-    
-    for i = 1:size(data,3)
-        #I am trying to work in a error catch. The incorrect channels will be set to -1000
-        push!(data_analysis, (
-                exp.Path, 
-                exp.Year, exp.Month, exp.Day, exp.Animal,
-                exp.Age, "(NR)", exp.Wavelength, exp.Genotype, exp.Drugs, "Both",
-                data.chNames[i],
-                -rmaxes[i]*1000, -rdims[i]*1000, t_peak[i]*1000, t_Int[i], tau_rec[i]
+        truncate_data!(data)
+        baseline_cancel!(data)
+        filter_data = lowpass_filter(data) #Lowpass filter using a 40hz 8-pole  
+        rmaxes = saturated_response(filter_data)#; saturated_thresh = saturated_thresh)
+        rdims, dim_idx = dim_response(filter_data, rmaxes)
+        t_peak = time_to_peak(data, dim_idx)
+        t_Int = integration_time(filter_data, dim_idx)
+        tau_rec = recovery_tau(filter_data, dim_idx)
+                
+        #tau_dom has multiple values
+        #tau_dom = pepperburg_analysis(data, rmaxes)
+        #Amplification also has multiple values
+        #amp_val = amplification(filter_data, rmaxes)
+        
+        for i = 1:size(data,3)
+            #I am trying to work in a error catch. The incorrect channels will be set to -1000
+            push!(data_analysis, (
+                    exp.Path, 
+                    exp.Year, exp.Month, exp.Day, exp.Animal,
+                    exp.Age, "(NR)", exp.Wavelength, exp.Genotype, exp.Drugs, "Both",
+                    data.chNames[i],
+                    -rmaxes[i]*1000, -rdims[i]*1000, t_peak[i]*1000, t_Int[i], tau_rec[i]
+                )
             )
-        )
+        end
+        println(log,  "[$(Dates.now())]: Analyzing experiment $i $(exp.Path) successful.")
+    catch error
+        println(log, "[$(Dates.now())]: Analyzing experiment $i $(exp.Path) has failed.")
+        println(log, error)
     end
-    #println(rmaxes)
+    
 end
-#paths[fail_files] #These are the files that have failed
+println(log, "[$(Dates.now())]: All files have been analyzed.")
+println(log, "[$(Dates.now())]: $(length(fail_files)) files have failed.")
+
+#These are the files that have failed
+for (i, fail_path) in enumerate(paths[fail_files]) 
+    println(log, "$fail")
+    println(log, "Cause -> $(error_causes[i])")
+end
 #%% Make and export the dataframe 
+println(log, "[$(Dates.now())]: Generating a summary of all data.")
+
 all_categories = data_analysis |> 
     @unique({_.Age, _.Genotype, _.Wavelength, _.Drugs, _.Photoreceptors, _.Rearing}) |> 
     @map({_.Age, _.Genotype, _.Photoreceptors, _.Drugs, _.Wavelength, _.Rearing}) |>
@@ -220,7 +242,7 @@ for row in eachrow(all_categories)
     
     #println(length(eachrow(Qi)))
 end
-println("All_Categories")
+
 all_categories[:, :Rmax] = rmaxes
 all_categories[:, :Rmax_SEM] = rmaxes_sem
 all_categories[:, :Rdim] = rdims
@@ -231,8 +253,8 @@ all_categories[:, :T_Int] = tInts
 all_categories[:, :T_Int_SEM] = tInts_sem
 all_categories[:, :τ_Rec] = τRecs
 all_categories[:, :τ_Rec_SEM] = τRecs_sem
-#%%
 all_categories  = all_categories |> @orderby(_.Drugs) |> @thenby_descending(_.Genotype) |> @thenby_descending(_.Rearing) |>  @thenby(_.Age) |> @thenby_descending(_.Photoreceptors) |> @thenby(_.Wavelength) |> DataFrame
+println(log, "[$(Dates.now())]: Summary Generated.")
 #%%
 a_wave = data_analysis |> @orderby(_.Drugs) |> @thenby_descending(_.Genotype) |> @thenby_descending(_.Rearing) |>  @thenby(_.Age) |> @thenby_descending(_.Photoreceptors) |> @thenby(_.Wavelength) |> @filter(_.Drugs == "a-waves") |> DataFrame
 b_wave = data_analysis |> @orderby(_.Drugs) |> @thenby_descending(_.Genotype) |> @thenby_descending(_.Rearing) |>  @thenby(_.Age) |> @thenby_descending(_.Photoreceptors) |> @thenby(_.Wavelength) |> @filter(_.Drugs == "b-waves") |> DataFrame
@@ -250,6 +272,7 @@ concern = data_analysis |>
 
 #%% Save data
 save_path = joinpath(target_folder,"data.xlsx")
+println(log, "[$(Dates.now())]: Writing data to file $save_path.")
 try
     XLSX.writetable(save_path, 
         #Summary = (collect(eachcol(summary_data)), names(summary_data)), 
@@ -262,20 +285,26 @@ try
         #Stats = (collect(eachcol(stats_data)), names(stats_data))
     )
 catch
-    println("File already exists. Removing file")
-    rm(save_path)
-    XLSX.writetable(save_path, 
-        #Summary = (collect(eachcol(summary_data)), names(summary_data)), 
-        All_Data = (collect(eachcol(data_analysis)), names(data_analysis)),
-        Gnat_Experiments = (collect(eachcol(all_experiments)), names(all_experiments)),
-        A_Waves =  (collect(eachcol(a_wave)), names(a_wave)),
-        B_Waves =  (collect(eachcol(b_wave)), names(b_wave)) ,
-        All_Categories = (collect(eachcol(all_categories)), names(all_categories)),
-        Concern = (collect(eachcol(concern)), names(concern))
-        #Stats = (collect(eachcol(stats_data)), names(stats_data))
-    )
+    println(log, "[$(Dates.now())]: Writing data to file $save_path.")
+    try #This is for if the file writing is unable to remove the file
+        rm(save_path)
+        XLSX.writetable(save_path, 
+            #Summary = (collect(eachcol(summary_data)), names(summary_data)), 
+            All_Data = (collect(eachcol(data_analysis)), names(data_analysis)),
+            Gnat_Experiments = (collect(eachcol(all_experiments)), names(all_experiments)),
+            A_Waves =  (collect(eachcol(a_wave)), names(a_wave)),
+            B_Waves =  (collect(eachcol(b_wave)), names(b_wave)) ,
+            All_Categories = (collect(eachcol(all_categories)), names(all_categories)),
+            Concern = (collect(eachcol(concern)), names(concern))
+            #Stats = (collect(eachcol(stats_data)), names(stats_data))
+        )
+    catch error
+        println(log, error)
+        println(log, "[$(Dates.now())]: File might have been already open")
+    end
 end
-println("Data file written")
+println(log, "[$(Dates.now())]: Data analysis complete. Have a good day!")
+close(log) #Finally close the log file
 #%%
 
 #%% Look at all of the fail files and try to work through their mistakes
