@@ -8,11 +8,14 @@ using StatsBase, Statistics
 open("notebooks\\Log.txt", "w") do log
     #%% Using this we can continually revise the file
     println(log, "[$(Dates.now())]: Script began")
+    println("[$(Dates.now())]: Script began")
     #%%
     target_folder = "E:\\Data\\ERG\\Gnat"
     paths = target_folder |> parse_abf
     println(log, "Analysis on folder $target_folder")
     println(log, "$(length(paths)) files to be analyzed")
+    println("Analysis on folder $target_folder")
+    println("$(length(paths)) files to be analyzed")
     #This is the complete data analysis data frame
     data_analysis = DataFrame(
         Path = String[], 
@@ -30,12 +33,15 @@ open("notebooks\\Log.txt", "w") do log
         ND = Int64[], Intensity = Int64[], Stim_Time = Int64[]
     )
     fail_files = Int64[]
-    error_causes = String[]
+    error_causes = []
         
     #Walk through every file in the path
     for (i,path) in enumerate(paths)
         try
-            println(log, "[$(Dates.now())]: Analyzing path $path. Path : $i of $(length(paths))")
+            println(log, "[$(Dates.now())]: Analyzing path $i of $(length(paths))")
+            println(log, path)
+            println("[$(Dates.now())]: Analyzing path $i of $(length(paths))")
+            println(path)
             #I will need to find out how to extract the path and concatenate
             nt = formatted_split(path, format_bank)
             if nt.Experimenter == "Matt" #I have files organized by intensities
@@ -105,10 +111,14 @@ open("notebooks\\Log.txt", "w") do log
                     )
                 end
             end
-            println(log,  "[$(Dates.now())]: Analyzing path $i $path successful.")
+
+            println(log,  "[$(Dates.now())]: $path successful.")
+            println("[$(Dates.now())]: $path successful.")
         catch error
             println(log, "[$(Dates.now())]: Analyzing path $i $path has failed.")
             println(log, error)
+            println("[$(Dates.now())]: Analyzing path $i $path has failed.")
+            println(error)
             push!(error_causes, error)
             push!(fail_files, i)
             #throw(error) #This will terminate the process
@@ -119,6 +129,7 @@ open("notebooks\\Log.txt", "w") do log
     all_experiments = all_traces |> @unique({_.Year, _.Month, _.Day, _.Animal, _.Wavelength, _.Drugs}) |> DataFrame
     for (i, exp) in enumerate(eachrow(all_experiments))
         println(log, "[$(Dates.now())]: Concatenating single trace experiment $i $(exp.Path).")
+        println("[$(Dates.now())]: Concatenating single trace experiment $i $(exp.Path).")
         try
             #Isolate all individual experiments
             Qi = all_traces |>
@@ -167,15 +178,19 @@ open("notebooks\\Log.txt", "w") do log
                 )
             end
             println(log,  "[$(Dates.now())]: Analyzing experiment $i $(exp.Path) successful.")
+            println("[$(Dates.now())]: Analyzing experiment $i $(exp.Path) successful.")
         catch error
             println(log, "[$(Dates.now())]: Analyzing experiment $i $(exp.Path) has failed.")
             println(log, error)
+            println("[$(Dates.now())]: Analyzing experiment $i $(exp.Path) has failed.")
+            println(error)
         end
         
     end
     println(log, "[$(Dates.now())]: All files have been analyzed.")
     println(log, "[$(Dates.now())]: $(length(fail_files)) files have failed.")
-
+    println("[$(Dates.now())]: All files have been analyzed.")
+    println("[$(Dates.now())]: $(length(fail_files)) files have failed.")
     #These are the files that have failed
     for (i, fail_path) in enumerate(paths[fail_files]) 
         println(log, "$fail")
@@ -183,7 +198,7 @@ open("notebooks\\Log.txt", "w") do log
     end
     #%% Make and export the dataframe 
     println(log, "[$(Dates.now())]: Generating a summary of all data.")
-
+    println("[$(Dates.now())]: Generating a summary of all data.")
     all_categories = data_analysis |> 
         @unique({_.Age, _.Genotype, _.Wavelength, _.Drugs, _.Photoreceptors, _.Rearing}) |> 
         @map({_.Age, _.Genotype, _.Photoreceptors, _.Drugs, _.Wavelength, _.Rearing}) |>
@@ -254,6 +269,7 @@ open("notebooks\\Log.txt", "w") do log
     all_categories[:, :τ_Rec_SEM] = τRecs_sem
     all_categories  = all_categories |> @orderby(_.Drugs) |> @thenby_descending(_.Genotype) |> @thenby_descending(_.Rearing) |>  @thenby(_.Age) |> @thenby_descending(_.Photoreceptors) |> @thenby(_.Wavelength) |> DataFrame
     println(log, "[$(Dates.now())]: Summary Generated.")
+    println("[$(Dates.now())]: Summary Generated.")
     #%%
     a_wave = data_analysis |> @orderby(_.Drugs) |> @thenby_descending(_.Genotype) |> @thenby_descending(_.Rearing) |>  @thenby(_.Age) |> @thenby_descending(_.Photoreceptors) |> @thenby(_.Wavelength) |> @filter(_.Drugs == "a-waves") |> DataFrame
     b_wave = data_analysis |> @orderby(_.Drugs) |> @thenby_descending(_.Genotype) |> @thenby_descending(_.Rearing) |>  @thenby(_.Age) |> @thenby_descending(_.Photoreceptors) |> @thenby(_.Wavelength) |> @filter(_.Drugs == "b-waves") |> DataFrame
@@ -272,6 +288,7 @@ open("notebooks\\Log.txt", "w") do log
     #%% Save data
     save_path = joinpath(target_folder,"data.xlsx")
     println(log, "[$(Dates.now())]: Writing data to file $save_path.")
+    println("[$(Dates.now())]: Writing data to file $save_path.")
     try
         XLSX.writetable(save_path, 
             #Summary = (collect(eachcol(summary_data)), names(summary_data)), 
@@ -285,6 +302,7 @@ open("notebooks\\Log.txt", "w") do log
         )
     catch
         println(log, "[$(Dates.now())]: Writing data to file $save_path.")
+        println("[$(Dates.now())]: Writing data to file $save_path.")
         try #This is for if the file writing is unable to remove the file
             rm(save_path)
             XLSX.writetable(save_path, 
@@ -298,11 +316,14 @@ open("notebooks\\Log.txt", "w") do log
                 #Stats = (collect(eachcol(stats_data)), names(stats_data))
             )
         catch error
-            println(log, error)
             println(log, "[$(Dates.now())]: File might have been already open")
+            println(log, error)
+            println("[$(Dates.now())]: File might have been already open")
+            println(error)
         end
     end
     println(log, "[$(Dates.now())]: Data analysis complete. Have a good day!")
+    println("[$(Dates.now())]: Data analysis complete. Have a good day!")
 end
 #%%
 
