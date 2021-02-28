@@ -26,7 +26,6 @@ all_traces = DataFrame(
 fail_files = Int64[]
 
 #Walk through every file in the path
-paths = [file_ex]
 for (i,path) in enumerate(paths)
     try
         println("$(round(i/length(paths), digits = 3)*100)% progress made")
@@ -81,7 +80,6 @@ for (i,path) in enumerate(paths)
 
             filter_data = lowpass_filter(data) #Lowpass filter using a 40hz 8-pole 
             rmaxes = saturated_response(filter_data; saturated_thresh = saturated_thresh)
-            println(rmaxes)
             rdims, dim_idx = dim_response(filter_data, rmaxes)
             t_peak = time_to_peak(data, dim_idx)
             t_Int = integration_time(filter_data, dim_idx)
