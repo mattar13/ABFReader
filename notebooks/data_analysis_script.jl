@@ -38,9 +38,9 @@ open("notebooks\\Log.txt", "w") do log
     #Walk through every file in the path
     for (i,path) in enumerate(paths)
         try
-            println(log, "[$(Dates.now())]: Analyzing path $i of $(length(paths))")
+            print(log, "[$(Dates.now())]: Analyzing path $i of $(length(paths)) ")
             println(log, path)
-            println("[$(Dates.now())]: Analyzing path $i of $(length(paths))")
+            print("[$(Dates.now())]: Analyzing path $i of $(length(paths)) ")
             println(path)
             #I will need to find out how to extract the path and concatenate
             nt = formatted_split(path, format_bank)
@@ -112,14 +112,14 @@ open("notebooks\\Log.txt", "w") do log
                 end
             end
 
-            println(log,  "[$(Dates.now())]: $path successful.")
-            println("[$(Dates.now())]: $path successful.")
+            println(log,  "[$(Dates.now())]: Analysis successful.")
+            println("[$(Dates.now())]: Analysis successful.")
         catch error
-            println(log, "[$(Dates.now())]: Analyzing path $i $path has failed.")
-            println(log, error)
-            println("[$(Dates.now())]: Analyzing path $i $path has failed.")
-            println(error)
-            push!(error_causes, error)
+            println(log, "[$(Dates.now())]: Analysis failed.")
+            println(log, typeof(error))
+            println("[$(Dates.now())]: Analysis failed.")
+            println(typeof(error))
+            push!(error_causes, typeof(error))
             push!(fail_files, i)
             #throw(error) #This will terminate the process
         end
@@ -193,7 +193,7 @@ open("notebooks\\Log.txt", "w") do log
     println("[$(Dates.now())]: $(length(fail_files)) files have failed.")
     #These are the files that have failed
     for (i, fail_path) in enumerate(paths[fail_files]) 
-        println(log, "$fail")
+        println(log, "$fail_path")
         println(log, "Cause -> $(error_causes[i])")
     end
     #%% Make and export the dataframe 
@@ -334,7 +334,7 @@ end
 #truncate_data!(data);
 #baseline_cancel!(data)
 #%%
-#file_ex = "E:\\Data\\ERG\\Gnat\\Paul\\P14 (NR) rods_12\\UV\\a-waves\\10_11_19_WT_P14_m2_Rods_D_Blue.abf"
+#file_ex = "E:\\Data\\ERG\\Gnat\\Paul\\P9 (NR)_8\\UV\\b-waves\\4_7_19_WT_P9_ND_Rods_Blue.abf"
 #data_ex = extract_abf(file_ex)
 #truncate_data!(data_ex; t_post = 1.0, t_pre = 0.3)
 #baseline_cancel!(data_ex)
