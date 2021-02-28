@@ -42,7 +42,7 @@ function baseline_cancel(trace::Experiment; mode::Symbol = :mean, region = :pres
                         data.data_array[swp,:, ch] .= trace.data_array[swp,:,ch] .- baseline_adjust
                     else
                         if verbose
-                            println("no pre-stimulus range exists")
+                            #println("no pre-stimulus range exists")
                         end
                     end
                 elseif mode == :slope
@@ -51,7 +51,7 @@ function baseline_cancel(trace::Experiment; mode::Symbol = :mean, region = :pres
                         #Now offset the array by the linear range
                         data.data_array[swp, :, ch] .= trace[swp, :, ch] - pfit.(trace.t)
                     else
-                        println("no pre-stimulus range exists")
+                        #println("no pre-stimulus range exists")
                     end
                 end
             end
@@ -88,7 +88,7 @@ function baseline_cancel!(trace::Experiment; mode::Symbol = :mean, region = :pre
                         #Now subtract the baseline scaling value
                         trace.data_array[swp,:, ch] .= trace.data_array[swp,:,ch] .- baseline_adjust
                     else
-                        println("no pre-stimulus range exists")
+                        #println("no pre-stimulus range exists")
                     end
                 elseif mode == :slope
                     if (rng_end - rng_begin) != 0
@@ -96,7 +96,7 @@ function baseline_cancel!(trace::Experiment; mode::Symbol = :mean, region = :pre
                         #Now offset the array by the linear range
                         trace.data_array[swp, :, ch] .= trace[swp, :, ch] - pfit.(trace.t)
                     else
-                        println("no pre-stimulus range exists")
+                        #println("no pre-stimulus range exists")
                     end
                 end
             end
