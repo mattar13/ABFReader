@@ -96,6 +96,8 @@ for (i,path) in enumerate(paths)
             t_Int = integration_time(filter_data, dim_idx)
             tau_rec = recovery_tau(filter_data, dim_idx)
             
+            #Lets try to plot the recovery time constant of several values
+
             #tau_dom has multiple values
             #tau_dom = pepperburg_analysis(data, rmaxes)
             #Amplification also has multiple values
@@ -125,6 +127,7 @@ for (i,path) in enumerate(paths)
 end
 #%%
 data_analysis = data_analysis |> @orderby(_.Year) |> @thenby(_.Month) |> @thenby(_.Day) |> DataFrame
+
 #%% Walk though all files in my style and add them to the data_analysis DataFrame
 all_experiments = all_traces |> @unique({_.Year, _.Month, _.Day, _.Animal, _.Wavelength, _.Drugs}) |> DataFrame
 for (i, exp) in enumerate(eachrow(all_experiments))
@@ -142,16 +145,35 @@ for (i, exp) in enumerate(eachrow(all_experiments))
             @map({_.Path, _.ND, _.Intensity, _.Stim_Time}) |> 
             DataFrame
         
+            #println(data.stim_protocol)
+            
+        intensity = Float64[];
+        response = Float64[];
         data = extract_abf(Qi[1, :Path])
-        #println(data.stim_protocol)
-        for single_path in Qi[2:end,:Path] #Some of the files need to be averaged
-            single_path = extract_abf(single_path)
-            if size(single_path)[1] > 1
-                #println("Needs to average traces")
-                average_sweeps!(single_path)
+        for (idx, trace) in enumerate(eachrow(Qi)) #Some of the files need to be averaged
+            if idx == 1
+                data = extract_abf(trace.Path)
+                response = minimum(data, dims = 2)
+                println(response)
+            else
+                single_path = extract_abf(trace.Path)
+                if size(single_path)[1] > 1
+                    #println("Needs to average traces")
+                    average_sweeps!(single_path)
+                end
+                response = minimum(single_path, dims = 2)
+                println(response)
             end
             concat!(data, single_path)
+            single_path = extract_abf(single_path)
+            T = trace.ND |> Transferrance
+            I = trace.Intensity
+            t_stim = trace.Stim_Time
+            photons = stimulus_model([T, I, t_stim])
+            println(photons)
+            #push!(photons, intensity)
         end
+
         truncate_data!(data)
         baseline_cancel!(data)
         filter_data = lowpass_filter(data) #Lowpass filter using a 40hz 8-pole  
@@ -204,6 +226,7 @@ all_categories = data_analysis |>
     @map({_.Age, _.Genotype, _.Photoreceptors, _.Drugs, _.Wavelength, _.Rearing}) |>
     DataFrame
 
+ns = Int64[];
 rmaxes = Float64[]; rmaxes_sem = Float64[]
 rdims  = Float64[]; rdims_sem  = Float64[];
 tpeaks = Float64[]; tpeaks_sem = Float64[];
@@ -224,21 +247,23 @@ for row in eachrow(all_categories)
                 _.Rearing, _.Rmax, _.Rdim, _.t_peak, _.tInt, _.tau_rec
             }) |> 
         DataFrame
+
     rmax_mean = sum(Qi.Rmax)/length(eachrow(Qi))
     rmax_sem = std(Qi.Rmax)/(sqrt(length(eachrow(Qi))))
-
+    
     rdim_mean = sum(Qi.Rdim)/length(eachrow(Qi))
     rdim_sem = std(Qi.Rdim)/(sqrt(length(eachrow(Qi))))
-
+    
     tpeak_mean = sum(Qi.t_peak)/length(eachrow(Qi))
     tpeak_sem = std(Qi.t_peak)/(sqrt(length(eachrow(Qi))))
-
+    
     tInt_mean = sum(Qi.tInt)/length(eachrow(Qi))
     tInt_sem = std(Qi.tInt)/(sqrt(length(eachrow(Qi))))
-
+    
     τRec_mean = sum(Qi.tau_rec)/length(eachrow(Qi))
     τRec_sem = std(Qi.tau_rec)/(sqrt(length(eachrow(Qi))))
     
+    push!(ns, length(eachrow(Qi)))
     push!(rmaxes, rmax_mean)
     push!(rmaxes_sem, rmax_sem)
 
@@ -256,7 +281,7 @@ for row in eachrow(all_categories)
     
     #println(length(eachrow(Qi)))
 end
-
+all_categories[:, :n] = ns
 all_categories[:, :Rmax] = rmaxes
 all_categories[:, :Rmax_SEM] = rmaxes_sem
 all_categories[:, :Rdim] = rdims
@@ -325,6 +350,65 @@ end
 println(log_file, "[$(Dates.now())]: Data analysis complete. Have a good day!")
 println("[$(Dates.now())]: Data analysis complete. Have a good day!")
 close(log_file); 
+
+#%%
+#Lets caculate the stimulus intensity
+#T = all_experiments[1,:].ND |> Transferrance
+#I = all_experiments[1,:].Intensity
+#t_stim = all_experiments[1,:].Stim_Time
+#stimulus_model([T, I, t_stim])
+
+#%% Lets run some data analysis experiments and plot the 
+#for row in eachrow(data_analysis)
+#    nt = formatted_split(row.Path, format_bank)
+#    if nt.Age == 8 || nt.Age == 9
+#        #println("Photoreceptors equals both")
+#        Photoreceptors = "Both"
+#    else
+#        if haskey(nt, :Photoreceptors)
+#            Photoreceptors = nt.Photoreceptors
+#        else
+#            #println("No key equaling Photoreceptors")
+#            Photoreceptors = "Both"
+#        end
+#    end
+#    
+#    if Photoreceptors == "cones" || Photoreceptors == "Both"
+#        #Cone responses are under 300ms
+#        t_post = 0.3
+#        saturated_thresh = Inf
+#    else
+#        #Rod Responses can last a bit longer, so a second is fine for the max time
+#        t_post = 1.0
+#        saturated_thresh = :determine
+#    end
+#    
+#    if !haskey(nt, :Animal)
+#        animal = 1
+#    else
+#        animal = nt[:Animal]
+#    end
+#    data = extract_abf(row.Path; swps = -1)
+#    println(data.ID)
+#    truncate_data!(data; t_post = 1.0)
+#    baseline_cancel!(data)
+#    
+#    p = plot(data, c = :black)
+#    filter_data = lowpass_filter(data) #Lowpass filter using a 40hz 8-pole 
+#    rmaxes = saturated_response(filter_data; saturated_thresh = saturated_thresh)
+#    rdims, dim_idx = dim_response(filter_data, rmaxes)
+#    println(dim_idx)
+#    tau_rec = recovery_tau(filter_data, dim_idx)
+#    println(tau_rec)
+#    for ch in size(data,3)
+#        model(x) = map(t -> REC(t, data.t[1], tau_rec[ch]), x)
+#        plot!(p[ch], data.t, model)
+#        hline!(p[ch], [rmaxes[ch]])
+#        hline!(p[ch], [rdims[ch]])
+#    end
+#    savefig(p, joinpath(target_folder, "figures\\$(data.ID)_report.png"))
+#end
+
 
 #%% Look at all of the fail files and try to work through their mistakes
 #check_paths = paths[fail_files]

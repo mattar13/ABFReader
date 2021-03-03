@@ -112,7 +112,7 @@ This function only works on concatenated files with more than one trace
     In the rdim calculation, it is better to adjust the higher percent
     Example: no traces in 20-30% range, try 20-40%
 """
-function dim_response(trace::Experiment{T}, rmaxes::Array{T, 1}; return_idx = true, polarity::Int64 = -1, rmax_lin = [0.10, 0.40]) where T <: Real
+function dim_response(trace::Experiment{T}, rmaxes::Array{T, 1}; return_idx = true, polarity::Int64 = -1, rmax_lin = [0.20, 0.50]) where T <: Real
     #We need
     if size(trace,1) == 1
         throw(ErrorException("There is no sweeps to this file, and Rdim will not work"))

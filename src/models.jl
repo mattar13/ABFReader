@@ -26,11 +26,14 @@ This function is the relationship between:
         Stimulus Time (t_stim)
     Dependent Variable
         Photons (P)
+    x[1] = T
+    x[2] = I
+    x[3] = t_stim
 """
-stimulus_model(x::Array{Float64,1}, p::Array{Float64,1}) = x[1]*(p[1]*x[2]^2 + p[2]*x[2] + p[3])*x[3]
-stimulus_model(x::Array{Float64,2}, p::Array{Float64,1}) = [stimulus_model(x[i,:], p) for i in 1:size(x,1)]
-stimulus_model(x::Array{Float64,1}) = stimulus_model(x, [25352.59, 43857.01, 929.56]) 
-stimulus_model(x::Array{Float64,2}) = stimulus_model(x, [25352.59, 43857.01, 929.56]) 
+stimulus_model(x::Array{T,1}, p::Array{Float64,1}) where T <:Real = x[1]*(p[1]*x[2]^2 + p[2]*x[2] + p[3])*x[3]
+stimulus_model(x::Array{T,2}, p::Array{Float64,1}) where T <:Real = [stimulus_model(x[i,:], p) for i in 1:size(x,1)]
+stimulus_model(x::Array{T,1}) where T <:Real = stimulus_model(x, [25352.59, 43857.01, 929.56]) 
+stimulus_model(x::Array{T,2}) where T <:Real = stimulus_model(x, [25352.59, 43857.01, 929.56]) 
     
 ##############################These are the IR and Amplification models#############
 
@@ -124,3 +127,28 @@ This function is a single exponential.
 """
 REC(t, V⁰, τRec) = V⁰ * exp(-t/τRec)
 
+"""
+Weber Contrast sensitivity
+
+The
+"""
+
+WEBER(I_Feature::T, I_Background::T) where T <: Real = (I_Feature - I_Background)/I_Background
+
+"""
+Michelson Contrast
+
+
+"""
+MICHELSON(I_Min::T, I_Max::T) where T <: Real = (I_Max - I_Min)/(I_Max + I_Min)
+MICHELSON(I::Array{T,2}) where T <: Real = (maximum(I) - minimum(I))/(maximum(I) + minimum(I))
+
+"""
+Root Mean Squared Contrast
+
+This is the contrast of an image when the image is 
+M x N in size. 
+
+The image has i and j features (equal to 1->M-1 and 1->N-1)
+"""
+RMS_Contrast(I::Array{T, 2}; normalized = true) where T <: Real = (1/(size(I,1)*size(I,2))) .* sum((I.-sum(I)/length(I))^2)
