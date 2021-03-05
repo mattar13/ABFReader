@@ -157,6 +157,8 @@ function extract_abf(::Type{T}, abf_path::String;
         if ch ∈ stim_ch 
             #println("Correct")
             stimulus_idxs = findall(data .> stimulus_threshold)
+            #println(stimulus_idxs[1]*dt)
+            #println(stimulus_idxs[end]*dt)
             if isempty(stimulus_idxs)
                 if verbose
                     println("Could not find any stimulus")
