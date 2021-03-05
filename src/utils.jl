@@ -45,6 +45,7 @@ TODO: I need to do a massive restructure.
 2) I need to do something different with stimulus files
 This function extracts an ABF file from a path
     - It creates a Experiment object which 
+Maybe by adding the average the sweeps here I can avoid any averaging issues later
 """
 function extract_abf(::Type{T}, abf_path::String; 
         stim_ch::Union{Array{Int64}, Int64, String, Array{String}} = "IN 7", 
@@ -53,6 +54,7 @@ function extract_abf(::Type{T}, abf_path::String;
         keep_stimulus_channel = false,
         swps = -1, 
         chs = ["Vm_prime","Vm_prime4", "IN 7"], 
+        average_sweeps = false,
         verbose = false#, logging = false
     ) where T <: Real
 
@@ -147,8 +149,9 @@ function extract_abf(::Type{T}, abf_path::String;
         #This is if there is no stimulus channel
     end
     stim_protocol = Array{StimulusProtocol}([])
+    #println(stim_ch)
     for (swp_idx, swp) in enumerate(data_sweeps), (ch_idx, ch) in enumerate(data_channels)
-        println(ch_idx)
+        #println(ch_idx)
         trace_file.setSweep(sweepNumber = swp, channel = ch);
         data = Float64.(trace_file.sweepY);
         t = Float64.(trace_file.sweepX);
@@ -190,6 +193,13 @@ function extract_abf(::Type{T}, abf_path::String;
             data_array[swp_idx, :, ch_idx] = data
         end
     end
+    if average_sweeps == true
+        #println("$(size(data_array,1)) sweeps to average")
+        data_array = sum(data_array, dims = 1)/size(data_array,1)
+        #println(data_array |> size)
+        stim_protocol = [stim_protocol[1]]
+    end
+
     #println(stim_protocol)
     #println(size(data_array))
     keep_channels = findall(x -> x ∉ stim_ch, collect(1:length(chNames)))
@@ -523,7 +533,7 @@ The files in path array or super folder are concatenated into a single Experimen
         - If a majority of arrays are shorter, it will chop the longer ones
 """
 
-function concat(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, position = :post, avg_swps = true, kwargs...) where T
+function concat(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, position = :post, kwargs...) where T
     new_data = deepcopy(data)
     if size(data,2) > size(data_add,2)
         #println("Original data larger $(size(data,2)) > $(size(data_add,2))")
@@ -543,17 +553,13 @@ function concat(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, posit
         end
     end
 
-    if avg_swps == true && size(data_add,1) > 1
-        avg_data_added = average_sweeps(data_add)
-        push!(new_data, avg_data_add)
-    else
-        push!(new_data, data_add)
-    end
+    push!(data, data_add)
+    push!(data.stim_protocol, data_add.stim_protocol...)
 
     return new_data
 end
 
-function concat!(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, position = :post, avg_swps = true, kwargs...) where T
+function concat!(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, position = :post, kwargs...) where T
     if size(data,2) > size(data_add,2)
         #println("Original data larger $(size(data,2)) > $(size(data_add,2))")
         n_vals = abs(size(data,2) - size(data_add,2))
@@ -577,27 +583,16 @@ function concat!(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, posi
         println("Here is the issue")
     end
     #println(length(data.stim_protocol))
-    if avg_swps == true && size(data_add,1) > 1
-        average_sweeps!(data_add)
-        push!(data, data_add)
-        #An issue with this is that it adds several new stimulus files to the 
-        push!(data.stim_protocol, data_add.stim_protocol[1])
-    else
-        #If you one or more sweeps to add in the second trace, this adds all of them
-        push!(data, data_add)
-        push!(data.stim_protocol, data_add.stim_protocol...)
-    end
+    push!(data, data_add)
+    push!(data.stim_protocol, data_add.stim_protocol...)
     #add the new stimulus as well
 end
 
 function concat(path_arr::Array{String,1}; kwargs...)
-    data = extract_abf(path_arr[1]; kwargs...)
+    data = extract_abf(path_arr[1]; average_sweeps = true, kwargs...)
     #IN this case we want to ensure that the stim_protocol is only 1 stimulus longer
-    if length(data.stim_protocol) > 1
-        data.stim_protocol = [data.stim_protocol[1]]
-    end
     for path in path_arr[2:end]
-        data_add = extract_abf(path; kwargs...)
+        data_add = extract_abf(path; average_sweeps = true, kwargs...)
         concat!(data, data_add; kwargs...)
     end
     return data
