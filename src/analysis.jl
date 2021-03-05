@@ -80,7 +80,7 @@ function saturated_response(trace::Experiment{T}; saturated_thresh = :determine,
             idxs = findlast(data .> (mean + deviation))
             if isempty(idxs)
                 #This is a weird catch, but no points fall under the mean. 
-                push!(rmaxsm, minimum(data))
+                push!(rmaxs, minimum(data))
                 continue
             end
             data = data[idxs]
