@@ -146,19 +146,15 @@ function extract_abf(::Type{T}, abf_path::String;
     elseif stim_ch == -1
         #This is if there is no stimulus channel
     end
-    #println(stim_ch)
     stim_protocol = Array{StimulusProtocol}([])
     for (swp_idx, swp) in enumerate(data_sweeps), (ch_idx, ch) in enumerate(data_channels)
+        println(ch_idx)
         trace_file.setSweep(sweepNumber = swp, channel = ch);
         data = Float64.(trace_file.sweepY);
         t = Float64.(trace_file.sweepX);
         dt = t[2]
-        #println("$(swp_idx) , $(ch_idx)")
-        if ch ∈ stim_ch 
-            #println("Correct")
+        if ch_idx ∈ stim_ch 
             stimulus_idxs = findall(data .> stimulus_threshold)
-            #println(stimulus_idxs[1]*dt)
-            #println(stimulus_idxs[end]*dt)
             if isempty(stimulus_idxs)
                 if verbose
                     println("Could not find any stimulus")
@@ -444,7 +440,11 @@ function truncate_data!(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_b
     size_of_array = 0
     overrun_time = 0 #This is for if t_pre is set too far before the stimulus
     if isempty(trace.stim_protocol)
-        #println("No explicit stimulus has been set")
+        println("No explicit stimulus has been set")
+        size_of_array = t_post * dt
+        println(size_of_array)
+        #trace.data_array = trace.data_array[:, 1:size_of_array, :] #remake the array with only the truncated data
+        #trace.t = range(0.0, t_post, length = size_of_array)
     else
         for swp in 1:size(trace, 1)
             stim_protocol = trace.stim_protocol[swp]
@@ -505,6 +505,7 @@ function truncate_data!(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_b
             #println(size_of_array)
         end
         #while testing, don't change anything
+        println(size_of_array)
         trace.data_array = trace.data_array[:, 1:size_of_array, :] #remake the array with only the truncated data
         trace.t = range(-t_pre+overrun_time, t_post, length = size_of_array)
     end
