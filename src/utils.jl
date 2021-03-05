@@ -67,6 +67,7 @@ function extract_abf(::Type{T}, abf_path::String;
     #extract the abf file by using pyABF
     pyABF = pyimport("pyabf")
     trace_file = pyABF.ABF(full_path)
+    println(full_path)
     #println("Made it here")
     #First extract the date collected 
     date_collected = trace_file.abfDateTime
@@ -115,21 +116,7 @@ function extract_abf(::Type{T}, abf_path::String;
     end
     
     #convert the stimulus channel into an array to make this part easier
-
-    for (swp_idx, swp) in enumerate(data_sweeps), (ch_idx, ch) in enumerate(data_channels)
-        trace_file.setSweep(sweepNumber = swp, channel = ch);
-        data = Float64.(trace_file.sweepY);
-        t = Float64.(trace_file.sweepX);
-        dt = t[2]
-        if verbose
-            println("Data extracted from $full_path")
-            println("Data from Channel $(ch) Sweep $(swp)")
-            println("Data from time stamp $(t[1]) s to $(t[end]+dt) s with dt = $dt ms")
-            println("Data was acquired at $(1/dt/1000) Hz")
-            println("$n_data_points data points")
-        end
-        data_array[swp_idx, :, ch_idx] = data
-    end
+    
     #set up the stimulus protocol
     if isa(stim_ch, String)
         stim_ch = findall(x -> x == stim_ch, chNames)
@@ -159,34 +146,55 @@ function extract_abf(::Type{T}, abf_path::String;
     elseif stim_ch == -1
         #This is if there is no stimulus channel
     end
-    #Identify channel names
-
+    #println(stim_ch)
     stim_protocol = Array{StimulusProtocol}([])
-    for (idx, ch) in enumerate(stim_ch), swp in 1:size(data_array,1)
-        #println(swp)
-        #we need to get the stimulus channel and extract the data
-        stimulus_idxs = findall(data_array[swp,:,ch] .> stimulus_threshold)
-        if isempty(stimulus_idxs)
-            if verbose
-                println("Could not find any stimulus")
+    for (swp_idx, swp) in enumerate(data_sweeps), (ch_idx, ch) in enumerate(data_channels)
+        trace_file.setSweep(sweepNumber = swp, channel = ch);
+        data = Float64.(trace_file.sweepY);
+        t = Float64.(trace_file.sweepX);
+        dt = t[2]
+        println("$(swp_idx) , $(ch_idx)")
+        if ch ∈ stim_ch 
+            #println("Correct")
+            stimulus_idxs = findall(data .> stimulus_threshold)
+            if isempty(stimulus_idxs)
+                if verbose
+                    println("Could not find any stimulus")
+                end
+            else
+                called = "$(stim_name[findall(ch_idx ∈ stim_ch)[1]])_$(swp_idx)"
+                #println(called |> Symbol)
+                stim_begin = stimulus_idxs[1]
+                stim_end = stimulus_idxs[end]+1
+                stim_time_start = t[stim_begin]
+                stim_time_end = t[stim_end]
+                stim = StimulusProtocol(
+                    called|>Symbol, swp_idx, 
+                    (stim_begin, stim_end), 
+                    (stim_time_start, stim_time_end)    
+                )
+                push!(stim_protocol, stim)
+            end
+            #If this is a stimulus channel we want to set up the stimulus instead
+            if keep_stimulus_channel == true
+                #This is where we can decide to keep the stimulus channel as part of the analysis
+                data_array[swp_idx, :, ch_idx] = data
+
             end
         else
-            stim_begin = stimulus_idxs[1]
-            stim_end = stimulus_idxs[end]
-            stim_time_start = t[stim_begin]
-            stim_time_end = t[stim_end]
-            stim = StimulusProtocol(
-                stim_name[idx], swp, 
-                (stim_begin, stim_end), 
-                (stim_time_start, stim_time_end)    
-            )
-            push!(stim_protocol, stim)
+            if verbose
+                println("Data extracted from $full_path")
+                println("Data from Channel $(ch) Sweep $(swp)")
+                println("Data from time stamp $(t[1]) s to $(t[end]+dt) s with dt = $dt ms")
+                println("Data was acquired at $(1/dt/1000) Hz")
+                println("$n_data_points data points")
+            end
+            data_array[swp_idx, :, ch_idx] = data
         end
     end
-
+    #println(stim_protocol)
+    #println(size(data_array))
     keep_channels = findall(x -> x ∉ stim_ch, collect(1:length(chNames)))
-
-
     if keep_stimulus_channel == false
         data_array = data_array[:,:,keep_channels]    
         chNames = chNames[keep_channels]
@@ -565,10 +573,10 @@ function concat!(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, posi
         #We need to write a catch here to concatenate files with different numbers of channels
         println("Here is the issue")
     end
-
     if avg_swps == true && size(data_add,1) > 1
-        avg_data_add = average_sweeps(data_add)
-        push!(data, avg_data_add)
+        average_sweeps!(data_add)
+        #println(size(data_add))
+        push!(data, data_add)
         
     else
         #If you one or more sweeps to add in the second trace, this adds all of them
