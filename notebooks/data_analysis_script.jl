@@ -5,14 +5,16 @@ using NeuroPhys
 using DataFrames, Query, XLSX
 using StatsBase, Statistics
 
-log_file = open("notebooks\\Log.txt", "w")
-#%% Using this we can continually revise the file
+#log_file = open("notebooks\\Log.txt", "w")
+open("notebooks\\Log.txt", "w") do log_file
 println(log_file, "[$(Dates.now())]: Script began")
 println("[$(Dates.now())]: Script began")
 #%%
 target_folder = "E:\\Data\\ERG\\Gnat"
 #target_folder = "E:\\Data\\ERG\\Gnat\\Paul\\P10 (NR) cones_5\\Green\\"
 paths = target_folder |> parse_abf
+#println(paths[1328])
+#%%
 println(log_file, "Analysis on folder $target_folder")
 println(log_file, "$(length(paths)) files to be analyzed")
 println("Analysis on folder $target_folder")
@@ -27,7 +29,7 @@ data_analysis = DataFrame(
     tInt = Float64[], tau_rec = Float64[]
 )
 
-    #This is the dataframe for the 
+#This is the dataframe for the 
 all_traces = DataFrame(
     Path = String[], Year = Int64[], Month = Int64[], Day = Int64[], 
     Animal = Int64[], Age = Int64[], Genotype = String[], Drugs = String[], Wavelength = Int64[], 
@@ -37,7 +39,7 @@ fail_files = Int64[]
 error_causes = []
     
 #Walk through every file in the path
-for (i,path) in enumerate(paths)
+for (i,path) in enumerate(paths[1327:1329])
     try
         print(log_file, "[$(Dates.now())]: Analyzing path $i of $(length(paths)) ")
         println(log_file, path)
@@ -57,6 +59,8 @@ for (i,path) in enumerate(paths)
             )
         elseif nt.Experimenter == "Paul" #He has files organized by concatenations
             data = extract_abf(path; swps = -1)
+            println(log_file, "[$(Dates.now())]: data extracted ")
+            println("[$(Dates.now())]: data extracted ")
             
             if nt.Age == 8 || nt.Age == 9
                 #println("Photoreceptors equals both")
@@ -89,6 +93,10 @@ for (i,path) in enumerate(paths)
             truncate_data!(data; t_post = t_post)
             baseline_cancel!(data)
 
+            #println(size(data))
+            println(log_file, "[$(Dates.now())]: data filtered ")
+            println("[$(Dates.now())]: data filtered ")
+            
             filter_data = lowpass_filter(data) #Lowpass filter using a 40hz 8-pole 
             rmaxes = saturated_response(filter_data; saturated_thresh = saturated_thresh)
             rdims, dim_idx = dim_response(filter_data, rmaxes)
@@ -96,6 +104,8 @@ for (i,path) in enumerate(paths)
             t_Int = integration_time(filter_data, dim_idx)
             tau_rec = recovery_tau(filter_data, dim_idx)
             
+            println(log_file, "[$(Dates.now())]: data analyzed ")
+            println("[$(Dates.now())]: data analyzed ")
             #Lets try to plot the recovery time constant of several values
 
             #tau_dom has multiple values
@@ -330,7 +340,8 @@ catch
 end
 println(log_file, "[$(Dates.now())]: Data analysis complete. Have a good day!")
 println("[$(Dates.now())]: Data analysis complete. Have a good day!")
-close(log_file); 
+end
+#close(log_file); 
 
 #%%
 #Lets caculate the stimulus intensity
