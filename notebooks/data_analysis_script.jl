@@ -39,7 +39,7 @@ fail_files = Int64[]
 error_causes = []
     
 #Walk through every file in the path
-for (i,path) in enumerate(paths[1327:1329])
+for (i,path) in enumerate(paths)
     try
         print(log_file, "[$(Dates.now())]: Analyzing path $i of $(length(paths)) ")
         println(log_file, path)

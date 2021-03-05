@@ -26,22 +26,6 @@ baseline_cancel!(data2; mode = :mean, region = :prestim) #Baseline data for conc
 #cwt_filter!(data2)
 #average_sweeps!(data2)
 println("All inline filtering functions work")
-#%%
-x = (:sweeps, 1)
-trace_size = (12, 3000, 2)
-
-function layout_helper(x, trace_size)
-    if x == :sweeps
-        return trace_size[1]
-    elseif x == :channels
-        return trace_size[3]
-    elseif isa(x, Int64)
-        return x
-    end
-end
-
-map(xi -> g(xi, trace_size), x)
-
 #%% Test filtering functions that are not inline
 trunc_data1 = truncate_data(data1)
 trunc_data2 = truncate_data(data2)
@@ -119,6 +103,11 @@ hline!(p2[2], [rdims2[2]], c = :red)
 plot(p1, p2, layout = grid(1,2))
 
 #%% Sandbox area
-# TODO: Build the equation for the Ih curve fitting
-# TODO: Build the equation for Recovery time constant
-# TODO: Build the equation fot Amplification
+#%% TODO: Build the equation for the Ih curve fitting
+#test_file = "E:\\Data\\ERG\\Gnat\\Matt\\2020_09_04_ERG\\Mouse1_P10_KO\\Drugs\\525Green"
+#data = concat(test_file)
+#An error with truncate...
+#println(size(data))
+#truncate_data!(data; t_post = 1.0)
+#println(size(data))
+#%% TODO: Build the equation fot Amplification
