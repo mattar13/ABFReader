@@ -588,11 +588,11 @@ function concat!(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, posi
     #add the new stimulus as well
 end
 
-function concat(path_arr::Array{String,1}; kwargs...)
-    data = extract_abf(path_arr[1]; average_sweeps = true, kwargs...)
+function concat(path_arr::Array{String,1}; average_sweeps = true, kwargs...)
+    data = extract_abf(path_arr[1]; average_sweeps = average_sweeps, kwargs...)
     #IN this case we want to ensure that the stim_protocol is only 1 stimulus longer
     for path in path_arr[2:end]
-        data_add = extract_abf(path; average_sweeps = true, kwargs...)
+        data_add = extract_abf(path; average_sweeps = average_sweeps, kwargs...)
         concat!(data, data_add; kwargs...)
     end
     return data
