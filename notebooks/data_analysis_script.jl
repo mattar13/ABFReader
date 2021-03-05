@@ -148,41 +148,22 @@ for (i, exp) in enumerate(eachrow(all_experiments))
             #println(data.stim_protocol)
             
         intensity = Float64[];
-        response = Float64[];
-        data = extract_abf(Qi[1, :Path])
-        for (idx, trace) in enumerate(eachrow(Qi)) #Some of the files need to be averaged
-            if idx == 1
-                data = extract_abf(trace.Path)
-                response = minimum(data, dims = 2)
-                println(response)
-            else
-                single_path = extract_abf(trace.Path)
-                if size(single_path)[1] > 1
-                    #println("Needs to average traces")
-                    average_sweeps!(single_path)
-                end
-                response = minimum(single_path, dims = 2)
-                println(response)
-            end
-            concat!(data, single_path)
-            single_path = extract_abf(single_path)
-            T = trace.ND |> Transferrance
-            I = trace.Intensity
-            t_stim = trace.Stim_Time
-            photons = stimulus_model([T, I, t_stim])
-            println(photons)
-            #push!(photons, intensity)
-        end
+        data = concat(Qi[:,:Path])
+        #response = zeros(size(data,1), size(data,2));
 
         truncate_data!(data)
         baseline_cancel!(data)
+        #Try unfiltered response first
+        response = minimum(data, dims = 2)
+        #println(response)
         filter_data = lowpass_filter(data) #Lowpass filter using a 40hz 8-pole  
         rmaxes = saturated_response(filter_data)#; saturated_thresh = saturated_thresh)
         rdims, dim_idx = dim_response(filter_data, rmaxes)
         t_peak = time_to_peak(data, dim_idx)
         t_Int = integration_time(filter_data, dim_idx)
         tau_rec = recovery_tau(filter_data, dim_idx)
-                
+        
+        #Calculate the IR curves here
         #tau_dom has multiple values
         #tau_dom = pepperburg_analysis(data, rmaxes)
         #Amplification also has multiple values

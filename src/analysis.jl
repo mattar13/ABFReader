@@ -323,18 +323,15 @@ function IR_curve(data::Experiment{T}) where T <: Real
     if length(data.filename) > 1
         #The file is not a concatenation in clampfit
         intensity = Float64[]
-        response = zeros(Float64, size(data,1), size(data,2))
-        println(data.filename)
+        response = minimum(data, dims = 2)
+        println(size(response))
         for (idx,info) in enumerate(data.filename)
-            println(idx)
-            println(info)
-            println(data.stim_protocol[idx])
             t_begin, t_end = data.stim_protocol[idx].timestamps
             t_stim = (t_end - t_begin)*1000
             file_info = formatted_split(info, format_bank)
             OD = Float64(file_info.ND) |> Transferrance
             Per_Int = Float64(file_info.Intensity)
-            println("$(file_info.ND) -> $(OD), $(Per_Int), $(t_stim)")
+            #println("$(file_info.ND) -> $(OD), $(Per_Int), $(t_stim)")
             photons = stimulus_model([OD, Per_Int, t_stim])
             push!(intensity, photons)
         end
