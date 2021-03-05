@@ -46,6 +46,7 @@ export integration_time
 export recovery_tau
 export amplification
 export curve_fit #curve fitting from LsqFit
+export IR_curve
 #export filtering functions
 
 #Models are anything that is used to create new data
