@@ -67,7 +67,7 @@ function extract_abf(::Type{T}, abf_path::String;
     #extract the abf file by using pyABF
     pyABF = pyimport("pyabf")
     trace_file = pyABF.ABF(full_path)
-    println(full_path)
+    #println(full_path)
     #println("Made it here")
     #First extract the date collected 
     date_collected = trace_file.abfDateTime
@@ -153,7 +153,7 @@ function extract_abf(::Type{T}, abf_path::String;
         data = Float64.(trace_file.sweepY);
         t = Float64.(trace_file.sweepX);
         dt = t[2]
-        println("$(swp_idx) , $(ch_idx)")
+        #println("$(swp_idx) , $(ch_idx)")
         if ch ∈ stim_ch 
             #println("Correct")
             stimulus_idxs = findall(data .> stimulus_threshold)
@@ -575,21 +575,26 @@ function concat!(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, posi
         #We need to write a catch here to concatenate files with different numbers of channels
         println("Here is the issue")
     end
+    #println(length(data.stim_protocol))
     if avg_swps == true && size(data_add,1) > 1
         average_sweeps!(data_add)
-        #println(size(data_add))
         push!(data, data_add)
-        
+        #An issue with this is that it adds several new stimulus files to the 
+        push!(data.stim_protocol, data_add.stim_protocol[1])
     else
         #If you one or more sweeps to add in the second trace, this adds all of them
         push!(data, data_add)
+        push!(data.stim_protocol, data_add.stim_protocol...)
     end
     #add the new stimulus as well
-    push!(data.stim_protocol, data_add.stim_protocol...)
 end
 
 function concat(path_arr::Array{String,1}; kwargs...)
     data = extract_abf(path_arr[1]; kwargs...)
+    #IN this case we want to ensure that the stim_protocol is only 1 stimulus longer
+    if length(data.stim_protocol) > 1
+        data.stim_protocol = [data.stim_protocol[1]]
+    end
     for path in path_arr[2:end]
         data_add = extract_abf(path; kwargs...)
         concat!(data, data_add; kwargs...)
