@@ -226,6 +226,41 @@ end
 pepperburg_analysis(trace::Experiment{T}; kwargs...) where T <: Real= pepperburg_analysis(trace, saturated_response(trace; kwargs...); kwargs...)  
 
 
+
+"""
+The integration time is fit by integrating the dim flash response and dividing it by the dim flash response amplitude
+- A key to note here is that the exact f(x) of the ERG trace is not completely known
+- The integral is therefore a defininte integral and a sum of the area under the curve
+"""
+
+function integration_time(trace::Experiment{T}, dim_idx::Array{Int64,1}) where T <: Real
+    if size(trace,3) != length(dim_idx)
+        throw(error("Size of dim indexes does not match channel size for trace"))
+    else
+        int_time = T[]
+        for ch in 1:size(trace,3)
+            if dim_idx[ch] == 0
+                push!(int_time, 0.0)
+            else
+                dim_trace = trace[dim_idx[ch], :, ch]
+                #The integral is calculated by taking the sum of all points (in μV) and dividing by the time range (in ms)
+                #We have to make sure this response is in μV
+                if trace.chUnits[ch] == "mV"
+                    rdim = minimum(dim_trace)*1000
+                    sum_data = sum(dim_trace.*1000)*(trace.dt*1000)
+                else
+                    rdim = minimum(dim_trace)
+                    sum_data = sum(dim_trace)*trace.dt
+                end
+                push!(int_time, sum_data/rdim)
+            end
+        end
+        return int_time
+    end
+end
+
+# The below functions are created by fitting a model 
+
 """
 The dominant time constant is calculated by fitting the normalized Rdim with the response recovery equation
 """
@@ -256,36 +291,6 @@ function recovery_tau(trace::Experiment{T}, dim_idx::Array{Int64,1}; τRec::T = 
     end
 end
 
-"""
-The integration time is fit by integrating the dim flash response and dividing it by the dim flash response amplitude
-    - A key to note here is that the exact f(x) of the ERG trace is not completely known
-    - The integral is therefore a defininte integral and a sum of the area under the curve
-"""
-function integration_time(trace::Experiment{T}, dim_idx::Array{Int64,1}) where T <: Real
-    if size(trace,3) != length(dim_idx)
-        throw(error("Size of dim indexes does not match channel size for trace"))
-    else
-        int_time = T[]
-        for ch in 1:size(trace,3)
-            if dim_idx[ch] == 0
-                push!(int_time, 0.0)
-            else
-                dim_trace = trace[dim_idx[ch], :, ch]
-                #The integral is calculated by taking the sum of all points (in μV) and dividing by the time range (in ms)
-                #We have to make sure this response is in μV
-                if trace.chUnits[ch] == "mV"
-                    rdim = minimum(dim_trace)*1000
-                    sum_data = sum(dim_trace.*1000)*(trace.dt*1000)
-                else
-                    rdim = minimum(dim_trace)
-                    sum_data = sum(dim_trace)*trace.dt
-                end
-                push!(int_time, sum_data/rdim)
-            end
-        end
-        return int_time
-    end
-end
 
 function amplification(
         trace::Experiment{T}, rmaxes::Array{T,1}; 
@@ -319,12 +324,32 @@ function amplification(
 end
 
 #Lets get the file we want to use first
-function IR_curve(data::Experiment{T}) where T <: Real
+function IR_curve(data::Experiment{T}; polarity::Int64 = -1, normalize = false, ignore_oversaturation = true) where T <: Real
     if length(data.filename) > 1
         #The file is not a concatenation in clampfit
         intensity = Float64[]
-        response = minimum(data, dims = 2)
-        println(size(response))
+        
+        #We want to make sure that the Rmax recorded is not over the rmax
+        if polarity == -1
+            response = -minimum(data, dims = 2)[:,1,:]
+        elseif polarity == 1
+            response = maximum(data, dims = 2)[:,1,:]
+        end
+        rmaxs = -saturated_response(data)
+        #We need to make sure that the rmax doesn't include the nose component
+        
+        if ignore_oversaturation == true
+            for i in 1:size(response,2)
+                over_saturated = response[:,i] .> rmaxs[i] #Find out anything over the rmax
+                under_saturated = response[:,i] .< rmaxs[i] #Find out anything under the rmax
+                response[:, i] = (rmaxs[i] .* over_saturated) + (response[:, i] .* under_saturated)
+            end
+        end
+
+        if normalize
+            response ./= maximum(response)
+        end
+
         for (idx,info) in enumerate(data.filename)
             t_begin, t_end = data.stim_protocol[idx].timestamps
             t_stim = (t_end - t_begin)*1000
@@ -335,7 +360,7 @@ function IR_curve(data::Experiment{T}) where T <: Real
             photons = stimulus_model([OD, Per_Int, t_stim])
             push!(intensity, photons)
         end
-        println(intensity)
+        return (intensity, response)
     else
         #The file is a preconcatenated file
     end
