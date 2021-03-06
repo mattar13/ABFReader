@@ -5,8 +5,8 @@ using NeuroPhys
 using DataFrames, Query, XLSX
 using StatsBase, Statistics
 
-#log_file = open("notebooks\\Log.txt", "w")
-open("notebooks\\Log.txt", "w") do log_file
+log_file = open("notebooks\\Log.txt", "w")
+#open("notebooks\\Log.txt", "w") do log_file
 println(log_file, "[$(Dates.now())]: Script began")
 println("[$(Dates.now())]: Script began")
 #%%
@@ -292,8 +292,8 @@ b_wave = data_analysis |> @orderby(_.Drugs) |> @thenby_descending(_.Genotype) |>
 #%% If there is something that is a cause for concern, put it here
 
 concern = data_analysis |> 
-    @filter(_.Age == 10) |> 
-    @filter(_.Genotype == "WT") |>
+    @filter(_.Age == 14) |> 
+    @filter(_.Genotype == "KO") |>
     @filter(_.Photoreceptors == "rods") |> 
     @filter(_.Drugs == "a-waves") |>
     #@filter(_.Wavelength == 525) |>  
@@ -340,8 +340,8 @@ catch
 end
 println(log_file, "[$(Dates.now())]: Data analysis complete. Have a good day!")
 println("[$(Dates.now())]: Data analysis complete. Have a good day!")
-end
-#close(log_file); 
+#end
+close(log_file); 
 
 #%%
 #Lets caculate the stimulus intensity
@@ -349,57 +349,6 @@ end
 #I = all_experiments[1,:].Intensity
 #t_stim = all_experiments[1,:].Stim_Time
 #stimulus_model([T, I, t_stim])
-
-#%% Lets run some data analysis experiments and plot the 
-#for row in eachrow(data_analysis)
-#    nt = formatted_split(row.Path, format_bank)
-#    if nt.Age == 8 || nt.Age == 9
-#        #println("Photoreceptors equals both")
-#        Photoreceptors = "Both"
-#    else
-#        if haskey(nt, :Photoreceptors)
-#            Photoreceptors = nt.Photoreceptors
-#        else
-#            #println("No key equaling Photoreceptors")
-#            Photoreceptors = "Both"
-#        end
-#    end
-#    
-#    if Photoreceptors == "cones" || Photoreceptors == "Both"
-#        #Cone responses are under 300ms
-#        t_post = 0.3
-#        saturated_thresh = Inf
-#    else
-#        #Rod Responses can last a bit longer, so a second is fine for the max time
-#        t_post = 1.0
-#        saturated_thresh = :determine
-#    end
-#    
-#    if !haskey(nt, :Animal)
-#        animal = 1
-#    else
-#        animal = nt[:Animal]
-#    end
-#    data = extract_abf(row.Path; swps = -1)
-#    println(data.ID)
-#    truncate_data!(data; t_post = 1.0)
-#    baseline_cancel!(data)
-#    
-#    p = plot(data, c = :black)
-#    filter_data = lowpass_filter(data) #Lowpass filter using a 40hz 8-pole 
-#    rmaxes = saturated_response(filter_data; saturated_thresh = saturated_thresh)
-#    rdims, dim_idx = dim_response(filter_data, rmaxes)
-#    println(dim_idx)
-#    tau_rec = recovery_tau(filter_data, dim_idx)
-#    println(tau_rec)
-#    for ch in size(data,3)
-#        model(x) = map(t -> REC(t, data.t[1], tau_rec[ch]), x)
-#        plot!(p[ch], data.t, model)
-#        hline!(p[ch], [rmaxes[ch]])
-#        hline!(p[ch], [rdims[ch]])
-#    end
-#    savefig(p, joinpath(target_folder, "figures\\$(data.ID)_report.png"))
-#end
 
 
 #%% Look at all of the fail files and try to work through their mistakes
@@ -409,13 +358,13 @@ end
 #truncate_data!(data);
 #baseline_cancel!(data)
 #%%
-#paths[fail_files][1]
-#%%
-#file_ex = paths[fail_files][1]
-#data_ex = extract_abf(file_ex)
-#truncate_data!(data_ex; t_post = 1.0, t_pre = 0.3)
+#file_ex = "E:\\Data\\ERG\\Gnat\\Matt\\2020_12_12_ERG\\Mouse2_P14_KO\\NoDrugs\\365UV"
+#file_ex = "E:\\Data\\ERG\\Gnat\\Matt\\2020_12_12_ERG\\Mouse1_P14_KO\\Drugs\\525Green"
+#data_ex = concat(file_ex)
+#truncate_data!(data_ex; t_post = 1.0, t_pre = 0.1)
 #baseline_cancel!(data_ex)
 #filter_data = lowpass_filter(data_ex) #Lowpass filter using a 40hz 8-pole  
+#plot(filter_data, c = :black)
 #rmaxes = saturated_response(filter_data)#; saturated_thresh = saturated_thresh)
 #println(rmaxes)
 #p = plot(data_ex)
