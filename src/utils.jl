@@ -452,7 +452,7 @@ function truncate_data!(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_b
     if isempty(trace.stim_protocol)
         println("No explicit stimulus has been set")
         size_of_array = t_post * dt
-        println(size_of_array)
+        #println(size_of_array)
         #trace.data_array = trace.data_array[:, 1:size_of_array, :] #remake the array with only the truncated data
         #trace.t = range(0.0, t_post, length = size_of_array)
     else
@@ -515,7 +515,7 @@ function truncate_data!(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_b
             #println(size_of_array)
         end
         #while testing, don't change anything
-        println(size_of_array)
+        #println(size_of_array)
         trace.data_array = trace.data_array[:, 1:size_of_array, :] #remake the array with only the truncated data
         trace.t = range(-t_pre+overrun_time, t_post, length = size_of_array)
     end
