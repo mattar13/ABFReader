@@ -324,30 +324,35 @@ function amplification(
 end
 
 #Lets get the file we want to use first
-function IR_curve(data::Experiment{T}; polarity::Int64 = -1, normalize = false, ignore_oversaturation = true) where T <: Real
+function IR_curve(data::Experiment{T}; 
+        ih = 100.0, n::Real = 2.0,  lb = [0.0, 1.0], ub = [Inf, 4.0],
+        polarity::Int64 = -1, normalize = false, ignore_oversaturation = true,
+        report_GOF = false
+    ) where T <: Real
     if length(data.filename) > 1
+        sensitivity = zeros(size(data,3))
         #The file is not a concatenation in clampfit
         intensity = Float64[]
         
         #We want to make sure that the Rmax recorded is not over the rmax
         if polarity == -1
-            response = -minimum(data, dims = 2)[:,1,:]
+            resp = -minimum(data, dims = 2)[:,1,:]
         elseif polarity == 1
-            response = maximum(data, dims = 2)[:,1,:]
+            resp = maximum(data, dims = 2)[:,1,:]
         end
         rmaxs = -saturated_response(data)
         #We need to make sure that the rmax doesn't include the nose component
         
         if ignore_oversaturation == true
-            for i in 1:size(response,2)
-                over_saturated = response[:,i] .> rmaxs[i] #Find out anything over the rmax
-                under_saturated = response[:,i] .< rmaxs[i] #Find out anything under the rmax
-                response[:, i] = (rmaxs[i] .* over_saturated) + (response[:, i] .* under_saturated)
+            for i in 1:size(resp,2)
+                over_saturated = resp[:,i] .> rmaxs[i] #Find out anything over the rmax
+                under_saturated = resp[:,i] .< rmaxs[i] #Find out anything under the rmax
+                resp[:, i] = (rmaxs[i] .* over_saturated) + (resp[:, i] .* under_saturated)
             end
         end
 
         if normalize
-            response ./= maximum(response)
+            resp ./= maximum(resp)
         end
 
         for (idx,info) in enumerate(data.filename)
@@ -360,7 +365,24 @@ function IR_curve(data::Experiment{T}; polarity::Int64 = -1, normalize = false, 
             photons = stimulus_model([OD, Per_Int, t_stim])
             push!(intensity, photons)
         end
-        return (intensity, response)
+
+        model_pars = [ih, n]
+        model(x, p) = map(I -> IR(I, p[1], p[2]), x)
+        for i in 1:size(data,3)
+            #Fit the Ih curve for each channel
+            fit = curve_fit(model, intensity, resp[:,i], model_pars, lower = lb, upper = ub)
+            println(fit.param)
+            if report_GOF
+                SSE = sum(fit.resid.^2)
+                ȳ = sum(model(intensity, fit.param))/length(intensity)
+                SST = sum((resp[:,i] .- ȳ).^2)
+                GOF = 1- SSE/SST
+                println("Goodness of fit: $GOF")
+            end
+            sensitivity[i] = fit.param[1]
+        end
+
+        return (intensity, resp, sensitivity)
     else
         #The file is a preconcatenated file
     end
