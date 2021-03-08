@@ -104,10 +104,22 @@ plot(p1, p2, layout = grid(1,2))
 
 #%% Sandbox area
 #%% TODO: Build the equation for the Ih curve fitting
-#test_file = "E:\\Data\\ERG\\Gnat\\Matt\\2020_09_04_ERG\\Mouse1_P10_KO\\Drugs\\525Green"
-#data = concat(test_file)
-#An error with truncate...
-#println(size(data))
-#truncate_data!(data; t_post = 1.0)
-#println(size(data))
+test_file = "E:\\Data\\ERG\\Gnat\\Matt\\2020_12_12_ERG\\Mouse1_P14_KO\\Drugs\\365UV"
+data = concat(test_file)
+truncate_data!(data; t_post = 1.0)
+baseline_cancel!(data)
+lowpass_filter!(data)
+rmaxs = saturated_response(data)
+intensity, resp, sensitivity = IR_curve(data)
+
+p1 = plot(data)
+hline!(p1[1], -[rmaxs[1]])
+hline!(p1[2], -[rmaxs[2]])
+p2 = plot(intensity, resp, layout = grid(2,1), seriestype = :scatter)
+
+plot_rng = range(minimum(intensity), maximum(intensity), length = 100)
+model(x, p) = map(I -> IR(I, p, 2.0), x)
+plot!(p2[1], plot_rng, x -> model(x, sensitivity[1]), xaxis = :log)
+plot!(p2[2], plot_rng, x -> model(x, sensitivity[2]), xaxis = :log)
+p = plot(p1, p2, layout = grid(1,2))
 #%% TODO: Build the equation fot Amplification
