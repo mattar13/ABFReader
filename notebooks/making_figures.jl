@@ -1,17 +1,39 @@
 using Revise
 using NeuroPhys
 #%% Open the data you want to use to make a figure. 
+#%% 1->P14_KO_365_a_wave
+trace_file1 = "E:\\Data\\ERG\\Gnat\\Matt\\2020_12_12_ERG\\Mouse1_P14_KO\\Drugs\\365UV"
+data1 = concat(trace_file1)
+baseline_cancel!(data1)
+truncate_data!(data1; t_post = 1.0, t_pre = 0.1)
+filter_data1 = lowpass_filter(data1) #Lowpass filter using a 40hz 8-pole  
+plot(filter_data1)
 
-data_file = "D:\\Data\\ERG\\Melanopsin Data\\2021_01_22_ERG\\Mouse1_P15_MelCreKO\\NoDrugs\\525Green"
-save_to = "D:\\Data\\ERG\\Melanopsin Data\\2021_01_22_ERG\\Mouse1_P15_MelCreKO"
+#%% 2->P14_KO_520_a_wave
+trace_file2 = "E:\\Data\\ERG\\Gnat\\Matt\\2020_12_12_ERG\\Mouse1_P14_KO\\Drugs\\525Green"
+data2 = concat(trace_file2)
+baseline_cancel!(data2)
+truncate_data!(data2; t_post = 1.0, t_pre = 0.1)
+filter_data2 = lowpass_filter(data2) #Lowpass filter using a 40hz 8-pole  
+plot(filter_data2)
 
+#%% 3 -> P14_KO_365_b_wave
+trace_file3 = "E:\\Data\\ERG\\Gnat\\Matt\\2020_12_12_ERG\\Mouse2_P14_KO\\NoDrugs\\365UV"
+data3 = concat(trace_file3)
+baseline_cancel!(data3)
+truncate_data!(data3; t_post = 1.0, t_pre = 0.1)
+filter_data3 = lowpass_filter(data3) #Lowpass filter using a 40hz 8-pole  
+plot(data3)
 
-data = concat(data_file) 
-truncate_data!(data, t_post = 5.0)
-average_sweeps!(data)
-baseline_cancel!(data)
+#%% 4 -> P14_KO_520_b_wave
+trace_file4 = "E:\\Data\\ERG\\Gnat\\Matt\\2020_12_12_ERG\\Mouse2_P14_KO\\NODrugs\\525Green"
+data4 = concat(trace_file4)
+baseline_cancel!(data4)
+truncate_data!(data4; t_post = 1.0, t_pre = 0.1)
+filter_data4 = lowpass_filter(data4) #Lowpass filter using a 40hz 8-pole  
+plot(data4)
 
-#%% Plotting the traces normalls
+#%% Plotting the traces normally
 p = plot(data, c = :black, ylabel = "Response (μV)", background_color=:transparent, grid = false)
 #savefig(p, joinpath(save_to, "trace_w_BaCl.png"))
 
