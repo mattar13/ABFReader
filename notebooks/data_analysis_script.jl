@@ -105,8 +105,6 @@ for (i,path) in enumerate(paths)
             t_Int = integration_time(filter_data, dim_idx)
             tau_rec = recovery_tau(filter_data, dim_idx)
             sensitivity = 0.0 #Pauls stuff 
-            #intensity, respon, sensitivity = IR_curve(filter_data)
-            #println(sensit)
             println(log_file, "[$(Dates.now())]: data analyzed ")
             println("[$(Dates.now())]: data analyzed ")
             #Lets try to plot the recovery time constant of several values
@@ -175,7 +173,7 @@ for (i, exp) in enumerate(eachrow(all_experiments))
         t_peak = time_to_peak(data, dim_idx)
         t_Int = integration_time(filter_data, dim_idx)
         tau_rec = recovery_tau(filter_data, dim_idx)
-        intensity, resp, sensitvity = IR_curve(data)
+        intensity, resp, sensitvity, fit_rmaxs = IR_curve(data)
         println(sensitvity)
         #Calculate the IR curves here
         #tau_dom has multiple values
@@ -227,7 +225,7 @@ rdims  = Float64[]; rdims_sem  = Float64[];
 tpeaks = Float64[]; tpeaks_sem = Float64[];
 tInts  = Float64[]; tInts_sem  = Float64[]; 
 τRecs  = Float64[]; τRecs_sem  = Float64[];
-
+sens  = Float64[]; sens_sem  = Float64[];
 for row in eachrow(all_categories)
     #println(row)
     Qi = data_analysis |>
@@ -258,6 +256,9 @@ for row in eachrow(all_categories)
     τRec_mean = sum(Qi.tau_rec)/length(eachrow(Qi))
     τRec_sem = std(Qi.tau_rec)/(sqrt(length(eachrow(Qi))))
     
+    sen_mean = sum(Qi.sensitivity)/length(eachrow(Qi))
+    sen_sem  = std(Qi.sensitivity)/(sqrt(length(eachrow(Qi))))
+    
     push!(ns, length(eachrow(Qi)))
     push!(rmaxes, rmax_mean)
     push!(rmaxes_sem, rmax_sem)
@@ -273,7 +274,9 @@ for row in eachrow(all_categories)
 
     push!(τRecs, τRec_mean)
     push!(τRecs_sem, τRec_sem)
-    
+
+    push!(sens, sen_mean)
+    push!(sens_sem, sen_sem)
     #println(length(eachrow(Qi)))
 end
 all_categories[:, :n] = ns
@@ -287,6 +290,9 @@ all_categories[:, :T_Int] = tInts
 all_categories[:, :T_Int_SEM] = tInts_sem
 all_categories[:, :τ_Rec] = τRecs
 all_categories[:, :τ_Rec_SEM] = τRecs_sem
+all_categories[:, :sen] = sens
+all_categories[:, :sen_SEM] = sens_sem
+
 all_categories  = all_categories |> @orderby(_.Drugs) |> @thenby_descending(_.Genotype) |> @thenby_descending(_.Rearing) |>  @thenby(_.Age) |> @thenby_descending(_.Photoreceptors) |> @thenby(_.Wavelength) |> DataFrame
 println(log_file, "[$(Dates.now())]: Summary Generated.")
 println("[$(Dates.now())]: Summary Generated.")
