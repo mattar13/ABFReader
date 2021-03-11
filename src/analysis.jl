@@ -325,18 +325,19 @@ end
 
 #Lets get the file we want to use first
 function IR_curve(data::Experiment{T}; 
-        ih = 100.0, n::Real = 2.0,  lb = [0.0, 1.0], ub = [Inf, 4.0],
+        ih = 100.0, n::Real = 2.0,  lb = [0.0, 1.0, 0.0], ub = [Inf, 4.0, Inf],
         polarity::Int64 = -1, normalize = false, ignore_oversaturation = true,
         report_GOF = false
     ) where T <: Real
     if length(data.filename) > 1
         sensitivity = zeros(size(data,3))
+        fit_rmaxs = zeros(size(data,3))
         #The file is not a concatenation in clampfit
         intensity = Float64[]
-        
-        #We want to make sure that the Rmax recorded is not over the rmax
+                
+        #We can choose if the Rmax polarity is negative or positive
         if polarity == -1
-            resp = -minimum(data, dims = 2)[:,1,:]
+            resp = -minimum(data, dims = 2)[:,1,:] 
         elseif polarity == 1
             resp = maximum(data, dims = 2)[:,1,:]
         end
@@ -346,15 +347,18 @@ function IR_curve(data::Experiment{T};
         if ignore_oversaturation == true
             for i in 1:size(resp,2)
                 over_saturated = resp[:,i] .> rmaxs[i] #Find out anything over the rmax
-                under_saturated = resp[:,i] .< rmaxs[i] #Find out anything under the rmax
+                under_saturated = resp[:,i] .<= rmaxs[i] #Find out anything under the rmax
                 resp[:, i] = (rmaxs[i] .* over_saturated) + (resp[:, i] .* under_saturated)
             end
         end
 
-        if normalize
-            resp ./= maximum(resp)
-        end
 
+        if normalize
+            #If we choose to normalize, the rmaxes will become 1 and responses
+            resp ./= maximum(resp)
+            rmaxs = ones(size(rmaxs))
+        end
+        
         for (idx,info) in enumerate(data.filename)
             t_begin, t_end = data.stim_protocol[idx].timestamps
             t_stim = (t_end - t_begin)*1000
@@ -366,9 +370,15 @@ function IR_curve(data::Experiment{T};
             push!(intensity, photons)
         end
 
-        model_pars = [ih, n]
-        model(x, p) = map(I -> IR(I, p[1], p[2]), x)
+        model_pars = [ih, n, sum(rmaxs)/2]
         for i in 1:size(data,3)
+            if data.chUnits[i]== "mV" && normalize == false
+                #The data is in mV we want μV
+                resp[:,i] .*= 1000
+                rmaxs[i] = rmaxs[i] * 1000
+            end
+            #println(rmaxs)
+            model(x, p) = map(I -> IR(I, p[1], p[2]) * p[3], x)
             #Fit the Ih curve for each channel
             fit = curve_fit(model, intensity, resp[:,i], model_pars, lower = lb, upper = ub)
             println(fit.param)
@@ -380,9 +390,10 @@ function IR_curve(data::Experiment{T};
                 println("Goodness of fit: $GOF")
             end
             sensitivity[i] = fit.param[1]
+            fit_rmaxs[i] = fit.param[3]
         end
 
-        return (intensity, resp, sensitivity)
+        return (intensity, resp, sensitivity, fit_rmaxs)
     else
         #The file is a preconcatenated file
     end
