@@ -5,6 +5,7 @@ using NeuroPhys
 using DataFrames, Query, XLSX
 using StatsBase, Statistics
 
+#%%
 log_file = open("notebooks\\Log.txt", "w")
 #open("notebooks\\Log.txt", "w") do log_file
 println(log_file, "[$(Dates.now())]: Script began")
@@ -26,7 +27,7 @@ data_analysis = DataFrame(
     Animal = Any[], Age = Int64[], Rearing = String[], Wavelength = Int64[], Genotype = String[], Drugs = String[], Photoreceptors = String[],
     Channel = String[], 
     Rmax = Float64[], Rdim = Float64[], t_peak = Float64[],
-    tInt = Float64[], tau_rec = Float64[]
+    tInt = Float64[], tau_rec = Float64[], sensitivity= Float64[]
 )
 
 #This is the dataframe for the 
@@ -103,7 +104,9 @@ for (i,path) in enumerate(paths)
             t_peak = time_to_peak(data, dim_idx)
             t_Int = integration_time(filter_data, dim_idx)
             tau_rec = recovery_tau(filter_data, dim_idx)
-            
+            sensitivity = 0.0 #Pauls stuff 
+            #intensity, respon, sensitivity = IR_curve(filter_data)
+            #println(sensit)
             println(log_file, "[$(Dates.now())]: data analyzed ")
             println("[$(Dates.now())]: data analyzed ")
             #Lets try to plot the recovery time constant of several values
@@ -119,7 +122,7 @@ for (i,path) in enumerate(paths)
                         nt[:Year], nt[:Month], nt[:Day], 
                         animal, nt[:Age], nt[:Rearing], nt[:Wavelength], nt[:Genotype], nt[:Drugs], Photoreceptors,
                         data.chNames[i],
-                        -rmaxes[i]*1000, -rdims[i]*1000, t_peak[i]*1000, t_Int[i], tau_rec[i]
+                        -rmaxes[i]*1000, -rdims[i]*1000, t_peak[i]*1000, t_Int[i], tau_rec[i], sensitivity
                     )
                 )
             end
@@ -172,7 +175,8 @@ for (i, exp) in enumerate(eachrow(all_experiments))
         t_peak = time_to_peak(data, dim_idx)
         t_Int = integration_time(filter_data, dim_idx)
         tau_rec = recovery_tau(filter_data, dim_idx)
-        
+        intensity, resp, sensitvity = IR_curve(data)
+        println(sensitvity)
         #Calculate the IR curves here
         #tau_dom has multiple values
         #tau_dom = pepperburg_analysis(data, rmaxes)
@@ -186,7 +190,7 @@ for (i, exp) in enumerate(eachrow(all_experiments))
                     exp.Year, exp.Month, exp.Day, exp.Animal,
                     exp.Age, "(NR)", exp.Wavelength, exp.Genotype, exp.Drugs, "Both",
                     data.chNames[i],
-                    -rmaxes[i]*1000, -rdims[i]*1000, t_peak[i]*1000, t_Int[i], tau_rec[i]
+                    -rmaxes[i]*1000, -rdims[i]*1000, t_peak[i]*1000, t_Int[i], tau_rec[i], sensitvity[i]
                 )
             )
         end
@@ -355,10 +359,8 @@ close(log_file);
 #check_paths = paths[fail_files]
 #focus = check_paths[6]
 #data = extract_abf(focus; swps = -1)
-#truncate_data!(data);
-#baseline_cancel!(data)
+
 #%%
-#file_ex = "E:\\Data\\ERG\\Gnat\\Matt\\2020_12_12_ERG\\Mouse2_P14_KO\\NoDrugs\\365UV"
 #file_ex = "E:\\Data\\ERG\\Gnat\\Matt\\2020_12_12_ERG\\Mouse1_P14_KO\\Drugs\\525Green"
 #data_ex = concat(file_ex)
 #truncate_data!(data_ex; t_post = 1.0, t_pre = 0.1)
@@ -372,15 +374,24 @@ close(log_file);
 #hline!(p[1], [rmaxes[1]])
 #hline!(p[2], [rmaxes[2]])
 #%%
-#file_to_concat = "E:\\Data\\ERG\\Gnat\\Matt\\2020_08_16_ERG\\Mouse3_P10_HT\\Drugs\\365UV"
-#data = concat(file_to_concat)
-#truncate_data!(data)
-#baseline_cancel!(data)
-#plot(data)
-#p = plot(data_concat)
-#max_val = sum(maximum(data_concat, dims = 2), dims = 1)/size(data_concat, 1)
-#min_val = sum(minimum(data_concat, dims = 2), dims = 1)/size(data_concat, 1)
+#%% TODO: Build the equation for the Ih curve fitting
+test_file = "E:\\Data\\ERG\\Gnat\\Matt\\2020_12_12_ERG\\Mouse1_P14_KO\\Drugs\\365UV"
+data = concat(test_file)
+truncate_data!(data; t_post = 1.0)
+baseline_cancel!(data; mode = :slope)
+filter_data = lowpass_filter(data) #Lowpass filter using a 40hz 8-pole  
+rmaxs = saturated_response(filter_data)
+intensity, resp, sensitivity, fit_rmaxs = IR_curve(filter_data)
+resp
 #%%
-#hline!(p[1], [max_val[:,:,1]])
-#hline!(p[1], [min_val[:,:,1]])
-#hline!(p[2], [noise[2]])
+p1 = plot(filter_data)
+hline!(p1[1], [-fit_rmaxs[1]/1000])
+hline!(p1[2], [-fit_rmaxs[2]/1000])
+#%%
+p2 = plot(intensity, resp, layout = grid(2,1), seriestype = :scatter)
+#plot_rng = range(minimum(intensity), maximum(intensity), length = 10000)
+model(x, p) = map(I -> IR(I, p[1], 4.0)*p[2], x)
+plot!(p2[1], x -> model(x, [sensitivity[1], fit_rmaxs[1]]), minimum(intensity), maximum(intensity), xaxis = :log)
+plot!(p2[2], x -> model(x, [sensitivity[2], fit_rmaxs[2]]), minimum(intensity), maximum(intensity), xaxis = :log)
+p = plot(p1, p2, layout = grid(1,2))
+p 
