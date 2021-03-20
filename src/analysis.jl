@@ -332,6 +332,7 @@ function IR_curve(data::Experiment{T};
     if length(data.filename) > 1
         sensitivity = zeros(size(data,3))
         fit_rmaxs = zeros(size(data,3))
+        fit_ns = zeros(size(data,3))
         #The file is not a concatenation in clampfit
         intensity = Float64[]
                 
@@ -390,10 +391,12 @@ function IR_curve(data::Experiment{T};
                 println("Goodness of fit: $GOF")
             end
             sensitivity[i] = fit.param[1]
+            fit_ns[i] = fit.param[2]
             fit_rmaxs[i] = fit.param[3]
+
         end
 
-        return (intensity, resp, sensitivity, fit_rmaxs)
+        return (intensity, resp, sensitivity, fit_ns, fit_rmaxs)
     else
         #The file is a preconcatenated file
     end
