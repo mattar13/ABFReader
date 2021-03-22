@@ -5,21 +5,19 @@ using NeuroPhys
 using DataFrames, Query, XLSX
 using StatsBase, Statistics
 
-#%%
+#%% Start the analysis
+#Create the log file
 log_file = open("notebooks\\Log.txt", "w")
-#open("notebooks\\Log.txt", "w") do log_file
 println(log_file, "[$(Dates.now())]: Script began")
 println("[$(Dates.now())]: Script began")
-#%%
+#Point to the target folder then extract the paths
 target_folder = "E:\\Data\\ERG\\Gnat"
-#target_folder = "E:\\Data\\ERG\\Gnat\\Paul\\P10 (NR) cones_5\\Green\\"
 paths = target_folder |> parse_abf
-#println(paths[1328])
-#%%
 println(log_file, "Analysis on folder $target_folder")
 println(log_file, "$(length(paths)) files to be analyzed")
 println("Analysis on folder $target_folder")
 println("$(length(paths)) files to be analyzed")
+
 #This is the complete data analysis data frame
 data_analysis = DataFrame(
     Path = String[], 
@@ -27,7 +25,7 @@ data_analysis = DataFrame(
     Animal = Any[], Age = Int64[], Rearing = String[], Wavelength = Int64[], Genotype = String[], Drugs = String[], Photoreceptors = String[],
     Channel = String[], 
     Rmax = Float64[], Rdim = Float64[], t_peak = Float64[],
-    tInt = Float64[], tau_rec = Float64[], sensitivity= Float64[]
+    tInt = Float64[], tau_rec = Float64[]
 )
 
 #This is the dataframe for the 
@@ -36,6 +34,7 @@ all_traces = DataFrame(
     Animal = Int64[], Age = Int64[], Genotype = String[], Drugs = String[], Wavelength = Int64[], 
     ND = Int64[], Intensity = Int64[], Stim_Time = Int64[]
 )
+
 fail_files = Int64[]
 error_causes = []
     
@@ -92,7 +91,7 @@ for (i,path) in enumerate(paths)
             end
 
             truncate_data!(data; t_post = t_post)
-            baseline_cancel!(data)
+            baseline_cancel!(data; mode = :slope) #Slope mode is just a bit better
 
             #println(size(data))
             println(log_file, "[$(Dates.now())]: data filtered ")
@@ -104,7 +103,6 @@ for (i,path) in enumerate(paths)
             t_peak = time_to_peak(data, dim_idx)
             t_Int = integration_time(filter_data, dim_idx)
             tau_rec = recovery_tau(filter_data, dim_idx)
-            sensitivity = 0.0 #Pauls stuff 
             println(log_file, "[$(Dates.now())]: data analyzed ")
             println("[$(Dates.now())]: data analyzed ")
             #Lets try to plot the recovery time constant of several values
@@ -136,14 +134,14 @@ for (i,path) in enumerate(paths)
         #throw(error) #This will terminate the process
     end
 end
-#%%
+#Sort the data analysis based on year_month_day
 data_analysis = data_analysis |> @orderby(_.Year) |> @thenby(_.Month) |> @thenby(_.Day) |> DataFrame
 
-#%% Walk though all files in my style and add them to the data_analysis DataFrame
+#Walk though all files in my style and add them to the data_analysis DataFrame
 all_experiments = all_traces |> @unique({_.Year, _.Month, _.Day, _.Animal, _.Wavelength, _.Drugs}) |> DataFrame
 for (i, exp) in enumerate(eachrow(all_experiments))
-    println(log_file, "[$(Dates.now())]: Concatenating single trace experiment $i $(exp.Path).")
-    println("[$(Dates.now())]: Concatenating single trace experiment $i $(exp.Path).")
+    println(log_file, "[$(Dates.now())]: Concatenating single trace experiment $i / $(length(eachrow(all_experiments))) $(exp.Path).")
+    println("[$(Dates.now())]: Concatenating single trace experiment $i / $(length(eachrow(all_experiments)))  $(exp.Path).")
     try
         #Isolate all individual experiments
         Qi = all_traces |>
@@ -154,16 +152,13 @@ for (i, exp) in enumerate(eachrow(all_experiments))
             @filter(_.Wavelength == exp.Wavelength) |>
             @filter(_.Drugs == exp.Drugs) |>
             @map({_.Path, _.ND, _.Intensity, _.Stim_Time}) |> 
-            DataFrame
+            DataFrame            
         
-            #println(data.stim_protocol)
-            
-        intensity = Float64[];
         data = concat(Qi[:,:Path])
         #response = zeros(size(data,1), size(data,2));
 
         truncate_data!(data)
-        baseline_cancel!(data)
+        baseline_cancel!(data; mode = :slope)
         #Try unfiltered response first
         response = minimum(data, dims = 2)
         #println(response)
@@ -173,9 +168,6 @@ for (i, exp) in enumerate(eachrow(all_experiments))
         t_peak = time_to_peak(data, dim_idx)
         t_Int = integration_time(filter_data, dim_idx)
         tau_rec = recovery_tau(filter_data, dim_idx)
-        intensity, resp, sensitvity, fit_rmaxs = IR_curve(data)
-        println(sensitvity)
-        #Calculate the IR curves here
         #tau_dom has multiple values
         #tau_dom = pepperburg_analysis(data, rmaxes)
         #Amplification also has multiple values
@@ -188,7 +180,7 @@ for (i, exp) in enumerate(eachrow(all_experiments))
                     exp.Year, exp.Month, exp.Day, exp.Animal,
                     exp.Age, "(NR)", exp.Wavelength, exp.Genotype, exp.Drugs, "Both",
                     data.chNames[i],
-                    -rmaxes[i]*1000, -rdims[i]*1000, t_peak[i]*1000, t_Int[i], tau_rec[i], sensitvity[i]
+                    -rmaxes[i]*1000, -rdims[i]*1000, t_peak[i]*1000, t_Int[i], tau_rec[i]
                 )
             )
         end
@@ -206,26 +198,27 @@ println(log_file, "[$(Dates.now())]: All files have been analyzed.")
 println(log_file, "[$(Dates.now())]: $(length(fail_files)) files have failed.")
 println("[$(Dates.now())]: All files have been analyzed.")
 println("[$(Dates.now())]: $(length(fail_files)) files have failed.")
-#These are the files that have failed
+
+#Show all the files that have failed
 for (i, fail_path) in enumerate(paths[fail_files]) 
     println(log_file, "$fail_path")
     println(log_file, "Cause -> $(error_causes[i])")
 end
-#%% Make and export the dataframe 
+
+#Summarize all of the data and statistics
 println(log_file, "[$(Dates.now())]: Generating a summary of all data.")
 println("[$(Dates.now())]: Generating a summary of all data.")
 all_categories = data_analysis |> 
     @unique({_.Age, _.Genotype, _.Wavelength, _.Drugs, _.Photoreceptors, _.Rearing}) |> 
     @map({_.Age, _.Genotype, _.Photoreceptors, _.Drugs, _.Wavelength, _.Rearing}) |>
     DataFrame
-
+#
 ns = Int64[];
 rmaxes = Float64[]; rmaxes_sem = Float64[]
 rdims  = Float64[]; rdims_sem  = Float64[];
 tpeaks = Float64[]; tpeaks_sem = Float64[];
 tInts  = Float64[]; tInts_sem  = Float64[]; 
 τRecs  = Float64[]; τRecs_sem  = Float64[];
-sens  = Float64[]; sens_sem  = Float64[];
 for row in eachrow(all_categories)
     #println(row)
     Qi = data_analysis |>
@@ -237,7 +230,7 @@ for row in eachrow(all_categories)
         @filter(_.Wavelength == row.Wavelength) |> 
         @map({
                 _.Path, _.Age, _.Wavelength, _.Photoreceptors, 
-                _.Rearing, _.Rmax, _.Rdim, _.t_peak, _.tInt, _.tau_rec
+                _.Rearing, _.Rmax, _.Rdim, _.t_peak, _.tInt, _.tau_rec, _.sensitivity
             }) |> 
         DataFrame
 
@@ -275,8 +268,6 @@ for row in eachrow(all_categories)
     push!(τRecs, τRec_mean)
     push!(τRecs_sem, τRec_sem)
 
-    push!(sens, sen_mean)
-    push!(sens_sem, sen_sem)
     #println(length(eachrow(Qi)))
 end
 all_categories[:, :n] = ns
@@ -290,28 +281,26 @@ all_categories[:, :T_Int] = tInts
 all_categories[:, :T_Int_SEM] = tInts_sem
 all_categories[:, :τ_Rec] = τRecs
 all_categories[:, :τ_Rec_SEM] = τRecs_sem
-all_categories[:, :sen] = sens
-all_categories[:, :sen_SEM] = sens_sem
 
 all_categories  = all_categories |> @orderby(_.Drugs) |> @thenby_descending(_.Genotype) |> @thenby_descending(_.Rearing) |>  @thenby(_.Age) |> @thenby_descending(_.Photoreceptors) |> @thenby(_.Wavelength) |> DataFrame
 println(log_file, "[$(Dates.now())]: Summary Generated.")
 println("[$(Dates.now())]: Summary Generated.")
-#%%
+# Make the A and B wave specific files
 a_wave = data_analysis |> @orderby(_.Drugs) |> @thenby_descending(_.Genotype) |> @thenby_descending(_.Rearing) |>  @thenby(_.Age) |> @thenby_descending(_.Photoreceptors) |> @thenby(_.Wavelength) |> @filter(_.Drugs == "a-waves") |> DataFrame
 b_wave = data_analysis |> @orderby(_.Drugs) |> @thenby_descending(_.Genotype) |> @thenby_descending(_.Rearing) |>  @thenby(_.Age) |> @thenby_descending(_.Photoreceptors) |> @thenby(_.Wavelength) |> @filter(_.Drugs == "b-waves") |> DataFrame
-#%% If there is something that is a cause for concern, put it here
 
+#%% If there is something that is a cause for concern, put it here
 concern = data_analysis |> 
-    @filter(_.Age == 14) |> 
+    @filter(_.Age == 8) |> 
     @filter(_.Genotype == "KO") |>
-    @filter(_.Photoreceptors == "rods") |> 
-    @filter(_.Drugs == "a-waves") |>
+    #@filter(_.Photoreceptors == "rods") |> 
+    #@filter(_.Drugs == "a-waves") |>
     #@filter(_.Wavelength == 525) |>  
     #@filter(_.Rearing == "(NR)") |> 
     @orderby(_.Drugs) |> @thenby_descending(_.Genotype) |> @thenby_descending(_.Rearing) |> @thenby(_.Age) |> @thenby(_.Wavelength) |> 
     DataFrame
 
-#%% Save data
+#%% Finally save the data
 save_path = joinpath(target_folder,"data.xlsx")
 println(log_file, "[$(Dates.now())]: Writing data to file $save_path.")
 println("[$(Dates.now())]: Writing data to file $save_path.")
@@ -350,9 +339,11 @@ catch
 end
 println(log_file, "[$(Dates.now())]: Data analysis complete. Have a good day!")
 println("[$(Dates.now())]: Data analysis complete. Have a good day!")
-#end
+
+#%% Close the log file
 close(log_file); 
 
+#%% Extracting Intensity Response data
 #%%
 #Lets caculate the stimulus intensity
 #T = all_experiments[1,:].ND |> Transferrance
@@ -381,23 +372,20 @@ close(log_file);
 #hline!(p[2], [rmaxes[2]])
 #%%
 #%% TODO: Build the equation for the Ih curve fitting
-test_file = "E:\\Data\\ERG\\Gnat\\Matt\\2020_12_12_ERG\\Mouse1_P14_KO\\Drugs\\365UV"
+test_file = "E:\\Data\\ERG\\Gnat\\Matt\\2020_11_02_ERG\\Mouse1_Adult_HT\\Drugs\\525Green"
 data = concat(test_file)
 truncate_data!(data; t_post = 1.0)
 baseline_cancel!(data; mode = :slope)
 filter_data = lowpass_filter(data) #Lowpass filter using a 40hz 8-pole  
 rmaxs = saturated_response(filter_data)
-intensity, resp, sensitivity, fit_rmaxs = IR_curve(filter_data)
-resp
+intensity, resp, sensitivity, fit_ns, fit_rmaxs = IR_curve(filter_data)
 #%%
 p1 = plot(filter_data)
-hline!(p1[1], [-fit_rmaxs[1]/1000])
-hline!(p1[2], [-fit_rmaxs[2]/1000])
-#%%
-p2 = plot(intensity, resp, layout = grid(2,1), seriestype = :scatter)
-#plot_rng = range(minimum(intensity), maximum(intensity), length = 10000)
-model(x, p) = map(I -> IR(I, p[1], 4.0)*p[2], x)
-plot!(p2[1], x -> model(x, [sensitivity[1], fit_rmaxs[1]]), minimum(intensity), maximum(intensity), xaxis = :log)
-plot!(p2[2], x -> model(x, [sensitivity[2], fit_rmaxs[2]]), minimum(intensity), maximum(intensity), xaxis = :log)
+p2 = plot(intensity, resp, layout = grid(size(data,3), 1), seriestype = :scatter)
+model(x, p) = map(I -> IR(I, p[1], p[2])*p[3], x)
+for i in 1:size(data,3)
+    hline!(p1[i], [-fit_rmaxs[1]/1000])
+    plot!(p2[i], x -> model(x, [sensitivity[i], fit_ns[i], fit_rmaxs[i]]), 1, maximum(intensity), xaxis = :log)
+end
 p = plot(p1, p2, layout = grid(1,2))
 p 
