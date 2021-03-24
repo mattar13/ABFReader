@@ -14,7 +14,7 @@ using Dates
 #Functions that can help with file extraction
 include("file_formatting.jl")
 export formatted_split, format_bank
-export check_age, check_color, check_pc, check_geno
+export check_age, check_color, check_pc, check_geno, get_root
 export parse_abf, extract_abf 
 export number_extractor, filename_extractor
 
@@ -52,7 +52,7 @@ export IR_curve
 #Models are anything that is used to create new data
 include("models.jl") 
 #Export the photon calculation and Rig-specific Photon equation
-export photons, Transferrance, stimulus_model
+export photons, Transferrance, stimulus_model, f_I
 #Export the Amplification and IR models
 export IR, IR_dev, AMP, REC
 

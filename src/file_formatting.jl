@@ -1,3 +1,11 @@
+function get_root(path, experimenter)
+    if experimenter.value == "Matt"
+        return joinpath(split(path.value, "\\")[1:end-1]...)
+    else
+        return path
+    end
+end
+
 """
 This function walks through the directory tree and locates any .abf file. 
 The extension can be changed with the keyword argument extension
