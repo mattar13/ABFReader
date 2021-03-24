@@ -180,12 +180,17 @@ function time_to_peak(trace::Experiment{T}, dim_idx::Array{Int64,1}) where T <: 
     end
 end
 
-function get_response(trace::Experiment{T}, rmaxes::Array{T,1}) where T <: Real
+function get_response(trace::Experiment{T}, rmaxes::Array{T,1}; polarity = -1) where T <: Real
     responses = zeros(size(trace,1), size(trace,3))
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
-            minima = minimum(trace[swp, :, ch]) 
-            responses[swp, ch] = minima < rmaxes[ch] ? rmaxes[ch] : minima
+            if polarity == -1
+                minima = minimum(trace[swp, :, ch]) 
+                responses[swp, ch] = minima < rmaxes[ch] ? rmaxes[ch] : minima
+            elseif polarity == 1
+                maxima = maximum(trace[swp, :, ch]) 
+                responses[swp, ch] = maxima >= rmaxes[ch] ? rmaxes[ch] : maxima
+            end
         end
     end
     responses
