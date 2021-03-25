@@ -89,8 +89,6 @@ function number_extractor(str)
 end
 #These functions open and load ABF data
 
-
-
 """
 This is the formatted_split function. 
     You use this as an expression that breaks down info in strings
