@@ -1,6 +1,16 @@
-function get_root(path, experimenter)
+function get_root(path::T, experimenter::T) where T <: DataFrame
+    #println(path |> typeof)
     if experimenter.value == "Matt"
         return joinpath(split(path.value, "\\")[1:end-1]...)
+    else
+        return path
+    end
+end
+
+function get_root(path::String, experimenter::String)
+    #println(path |> typeof)
+    if experimenter == "Matt"
+        return joinpath(split(path, "\\")[1:end-1]...)
     else
         return path
     end
