@@ -68,161 +68,164 @@ function extract_abf(::Type{T}, abf_path::String;
     
     #extract the abf file by using pyABF
     pyABF = pyimport("pyabf")
-    trace_file = pyABF.ABF(full_path)
-    #println(full_path)
-    #println("Made it here")
-    #First extract the date collected 
-    date_collected = trace_file.abfDateTime
-    n_data_sweeps = n_sweeps = length(trace_file.sweepList)
-    n_data_channels = n_channels = length(trace_file.channelList)
-    n_data_points = n_points = length(trace_file.sweepX)
-    
-    if isa(swps, Int) && swps != -1 #Pick a sweep by index
-        data_sweeps = [swps-1]
-        n_data_sweeps = 1
-    elseif isa(swps, AbstractArray) #pick a sweep by multiple indexes
-        data_sweeps = swps.-1
-        n_data_sweeps = length(swps)
-    else #choose all channels to extract
-        data_sweeps = trace_file.sweepList
-    end
-    
-
-    if isa(chs, Int) && chs != -1 #Pick a channel by index
-        data_channels = [chs-1]
-        n_data_channels = 1
-    elseif isa(chs, Array{Int64,1}) #Pick a channel by multiple indexes
-        data_channels = chs.-1
-        n_data_channels = length(chs)
-    elseif isa(chs, Array{String, 1}) #Pick a channel by multiple names
-        data_channels = findall(x -> x ∈ chs, trace_file.adcNames) .- 1
-        #println(data_channels)
-        n_data_channels = length(chs)
-    else #Choose all channels
-        data_channels = trace_file.channelList
-    end 
-
-    chNames = trace_file.adcNames[(data_channels.+1)]
-    chUnits = trace_file.adcUnits[(data_channels.+1)]
-
-    #Set up the data array
-    t = T.(trace_file.sweepX);
-    #We won't include the stimulus channels in the data analysis
-    data_array = zeros(T, n_data_sweeps, n_data_points, n_data_channels)
-    labels = [trace_file.sweepLabelX, trace_file.sweepLabelY, trace_file.sweepLabelC, trace_file.sweepLabelD]
-    if verbose 
-        print("Data output size will be:")
-        println(size(data_array))
-        println("$n_sweeps Sweeps available: $(trace_file.sweepList)")
-        println("$n_channels Channels available: $(trace_file.channelList)")
-    end
-    
-    #convert the stimulus channel into an array to make this part easier
-    
-    #set up the stimulus protocol
-    if isa(stim_ch, String)
-        stim_ch = findall(x -> x == stim_ch, chNames)
-        if isempty(stim_ch)
-            if verbose
-                println("No stimulus exists")
-            end
-            stim_name = [:none]
-        else
-            stim_name = [stim_name]
+    try 
+        trace_file = pyABF.ABF(full_path)
+        #First extract the date collected 
+        date_collected = trace_file.abfDateTime
+        n_data_sweeps = n_sweeps = length(trace_file.sweepList)
+        n_data_channels = n_channels = length(trace_file.channelList)
+        n_data_points = n_points = length(trace_file.sweepX)
+        
+        if isa(swps, Int) && swps != -1 #Pick a sweep by index
+            data_sweeps = [swps-1]
+            n_data_sweeps = 1
+        elseif isa(swps, AbstractArray) #pick a sweep by multiple indexes
+            data_sweeps = swps.-1
+            n_data_sweeps = length(swps)
+        else #choose all channels to extract
+            data_sweeps = trace_file.sweepList
         end
-    elseif isa(stim_ch, Array{String})
-        stim_chs = Int64[]
-        stim_names = Symbol[]
-        for (idx, ch) in enumerate(stim_ch)
-            stim_ch_i = findall(x -> x == ch, chNames)
-            if !isempty(stim_ch_i)
-                push!(stim_chs, stim_ch_i[1])
-                push!(stim_names, stim_name[idx])
-            end
+        
+
+        if isa(chs, Int) && chs != -1 #Pick a channel by index
+            data_channels = [chs-1]
+            n_data_channels = 1
+        elseif isa(chs, Array{Int64,1}) #Pick a channel by multiple indexes
+            data_channels = chs.-1
+            n_data_channels = length(chs)
+        elseif isa(chs, Array{String, 1}) #Pick a channel by multiple names
+            data_channels = findall(x -> x ∈ chs, trace_file.adcNames) .- 1
+            #println(data_channels)
+            n_data_channels = length(chs)
+        else #Choose all channels
+            data_channels = trace_file.channelList
+        end 
+
+        chNames = trace_file.adcNames[(data_channels.+1)]
+        chUnits = trace_file.adcUnits[(data_channels.+1)]
+
+        #Set up the data array
+        t = T.(trace_file.sweepX);
+        #We won't include the stimulus channels in the data analysis
+        data_array = zeros(T, n_data_sweeps, n_data_points, n_data_channels)
+        labels = [trace_file.sweepLabelX, trace_file.sweepLabelY, trace_file.sweepLabelC, trace_file.sweepLabelD]
+        if verbose 
+            print("Data output size will be:")
+            println(size(data_array))
+            println("$n_sweeps Sweeps available: $(trace_file.sweepList)")
+            println("$n_channels Channels available: $(trace_file.channelList)")
         end
-        stim_ch = stim_chs
-        stim_name = stim_names      
-    elseif isa(stim_ch, Real)
-        stim_ch = [stim_ch]
-        stim_name = [stim_name]
-    elseif stim_ch == -1
-        #This is if there is no stimulus channel
-    end
-    stim_protocol = Array{StimulusProtocol}([])
-    #println(stim_ch)
-    for (swp_idx, swp) in enumerate(data_sweeps), (ch_idx, ch) in enumerate(data_channels)
-        #println(ch_idx)
-        trace_file.setSweep(sweepNumber = swp, channel = ch);
-        data = Float64.(trace_file.sweepY);
-        t = Float64.(trace_file.sweepX);
-        dt = t[2]
-        if ch_idx ∈ stim_ch 
-            stimulus_idxs = findall(data .> stimulus_threshold)
-            if isempty(stimulus_idxs)
+        
+        #convert the stimulus channel into an array to make this part easier
+        
+        #set up the stimulus protocol
+        if isa(stim_ch, String)
+            stim_ch = findall(x -> x == stim_ch, chNames)
+            if isempty(stim_ch)
                 if verbose
-                    println("Could not find any stimulus")
+                    println("No stimulus exists")
+                end
+                stim_name = [:none]
+            else
+                stim_name = [stim_name]
+            end
+        elseif isa(stim_ch, Array{String})
+            stim_chs = Int64[]
+            stim_names = Symbol[]
+            for (idx, ch) in enumerate(stim_ch)
+                stim_ch_i = findall(x -> x == ch, chNames)
+                if !isempty(stim_ch_i)
+                    push!(stim_chs, stim_ch_i[1])
+                    push!(stim_names, stim_name[idx])
+                end
+            end
+            stim_ch = stim_chs
+            stim_name = stim_names      
+        elseif isa(stim_ch, Real)
+            stim_ch = [stim_ch]
+            stim_name = [stim_name]
+        elseif stim_ch == -1
+            #This is if there is no stimulus channel
+        end
+        stim_protocol = Array{StimulusProtocol}([])
+        #println(stim_ch)
+        for (swp_idx, swp) in enumerate(data_sweeps), (ch_idx, ch) in enumerate(data_channels)
+            #println(ch_idx)
+            trace_file.setSweep(sweepNumber = swp, channel = ch);
+            data = Float64.(trace_file.sweepY);
+            t = Float64.(trace_file.sweepX);
+            dt = t[2]
+            if ch_idx ∈ stim_ch 
+                stimulus_idxs = findall(data .> stimulus_threshold)
+                if isempty(stimulus_idxs)
+                    if verbose
+                        println("Could not find any stimulus")
+                    end
+                else
+                    called = "$(stim_name[findall(ch_idx ∈ stim_ch)[1]])_$(swp_idx)"
+                    #println(called |> Symbol)
+                    stim_begin = stimulus_idxs[1]
+                    stim_end = stimulus_idxs[end]+1
+                    stim_time_start = t[stim_begin]
+                    stim_time_end = t[stim_end]
+                    stim = StimulusProtocol(
+                        called|>Symbol, swp_idx, 
+                        (stim_begin, stim_end), 
+                        (stim_time_start, stim_time_end)    
+                    )
+                    push!(stim_protocol, stim)
+                end
+                #If this is a stimulus channel we want to set up the stimulus instead
+                if keep_stimulus_channel == true
+                    #This is where we can decide to keep the stimulus channel as part of the analysis
+                    data_array[swp_idx, :, ch_idx] = data
+
                 end
             else
-                called = "$(stim_name[findall(ch_idx ∈ stim_ch)[1]])_$(swp_idx)"
-                #println(called |> Symbol)
-                stim_begin = stimulus_idxs[1]
-                stim_end = stimulus_idxs[end]+1
-                stim_time_start = t[stim_begin]
-                stim_time_end = t[stim_end]
-                stim = StimulusProtocol(
-                    called|>Symbol, swp_idx, 
-                    (stim_begin, stim_end), 
-                    (stim_time_start, stim_time_end)    
-                )
-                push!(stim_protocol, stim)
-            end
-            #If this is a stimulus channel we want to set up the stimulus instead
-            if keep_stimulus_channel == true
-                #This is where we can decide to keep the stimulus channel as part of the analysis
+                if verbose
+                    println("Data extracted from $full_path")
+                    println("Data from Channel $(ch) Sweep $(swp)")
+                    println("Data from time stamp $(t[1]) s to $(t[end]+dt) s with dt = $dt ms")
+                    println("Data was acquired at $(1/dt/1000) Hz")
+                    println("$n_data_points data points")
+                end
                 data_array[swp_idx, :, ch_idx] = data
-
             end
-        else
-            if verbose
-                println("Data extracted from $full_path")
-                println("Data from Channel $(ch) Sweep $(swp)")
-                println("Data from time stamp $(t[1]) s to $(t[end]+dt) s with dt = $dt ms")
-                println("Data was acquired at $(1/dt/1000) Hz")
-                println("$n_data_points data points")
-            end
-            data_array[swp_idx, :, ch_idx] = data
         end
-    end
-    if average_sweeps == true
-        #println("$(size(data_array,1)) sweeps to average")
-        data_array = sum(data_array, dims = 1)/size(data_array,1)
-        #println(data_array |> size)
-        stim_protocol = [stim_protocol[1]]
-    end
+        if average_sweeps == true
+            #println("$(size(data_array,1)) sweeps to average")
+            data_array = sum(data_array, dims = 1)/size(data_array,1)
+            #println(data_array |> size)
+            stim_protocol = [stim_protocol[1]]
+        end
 
-    #println(stim_protocol)
-    #println(size(data_array))
-    keep_channels = findall(x -> x ∉ stim_ch, collect(1:length(chNames)))
-    if keep_stimulus_channel == false
-        data_array = data_array[:,:,keep_channels]    
-        chNames = chNames[keep_channels]
-        chUnits = chUnits[keep_channels]
-    end
+        #println(stim_protocol)
+        #println(size(data_array))
+        keep_channels = findall(x -> x ∉ stim_ch, collect(1:length(chNames)))
+        if keep_stimulus_channel == false
+            data_array = data_array[:,:,keep_channels]    
+            chNames = chNames[keep_channels]
+            chUnits = chUnits[keep_channels]
+        end
 
-    Experiment{T}(
-        trace_file.abfID, 
-        trace_file.protocol,
-        t, 
-        data_array, 
-        date_collected, 
-        trace_file.sweepUnitsX, 
-        trace_file.dataSecPerPoint, 
-        chNames, 
-        chUnits, 
-        labels, 
-        stim_protocol,
-        [full_path]
-        )
+        Experiment{T}(
+            trace_file.abfID, 
+            trace_file.protocol,
+            t, 
+            data_array, 
+            date_collected, 
+            trace_file.sweepUnitsX, 
+            trace_file.dataSecPerPoint, 
+            chNames, 
+            chUnits, 
+            labels, 
+            stim_protocol,
+            [full_path]
+            )
+    catch error
+        #This file may actually be a concatenation
+        return concat(full_path)
+    end
 end
 
 extract_abf(abf_path::String ; kwargs...) = extract_abf(Float64, abf_path ; kwargs...)
