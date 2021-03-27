@@ -91,11 +91,13 @@ function baseline_cancel!(trace::Experiment; mode::Symbol = :mean, region = :pre
                         #println("no pre-stimulus range exists")
                     end
                 elseif mode == :slope
-                    if (rng_end - rng_begin) != 0
+                    #println(rng_begin)
+                    if (rng_end - rng_begin) != 0 && rng_begin != 1
                         pfit = Polynomials.fit(trace.t[rng_begin:rng_end], trace[swp, rng_begin:rng_end , ch], 1)
                         #Now offset the array by the linear range
                         trace.data_array[swp, :, ch] .= trace[swp, :, ch] - pfit.(trace.t)
                     else
+                        trace.data_array[swp, :, ch] .= trace[swp, :, ch] 
                         #println("no pre-stimulus range exists")
                     end
                 end
