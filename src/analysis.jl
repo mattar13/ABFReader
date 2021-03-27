@@ -112,7 +112,7 @@ This function only works on concatenated files with more than one trace
     In the rdim calculation, it is better to adjust the higher percent
     Example: no traces in 20-30% range, try 20-40%
 """
-function dim_response(trace::Experiment{T}, rmaxes::Array{T, 1}; return_idx = true, polarity::Int64 = -1, rmax_lin = [0.20, 0.50]) where T <: Real
+function dim_response(trace::Experiment{T}, rmaxes::Array{T, 1}; return_idx = true, polarity::Int64 = -1, rmax_lin = [0.10, 0.50]) where T <: Real
     #We need
     if size(trace,1) == 1
         throw(ErrorException("There is no sweeps to this file, and Rdim will not work"))
@@ -120,6 +120,7 @@ function dim_response(trace::Experiment{T}, rmaxes::Array{T, 1}; return_idx = tr
         throw(ErrorException("The number of rmaxes is not equal to the channels of the dataset"))
     else
         rdims = zeros(T, size(trace,3))
+        #rdims = fill(NaN, size(trace,3))
         dim_idx = zeros(Int64, size(trace,3))
         for swp in 1:size(trace,1)
             for ch in 1:size(trace,3)
@@ -135,6 +136,7 @@ function dim_response(trace::Experiment{T}, rmaxes::Array{T, 1}; return_idx = tr
                     minima = maximum(trace[swp, :, ch])
                 end
                 if rmax_val[1] < minima < rmax_val[2]
+                    #println("Minima in range")
                     if minima < rdims[ch] && polarity < 0
                         rdims[ch] = minima
                         dim_idx[ch] = swp 
@@ -142,9 +144,14 @@ function dim_response(trace::Experiment{T}, rmaxes::Array{T, 1}; return_idx = tr
                         rdims[ch] = minima
                         dim_idx[ch] = swp
                     end
+                else
+                    #println("Minima not in range")
+                    #rdims[ch] = NaN
                 end
             end
         end
+        rdims = map(x -> x == 0.0 ? NaN : x, rdims)
+        #println(rdims)
         if return_idx #In most cases, the rdim will be used to calculate the time to peak
             rdims |> vec, dim_idx |> vec
         else
@@ -152,9 +159,6 @@ function dim_response(trace::Experiment{T}, rmaxes::Array{T, 1}; return_idx = tr
         end
     end
 end
-
-#This dispatch is for if there has been no rmax provided. 
-dim_response(trace::Experiment; z = 0.0, rdim_percent = 0.15) = dim_response(trace, saturated_response(trace; z = z), rdim_percent = rdim_percent)
 
 """
 This function calculates the time to peak using the dim response properties of the concatenated file
@@ -173,7 +177,7 @@ function time_to_peak(trace::Experiment{T}, dim_idx::Array{Int64,1}) where T <: 
                 #println(argmin(data))
                 push!(t_peak, t_series[argmin(data)])
             else
-                push!(t_peak, 0.0)
+                push!(t_peak, NaN)
             end
         end
         t_peak
@@ -245,7 +249,7 @@ function integration_time(trace::Experiment{T}, dim_idx::Array{Int64,1}) where T
         int_time = T[]
         for ch in 1:size(trace,3)
             if dim_idx[ch] == 0
-                push!(int_time, 0.0)
+                push!(int_time, NaN)
             else
                 dim_trace = trace[dim_idx[ch], :, ch]
                 #The integral is calculated by taking the sum of all points (in μV) and dividing by the time range (in ms)
@@ -269,63 +273,79 @@ end
 """
 The dominant time constant is calculated by fitting the normalized Rdim with the response recovery equation
 """
-function recovery_tau(trace::Experiment{T}, dim_idx::Array{Int64,1}; τRec::T = 1.0, report_residuals = false) where T <: Real
-    if size(trace,3) != length(dim_idx)
+function recovery_tau(data::Experiment{T}, dim_idx::Array{Int64,1}; τRec::T = 1.0, report_residuals = false) where T <: Real
+    if size(data,3) != length(dim_idx)
         throw(error("Size of dim indexes does not match channel size for trace"))
     else
-        tauRec = T[]
+        fits = []
+        gofs = []
         #This function uses the recovery model and takes t as a independent variable
-        model(x,p) = map(t -> REC(t, p[1], p[2]), x)
-        for ch in 1:size(trace,3)
+        model(x,p) = map(t -> REC(t, -1.0, p[2]), x)
+        for ch in 1:size(data,3)
+            # println(dim_idx[ch])
             if dim_idx[ch] == 0
-                push!(tauRec, 0.0)
+                push!(fits, fill(NaN, 2))
+                push!(gofs, NaN)
+            elseif dim_idx[ch] == NaN
+                push!(fits, fill(NaN, 2))
+                push!(gofs, NaN)
             else
-                xdata = trace.t
-                ydata = trace[dim_idx[ch], :, ch]
-                xdata = xdata[argmin(ydata):end] .- xdata[argmin(ydata)]
-                ydata = ydata[argmin(ydata):end]
-                p0 = [xdata[1], τRec]
+                xdata = data.t
+                ydata = data[dim_idx[ch], :, ch] 
+                ydata ./= minimum(ydata) #Normalize the Rdim
+                #cutoff all points below -0.5 and above -1.0
+                begin_rng = findall(ydata .>= 1.0)[end]
+                xdata = xdata[begin_rng:end]
+                ydata = ydata[begin_rng:end]
+                println(any(ydata .< 0.5))
+                println(minimum(ydata))
+                
+                end_rng = findall(ydata .< 0.5)[1]
+                xdata = xdata[1:end_rng] .- xdata[1]
+                ydata = -ydata[1:end_rng]
+                p0 = [ydata[1], τRec]
                 fit = curve_fit(model, xdata, ydata, p0)
+                #report the goodness of fit
+                SSE = sum(fit.resid.^2)
+                ȳ = sum(model(xdata, fit.param))/length(xdata)
+                SST = sum((ydata .- ȳ).^2)
+                GOF = 1- SSE/SST
                 if report_residuals 
                     println(sum((fit.resid).^2))
                 end
-                push!(tauRec, fit.param[2])
+                push!(fits, fit.param)
+                push!(gofs, GOF)
             end
         end
-        return tauRec
+        return fits, gofs
     end
 end
 
 
 function amplification(
-        trace::Experiment{T}, rmaxes::Array{T,1}; 
+        data::Experiment{T}, rmaxes::Array{T,1}; 
         report_residuals = false, GOF_limit = 0.90, 
-        lb = [-1.0, 0.0], ub = [Inf, Inf]
+        lb = [0.0, 0.001], ub = [Inf, 0.040]
     ) where T <: Real
-    amp = zeros(T, size(trace,1), size(trace,3))
-    for swp in 1:size(trace,1), ch in 1:size(trace,3)
+    amp = zeros(2, size(data,1), size(data,3))
+    gofs = zeros(T, size(data,1), size(data,3))
+    for swp in 1:size(data,1), ch in 1:size(trace,3)
         model(x, p) = map(t -> AMP(t, p[1], p[2], rmaxes[ch]), x)
         xdata = trace.t
         ydata = trace[swp,:,ch]
-        p0 = [200.0, 0.001]        
+        p0 = [200.0, 0.2]        
         fit = curve_fit(model, xdata, ydata, p0, lower = lb, upper = ub)
+        #Check Goodness of fit
         SSE = sum(fit.resid.^2)
         ȳ = sum(model(xdata, fit.param))/length(xdata)
         SST = sum((ydata .- ȳ).^2)
-        GOF = 1- SSE/SST
-        if report_residuals
-            println("Goodness of fit: $GOF")
-            if GOF >= GOF_limit
-                #println("This is an acceptable fit")
-            else
-                #println("This fit is not good enough")
-            end
-        end
-        if GOF >= GOF_limit
-            amp[swp, ch] = fit.param[1]
-        end
+        GOF = 1 - SSE/SST
+        println(GOF)
+        amp[1, swp, ch] = fit.param[1] #Alpha amp value
+        amp[2, swp, ch] = fit.param[2] #Effective time value
+        gofs[swp, ch] = GOF
     end
-    return amp
+    return amp, gofs
 end
 
 #Lets get the file we want to use first
