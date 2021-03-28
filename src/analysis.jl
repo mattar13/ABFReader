@@ -297,10 +297,18 @@ function recovery_tau(data::Experiment{T}, dim_idx::Array{Int64,1}; τRec::T = 1
                 begin_rng = findall(ydata .>= 1.0)[end]
                 xdata = xdata[begin_rng:end]
                 ydata = ydata[begin_rng:end]
-                println(any(ydata .< 0.5))
-                println(minimum(ydata))
+                #println(any(ydata .< 0.5))
+                #println(minimum(ydata))
+
+                cutoff = findall(ydata .< 0.5)
                 
-                end_rng = findall(ydata .< 0.5)[1]
+                if isempty(cutoff)
+                    println("Exception")
+                    end_rng = length(ydata)
+                else
+                    end_rng = cutoff[1]
+                end
+
                 xdata = xdata[1:end_rng] .- xdata[1]
                 ydata = -ydata[1:end_rng]
                 p0 = [ydata[1], τRec]
