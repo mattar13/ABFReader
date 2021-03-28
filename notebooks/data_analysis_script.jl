@@ -5,9 +5,7 @@ using NeuroPhys
 using DataFrames, Query, XLSX
 using StatsBase, Statistics
 
-
 #%% Start the analysis
-#log_file = open("notebooks\\Log.txt", "w")
 println("[$(Dates.now())]: Script began")
 
 #Point to the target folder then extract the paths
@@ -16,11 +14,11 @@ target_folder = "E:\\Data\\ERG\\Gnat" #Only analyze Pauls files
 save_path = joinpath(target_folder,"data.xlsx")
 #Parse
 paths = target_folder |> parse_abf
-println("Analysis on folder $target_folder with $(length(paths)) paths")
+println("[$(Dates.now())]: Analysis on folder $target_folder with $(length(paths)) paths")
 
     
 #%% First we need to populate the paths and details file
-println("Extracting path info")
+print("[$(Dates.now())]: Extracting path info...")
 files_to_analyze = DataFrame(
     :Path => paths, 
     :Experimenter=> "no one", 
@@ -111,14 +109,15 @@ for (i, row) in enumerate(eachrow(files_to_analyze))
         #throw(error) #This will terminate the process
     end
 end
-files_to_analyze
+println("Completed")
 
 #%% Next we summarize all of the experiments
-println("Next try to open the experiments file")
+print("[$(Dates.now())]: Generating experiment summary...")
 all_experiments = files_to_analyze |> 
     @unique({_.Year, _.Month, _.Day, _.Animal, _.Wavelength, _.Drugs}) |> 
     @map({Root = get_root(_.Path, _.Experimenter), _.Experimenter, _.Year, _.Month, _.Day, _.Animal, _.Age, _.Rearing, _.Wavelength, _.Genotype, _.Drugs, _.Photoreceptors}) |>
     DataFrame
+println("Completed")
 
 #%% Analyze The experiments
 data_analysis = DataFrame(
@@ -141,12 +140,12 @@ Pauls_IR_analysis = DataFrame(
     Trace = Int64[], minima = Float64[], t_minima = Float64[], Photons = Float64[], Response = Float64[], Rmax = Float64[]
 )
 
-#Make a dataframe for Pauls analysis
+
 println("[$(Dates.now())]: Analyzing all datafiles")
 fail_files = Int64[];
 error_causes = [];
 for (i, row) in enumerate(eachrow(all_experiments))
-    #try
+    try
         if row[:Photoreceptors] == "cones" || row[:Photoreceptors] == "Both"
             #Cone responses are under 300ms
             t_post = 0.3
@@ -226,14 +225,15 @@ for (i, row) in enumerate(eachrow(all_experiments))
         end
         println("[$(Dates.now())]: Data analysis of path $(row[:Root]) complete")
         println("********************************************************************")
-    #catch error
-        #println("[$(Dates.now())]: Analyzing experiment $i $(row[:Root]) has failed.")
-        #println(error)
-    #end
+    catch error
+        println("[$(Dates.now())]: Analyzing experiment $i $(row[:Root]) has failed.")
+        println(error)
+        push!(fail_files, row[:Root])
+        push!(error_causes, error)
+    end
 end
+
 println("[$(Dates.now())]: All files have been analyzed.")
-println("[$(Dates.now())]: $(length(fail_files)) files have failed.")
-#%% Sort the data analysis
 data_analysis = data_analysis |> @orderby(_.Rearing) |> @thenby(_.Drugs) |> @thenby(_.Genotype) |> @thenby(_.Age) |> @thenby(_.Photoreceptors) |> @thenby(_.Wavelength) |> DataFrame
     
 #%% Summarize all of the data and statistics
