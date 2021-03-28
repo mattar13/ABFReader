@@ -303,7 +303,7 @@ function recovery_tau(data::Experiment{T}, dim_idx::Array{Int64,1}; τRec::T = 1
                 cutoff = findall(ydata .< 0.5)
                 
                 if isempty(cutoff)
-                    println("Exception")
+                    #println("Exception")
                     end_rng = length(ydata)
                 else
                     end_rng = cutoff[1]
