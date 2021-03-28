@@ -94,12 +94,15 @@ function extract_abf(::Type{T}, abf_path::String;
             data_channels = chs.-1
             n_data_channels = length(chs)
         elseif isa(chs, Array{String, 1}) #Pick a channel by multiple names
+            #println(chs)
+            #println(trace_file.adcNames)
             data_channels = findall(x -> x ∈ chs, trace_file.adcNames) .- 1
             #println(data_channels)
             n_data_channels = length(chs)
         else #Choose all channels
             data_channels = trace_file.channelList
         end 
+        #println(data_channels)
 
         chNames = trace_file.adcNames[(data_channels.+1)]
         chUnits = trace_file.adcUnits[(data_channels.+1)]
@@ -223,8 +226,17 @@ function extract_abf(::Type{T}, abf_path::String;
             [full_path]
             )
     catch error
+        #println(kwargs)
         #This file may actually be a concatenation
-        return concat(full_path)
+        return concat(full_path; stim_ch = stim_ch, 
+            stim_name = stim_name,
+            stimulus_threshold = stimulus_threshold,
+            keep_stimulus_channel = keep_stimulus_channel,
+            swps = swps, 
+            chs = chs, 
+            average_sweeps = average_sweeps,
+            verbose = verbose        
+        )
     end
 end
 
