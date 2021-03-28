@@ -182,7 +182,6 @@ function extract_abf(::Type{T}, abf_path::String;
                 if keep_stimulus_channel == true
                     #This is where we can decide to keep the stimulus channel as part of the analysis
                     data_array[swp_idx, :, ch_idx] = data
-
                 end
             else
                 if verbose
@@ -195,6 +194,8 @@ function extract_abf(::Type{T}, abf_path::String;
                 data_array[swp_idx, :, ch_idx] = data
             end
         end
+
+        #println(size(data_array))
         if average_sweeps == true
             #println("$(size(data_array,1)) sweeps to average")
             data_array = sum(data_array, dims = 1)/size(data_array,1)
@@ -595,19 +596,22 @@ function concat!(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, posi
 
     if size(data,3) != size(data_add,3)
         #We need to write a catch here to concatenate files with different numbers of channels
-        println("Here is the issue")
+        print("Don't concatenate these files")
+    else
+        #println(size(data))
+        #println(size(data_add))
+        #println(length(data.stim_protocol))
+        push!(data, data_add)
+        push!(data.stim_protocol, data_add.stim_protocol...)
+        #add the new stimulus as well
     end
-    #println(length(data.stim_protocol))
-    push!(data, data_add)
-    push!(data.stim_protocol, data_add.stim_protocol...)
-    #add the new stimulus as well
 end
 
 function concat(path_arr::Array{String,1}; average_sweeps = true, kwargs...)
-    data = extract_abf(path_arr[1]; average_sweeps = average_sweeps, kwargs...)
+    data = extract_abf(path_arr[1]; average_sweeps = true, kwargs...)
     #IN this case we want to ensure that the stim_protocol is only 1 stimulus longer
     for path in path_arr[2:end]
-        data_add = extract_abf(path; average_sweeps = average_sweeps, kwargs...)
+        data_add = extract_abf(path; average_sweeps = true, kwargs...)
         concat!(data, data_add; kwargs...)
     end
     return data
