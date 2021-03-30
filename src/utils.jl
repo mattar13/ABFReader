@@ -467,10 +467,9 @@ function truncate_data!(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_b
     overrun_time = 0 #This is for if t_pre is set too far before the stimulus
     if isempty(trace.stim_protocol)
         println("No explicit stimulus has been set")
-        size_of_array = t_post * dt
-        #println(size_of_array)
-        #trace.data_array = trace.data_array[:, 1:size_of_array, :] #remake the array with only the truncated data
-        #trace.t = range(0.0, t_post, length = size_of_array)
+        size_of_array = round(Int64, t_post / dt)
+        trace.data_array = trace.data_array[:, 1:size_of_array, :] #remake the array with only the truncated data
+        trace.t = range(0.0, t_post, length = size_of_array)
     else
         for swp in 1:size(trace, 1)
             stim_protocol = trace.stim_protocol[swp]
