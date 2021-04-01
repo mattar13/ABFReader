@@ -18,7 +18,7 @@ end
 
 
 """
-This function calculates the min, max, mean, and std of each trace
+This function calculates the min, max, mean, and std of each data
 """
 function calculate_basic_stats(data::Experiment{T}) where T <: Real
     mins = minimum(data.data_array, dims = 2)[:,1,:]
@@ -39,28 +39,28 @@ rolling_mean(arr::AbstractArray; radius = 5) = [sum(arr[i:i+radius])/radius for 
 
 """
 This function uses a histogram method to find the saturation point. 
-    - In ERG traces, a short nose component is usually present in saturated values
+    - In ERG datas, a short nose component is usually present in saturated values
     - Does this same function work for the Rmax of nonsaturated responses?
     - Setting the saturated threshold to infinity will completely disregard the histogram method
 """
-function saturated_response(trace::Experiment{T}; saturated_thresh = :determine, polarity::Int64 = -1, precision = 500, z = 1.3, kwargs...) where T
+function saturated_response(data::Experiment{T}; saturated_thresh = :determine, polarity::Int64 = -1, precision = 500, z = 1.3, kwargs...) where T
     if isa(saturated_thresh, Symbol)
         #Figure out if the saturated threshold needs to be determined
-        saturated_thresh = size(trace,1)/precision/2
+        saturated_thresh = size(data,1)/precision/2
     end
     #Make an empty array for recording the rmaxes
     rmaxs = T[]
-    for ch in 1:size(trace,3)
+    for ch in 1:size(data,3)
         data = Float64[]
-        for swp in 1:size(trace,1)
-            if isempty(trace.stim_protocol)
+        for swp in 1:size(data,1)
+            if isempty(data.stim_protocol)
                 #This catch is here for if no stim protocol has been set
                 #println("No stimulus protocol exists")
                 stim_begin = 1
             else
-                stim_begin = trace.stim_protocol[swp].index_range[1] #We don't want to pull values from before the stim
+                stim_begin = data.stim_protocol[swp].index_range[1] #We don't want to pull values from before the stim
             end
-            push!(data,  trace[:, stim_begin:size(trace,2), ch]...)
+            push!(data,  data[:, stim_begin:size(data,2), ch]...)
         end
         #We are going to concatenate all sweeps together into one histogram
         mean = sum(data)/length(data)
@@ -107,23 +107,23 @@ function saturated_response(trace::Experiment{T}; saturated_thresh = :determine,
 end
 
 """
-This function only works on concatenated files with more than one trace
+This function only works on concatenated files with more than one data
     Rmax argument should have the same number of sweeps and channels as the 
     In the rdim calculation, it is better to adjust the higher percent
-    Example: no traces in 20-30% range, try 20-40%
+    Example: no datas in 20-30% range, try 20-40%
 """
-function dim_response(trace::Experiment{T}, rmaxes::Array{T, 1}; return_idx = true, polarity::Int64 = -1, rmax_lin = [0.10, 0.50]) where T <: Real
+function dim_response(data::Experiment{T}, rmaxes::Array{T, 1}; return_idx = true, polarity::Int64 = -1, rmax_lin = [0.10, 0.50]) where T <: Real
     #We need
-    if size(trace,1) == 1
+    if size(data,1) == 1
         throw(ErrorException("There is no sweeps to this file, and Rdim will not work"))
-    elseif size(trace,3) != size(rmaxes,1)
+    elseif size(data,3) != size(rmaxes,1)
         throw(ErrorException("The number of rmaxes is not equal to the channels of the dataset"))
     else
-        rdims = zeros(T, size(trace,3))
-        #rdims = fill(NaN, size(trace,3))
-        dim_idx = zeros(Int64, size(trace,3))
-        for swp in 1:size(trace,1)
-            for ch in 1:size(trace,3)
+        rdims = zeros(T, size(data,3))
+        #rdims = fill(NaN, size(data,3))
+        dim_idx = zeros(Int64, size(data,3))
+        for swp in 1:size(data,1)
+            for ch in 1:size(data,3)
                 rmax_val = rmax_lin .* rmaxes[ch]
                 if rmax_val[1] > rmax_val[2]
                     rmax_val = reverse(rmax_val)
@@ -131,9 +131,9 @@ function dim_response(trace::Experiment{T}, rmaxes::Array{T, 1}; return_idx = tr
                 #rdim_thresh = rmaxes[ch] * 0.15
                 
                 if polarity < 0
-                    minima = minimum(trace[swp, :, ch])
+                    minima = minimum(data[swp, :, ch])
                 else
-                    minima = maximum(trace[swp, :, ch])
+                    minima = maximum(data[swp, :, ch])
                 end
                 if rmax_val[1] < minima < rmax_val[2]
                     #println("Minima in range")
@@ -163,17 +163,17 @@ end
 """
 This function calculates the time to peak using the dim response properties of the concatenated file
 """
-function time_to_peak(trace::Experiment{T}, dim_idx::Array{Int64,1}) where T <: Real
-    if size(trace,1) == 1
+function time_to_peak(data::Experiment{T}, dim_idx::Array{Int64,1}) where T <: Real
+    if size(data,1) == 1
         throw(ErrorException("There is no sweeps to this file, and Tpeak will not work"))
-    elseif size(trace,3) != size(dim_idx,1)
+    elseif size(data,3) != size(dim_idx,1)
         throw(ErrorException("The number of indexes is not equal to the channels of the dataset"))
     else
         t_peak = T[]
         for (ch, swp) in enumerate(dim_idx)
             if swp != 0
-                t_series = trace.t[findall(trace.t .>= 0.0)]
-                data = trace[swp, findall(trace.t .>= 0), ch]
+                t_series = data.t[findall(data.t .>= 0.0)]
+                data = data[swp, findall(data.t .>= 0), ch]
                 #println(argmin(data))
                 push!(t_peak, t_series[argmin(data)])
             else
@@ -184,15 +184,15 @@ function time_to_peak(trace::Experiment{T}, dim_idx::Array{Int64,1}) where T <: 
     end
 end
 
-function get_response(trace::Experiment{T}, rmaxes::Array{T,1}; polarity = -1) where T <: Real
-    responses = zeros(size(trace,1), size(trace,3))
-    for swp in 1:size(trace,1)
-        for ch in 1:size(trace,3)
+function get_response(data::Experiment{T}, rmaxes::Array{T,1}; polarity = -1) where T <: Real
+    responses = zeros(size(data,1), size(data,3))
+    for swp in 1:size(data,1)
+        for ch in 1:size(data,3)
             if polarity == -1
-                minima = minimum(trace[swp, :, ch]) 
+                minima = minimum(data[swp, :, ch]) 
                 responses[swp, ch] = minima < rmaxes[ch] ? rmaxes[ch] : minima
             elseif polarity == 1
-                maxima = maximum(trace[swp, :, ch]) 
+                maxima = maximum(data[swp, :, ch]) 
                 responses[swp, ch] = maxima >= rmaxes[ch] ? rmaxes[ch] : maxima
             end
         end
@@ -202,64 +202,64 @@ end
 
 #Pepperburg analysis
 """
-This function conducts a Pepperburg analysis on a single trace. 
+This function conducts a Pepperburg analysis on a single data. 
 
     Two dispatches are available. 
     1) A rmax is provided, does not need to calculate rmaxes
     2) No rmax is provided, so one is calculated
 """
-function pepperburg_analysis(trace::Experiment{T}, rmaxes::Array{T, 1}; recovery_percent = 0.60, kwargs...) where T <: Real
-    if size(trace,1) == 1
+function pepperburg_analysis(data::Experiment{T}, rmaxes::Array{T, 1}; recovery_percent = 0.60, kwargs...) where T <: Real
+    if size(data,1) == 1
         throw(error("Pepperburg will not work on single sweeps"))
     end
     r_rec = rmaxes .* recovery_percent
     #try doing this  different way
-    t_dom = zeros(T, size(trace,1), size(trace,3))
-    for swp in 1:size(trace,1)
-        for ch in 1:size(trace,3)
-            not_recovered = findall(trace[swp, :, ch] .< r_rec[ch])
+    t_dom = zeros(T, size(data,1), size(data,3))
+    for swp in 1:size(data,1)
+        for ch in 1:size(data,3)
+            not_recovered = findall(data[swp, :, ch] .< r_rec[ch])
             if isempty(not_recovered)
-                #println("Trace never exceeded $(recovery_percent*100)% the Rmax")
+                #println("data never exceeded $(recovery_percent*100)% the Rmax")
                 t_dom[swp, ch] = NaN
-            elseif isempty(trace.stim_protocol)
+            elseif isempty(data.stim_protocol)
                 #println("No stimulus protocol exists")
-                t_dom[swp, ch] = trace.t[not_recovered[end]]
+                t_dom[swp, ch] = data.t[not_recovered[end]]
             else
-                t_dom[swp, ch] = trace.t[not_recovered[end]] - trace.t[trace.stim_protocol[swp].index_range[1]]
+                t_dom[swp, ch] = data.t[not_recovered[end]] - data.t[data.stim_protocol[swp].index_range[1]]
             end
         end
     end
     t_dom
 end
 
-pepperburg_analysis(trace::Experiment{T}; kwargs...) where T <: Real= pepperburg_analysis(trace, saturated_response(trace; kwargs...); kwargs...)  
+pepperburg_analysis(data::Experiment{T}; kwargs...) where T <: Real= pepperburg_analysis(data, saturated_response(data; kwargs...); kwargs...)  
 
 
 
 """
 The integration time is fit by integrating the dim flash response and dividing it by the dim flash response amplitude
-- A key to note here is that the exact f(x) of the ERG trace is not completely known
+- A key to note here is that the exact f(x) of the ERG data is not completely known
 - The integral is therefore a defininte integral and a sum of the area under the curve
 """
 
-function integration_time(trace::Experiment{T}, dim_idx::Array{Int64,1}) where T <: Real
-    if size(trace,3) != length(dim_idx)
-        throw(error("Size of dim indexes does not match channel size for trace"))
+function integration_time(data::Experiment{T}, dim_idx::Array{Int64,1}) where T <: Real
+    if size(data,3) != length(dim_idx)
+        throw(error("Size of dim indexes does not match channel size for data"))
     else
         int_time = T[]
-        for ch in 1:size(trace,3)
+        for ch in 1:size(data,3)
             if dim_idx[ch] == 0
                 push!(int_time, NaN)
             else
-                dim_trace = trace[dim_idx[ch], :, ch]
+                dim_data = data[dim_idx[ch], :, ch]
                 #The integral is calculated by taking the sum of all points (in μV) and dividing by the time range (in ms)
                 #We have to make sure this response is in μV
-                if trace.chUnits[ch] == "mV"
-                    rdim = minimum(dim_trace)*1000
-                    sum_data = sum(dim_trace.*1000)*(trace.dt*1000)
+                if data.chUnits[ch] == "mV"
+                    rdim = minimum(dim_data)*1000
+                    sum_data = sum(dim_data.*1000)*(data.dt*1000)
                 else
-                    rdim = minimum(dim_trace)
-                    sum_data = sum(dim_trace)*trace.dt
+                    rdim = minimum(dim_data)
+                    sum_data = sum(dim_data)*data.dt
                 end
                 push!(int_time, sum_data/rdim)
             end
@@ -275,7 +275,7 @@ The dominant time constant is calculated by fitting the normalized Rdim with the
 """
 function recovery_tau(data::Experiment{T}, dim_idx::Array{Int64,1}; τRec::T = 1.0, report_residuals = false) where T <: Real
     if size(data,3) != length(dim_idx)
-        throw(error("Size of dim indexes does not match channel size for trace"))
+        throw(error("Size of dim indexes does not match channel size for data"))
     else
         fits = []
         gofs = []
@@ -297,11 +297,8 @@ function recovery_tau(data::Experiment{T}, dim_idx::Array{Int64,1}; τRec::T = 1
                 begin_rng = findall(ydata .>= 1.0)[end]
                 xdata = xdata[begin_rng:end]
                 ydata = ydata[begin_rng:end]
-                #println(any(ydata .< 0.5))
-                #println(minimum(ydata))
 
-                cutoff = findall(ydata .< 0.5)
-                
+                cutoff = findall(ydata .< 0.5)              
                 if isempty(cutoff)
                     #println("Exception")
                     end_rng = length(ydata)
@@ -337,10 +334,10 @@ function amplification(
     ) where T <: Real
     amp = zeros(2, size(data,1), size(data,3))
     gofs = zeros(T, size(data,1), size(data,3))
-    for swp in 1:size(data,1), ch in 1:size(trace,3)
+    for swp in 1:size(data,1), ch in 1:size(data,3)
         model(x, p) = map(t -> AMP(t, p[1], p[2], rmaxes[ch]), x)
-        xdata = trace.t
-        ydata = trace[swp,:,ch]
+        xdata = data.t
+        ydata = data[swp,:,ch]
         p0 = [200.0, 0.2]        
         fit = curve_fit(model, xdata, ydata, p0, lower = lb, upper = ub)
         #Check Goodness of fit
