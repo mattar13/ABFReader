@@ -7,12 +7,8 @@ using StatsBase, Statistics
 
 #%% Start the analysis
 println("[$(Dates.now())]: Script began")
-
-#Point to the target folder then extract the paths
 target_folder = "E:\\Data\\ERG\\Gnat" #Only analyze Pauls files
-#All figures and reports will be saved here
 save_path = joinpath(target_folder,"data.xlsx")
-#Parse
 paths = target_folder |> parse_abf
 println("[$(Dates.now())]: Analysis on folder $target_folder with $(length(paths)) paths")
 
@@ -36,8 +32,6 @@ files_to_analyze = DataFrame(
     :Stimulus_Percent => 0.0, 
     :Stimulus_Time => 0.0 
     )
-
-#Populate the files_to_analyze folder
 for (i, row) in enumerate(eachrow(files_to_analyze))
     path = row[:Path]
     try
@@ -140,9 +134,8 @@ Pauls_IR_analysis = DataFrame(
     Trace = Int64[], minima = Float64[], t_minima = Float64[], Photons = Float64[], Response = Float64[], Rmax = Float64[]
 )
 
-
 println("[$(Dates.now())]: Analyzing all datafiles")
-fail_files = Int64[];
+fail_files = String[];
 error_causes = [];
 for (i, row) in enumerate(eachrow(all_experiments))
     try
@@ -179,6 +172,9 @@ for (i, row) in enumerate(eachrow(all_experiments))
         t_peak = time_to_peak(data, dim_idx)
         t_Int = integration_time(filter_data, dim_idx)
         println("Completed")
+        println("Rmaxes -> $(rmaxes.*-1000)")
+        println("Rdims -> $(rdims.*-1000)")
+        println("tPeak -> $(t_peak.*1000)")
         
         print("[$(Dates.now())]: Beginning fitting for tau recovery...")
         tau_fit, tau_GOF = recovery_tau(filter_data, dim_idx)
@@ -190,7 +186,7 @@ for (i, row) in enumerate(eachrow(all_experiments))
         #tau_dom = pepperburg_analysis(data, rmaxes)
         
         if row[:Experimenter] == "Paul"
-            print("[$(Dates.now())]: Recording info for Pauls IR analysis")
+            print("[$(Dates.now())]: Recording info for Pauls IR analysis... ")
             for swp in 1:size(data,1), ch = 1:size(data,3)
                 #println()
                 minima = minimum(unbaselined_data[swp, :, ch])
@@ -217,7 +213,7 @@ for (i, row) in enumerate(eachrow(all_experiments))
                     data.chNames[i],
                     -rmaxes[i]*1000, -rdims[i]*1000, t_peak[i]*1000, t_Int[i], 
                     #tau fits
-                    tau_fit[i][1], tau_fit[i][2], tau_GOF[i], 
+                    tau_fit[i][1], tau_fit[i][2]*1000, tau_GOF[i], 
                     #Amplification fits
                     0.0, 0.0, 0.0
                 )
@@ -226,6 +222,7 @@ for (i, row) in enumerate(eachrow(all_experiments))
         println("[$(Dates.now())]: Data analysis of path $(row[:Root]) complete")
         println("********************************************************************")
     catch error
+        println("Failed")
         println("[$(Dates.now())]: Analyzing experiment $i $(row[:Root]) has failed.")
         println(error)
         push!(fail_files, row[:Root])
@@ -234,6 +231,7 @@ for (i, row) in enumerate(eachrow(all_experiments))
 end
 
 println("[$(Dates.now())]: All files have been analyzed.")
+#%%
 data_analysis = data_analysis |> @orderby(_.Rearing) |> @thenby(_.Drugs) |> @thenby(_.Genotype) |> @thenby(_.Age) |> @thenby(_.Photoreceptors) |> @thenby(_.Wavelength) |> DataFrame
     
 #%% Summarize all of the data and statistics
@@ -351,6 +349,7 @@ for (i, row) in enumerate(eachrow(files_to_analyze))
 
     println(size(data))
     println(minima)
+    println(Qi)
 
     if isa(minima, Float64)
         minima = [minima]
