@@ -45,7 +45,8 @@ Plotting function.
         exp::Experiment{T}; 
         to_plot = (:sweeps, :channels), 
         layout = (:channels, 1),
-        plot_stim_mode = :overlay_vspan
+        plot_stim_mode = :overlay_vspan, 
+        label = "", label_stim = false
     ) where T <: Real
     
     grid := false
@@ -63,38 +64,44 @@ Plotting function.
         end
         xguide := xlabels
         @series begin
-            label := ""
+            label := label
             subplot := ch
             x := exp.t #t_series
             y := exp[swp, :, ch]
             yguide := "$(exp.chNames[ch])($(exp.chUnits[ch]))"
             ()
         end
-        @series begin
-            subplot := ch
-            seriescolor := :yellow
-            
-            label := ""
-            if plot_stim_mode == :overlay_vline_start
-                linewidth := 2.0
-                seriestype := :vline
-                y := [exp.stim_protocol[swp].timestamps[1]]
-                yguide := "$(exp.chNames[ch])($(exp.chUnits[ch]))"
-                ()
-            elseif plot_stim_mode == :overlay_vline_end
-                linewidth := 2.0
-                seriestype := :vline
-                y := [exp.stim_protocol[swp].timestamps[2]]
-                yguide := "$(exp.chNames[ch])($(exp.chUnits[ch]))"
-                ()
-            elseif plot_stim_mode == :overlay_vspan
-                linewidth := 1.0
-                linecolor := :yellow
-                seriesalpha := 0.5
-                seriestype := vspan
-                y := [exp.stim_protocol[swp].timestamps...]
-                yguide := "$(exp.chNames[ch])($(exp.chUnits[ch]))"
-                ()
+        if !isempty(exp.stim_protocol)
+            @series begin
+                subplot := ch
+                seriescolor := :yellow
+                
+                if label_stim && swp == 1
+                    label := "stimulus"
+                else
+                    label := ""
+                end
+                if plot_stim_mode == :overlay_vline_start
+                    linewidth := 2.0
+                    seriestype := :vline
+                    y := [exp.stim_protocol[swp].timestamps[1]]
+                    yguide := "$(exp.chNames[ch])($(exp.chUnits[ch]))"
+                    ()
+                elseif plot_stim_mode == :overlay_vline_end
+                    linewidth := 2.0
+                    seriestype := :vline
+                    y := [exp.stim_protocol[swp].timestamps[2]]
+                    yguide := "$(exp.chNames[ch])($(exp.chUnits[ch]))"
+                    ()
+                elseif plot_stim_mode == :overlay_vspan
+                    linewidth := 1.0
+                    linecolor := :yellow
+                    seriesalpha := 0.5
+                    seriestype := vspan
+                    y := [exp.stim_protocol[swp].timestamps...]
+                    yguide := "$(exp.chNames[ch])($(exp.chUnits[ch]))"
+                    ()
+                end
             end
         end
     end
