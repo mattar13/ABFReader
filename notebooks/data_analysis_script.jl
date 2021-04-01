@@ -181,7 +181,10 @@ for (i, row) in enumerate(eachrow(all_experiments))
         println("Completed")
 
         #Amplification and the Dominant time constant have multiple values
-        #println("[$(Dates.now())]: Beginning fitting for amplification")
+        println("[$(Dates.now())]: Beginning fitting for amplification")
+        amp, amp_gof = amplification(data, rmaxes)
+        minima = minimum(data, dims = 2)[:,1,:]
+        unsaturated_traces = findall(minima .> rmaxes')
         #amp, amp_gofs = amplification(data, rmaxes)
         #tau_dom = pepperburg_analysis(data, rmaxes)
         
@@ -206,6 +209,20 @@ for (i, row) in enumerate(eachrow(all_experiments))
          
         
         for i = 1:size(data,3)
+            #Recording the AMplification values here
+            selected_amps = map(I -> amp[1,I[1],i], findall(x -> x[2] == i, unsaturated_traces))
+            selected_gofs = map(I -> amp_gofs[I[1],i], findall(x -> x[2] == i, unsaturated_traces))
+            if length(selected_amps) < 3
+                amp_val = sum(selected_amps)/length(selected_amps)
+                amp_gofs = sum(selected_gofs)/length(selected_gofs)
+            else
+                sort_idxs = sortperm(selected_amps)
+                selected_amps = selected_amps[sort_idxs]
+                selected_gofs = selected_gofs[sort_idxs]
+                amp_val = sum(selected_amps[1:3])/length(selected_amps[1:3])
+                amp_gofs = sum(selected_gofs[1:3])/length(selected_gofs[1:3])
+            end
+
             push!(data_analysis, (
                     row[:Root], 
                     row[:Year], row[:Month], row[:Day], 
