@@ -43,7 +43,8 @@ This function uses a histogram method to find the saturation point.
     - Does this same function work for the Rmax of nonsaturated responses?
     - Setting the saturated threshold to infinity will completely disregard the histogram method
 """
-function saturated_response(data::Experiment{T}; saturated_thresh = :determine, polarity::Int64 = -1, precision = 500, z = 1.3, kwargs...) where T
+function saturated_response(data::Experiment{T}; 
+    saturated_thresh = :determine, polarity::Int64 = -1, precision = 500, z = 1.3, kwargs...) where T
     if isa(saturated_thresh, Symbol)
         #Figure out if the saturated threshold needs to be determined
         saturated_thresh = size(data,1)/precision/2
@@ -51,7 +52,7 @@ function saturated_response(data::Experiment{T}; saturated_thresh = :determine, 
     #Make an empty array for recording the rmaxes
     rmaxs = T[]
     for ch in 1:size(data,3)
-        data = Float64[]
+        all_points = Float64[]
         for swp in 1:size(data,1)
             if isempty(data.stim_protocol)
                 #This catch is here for if no stim protocol has been set
@@ -60,38 +61,38 @@ function saturated_response(data::Experiment{T}; saturated_thresh = :determine, 
             else
                 stim_begin = data.stim_protocol[swp].index_range[1] #We don't want to pull values from before the stim
             end
-            push!(data,  data[:, stim_begin:size(data,2), ch]...)
+            push!(all_points,  data[:, stim_begin:size(data,2), ch]...)
         end
         #We are going to concatenate all sweeps together into one histogram
-        mean = sum(data)/length(data)
-        deviation = z*std(data)
+        mean = sum(all_points)/length(all_points)
+        deviation = z*std(all_points)
         #Here we cutoff all points after the sweep returns to the mean
         if polarity < 0
-            idxs = findall(data .< (mean - deviation))
+            idxs = findall(all_points .< (mean - deviation))
             if isempty(idxs)
                 #This is a weird catch, but no points fall under the mean. 
-                push!(rmaxs, minimum(data))
+                push!(rmaxs, minimum(all_points))
                 continue
             end
-            data = data[idxs]
+            all_points = all_points[idxs]
             #For negative components
-            bins = LinRange(minimum(data), min(0.0, mean-deviation), precision)
+            bins = LinRange(minimum(all_points), min(0.0, mean-deviation), precision)
         elseif polarity > 0
-            idxs = findlast(data .> (mean + deviation))
+            idxs = findlast(all_points .> (mean + deviation))
             if isempty(idxs)
                 #This is a weird catch, but no points fall under the mean. 
-                push!(rmaxs, minimum(data))
+                push!(rmaxs, minimum(all_points))
                 continue
             end
-            data = data[idxs]
+            all_points = all_points[idxs]
             #For positive components
             bins = LinRange(max(0.0, mean+deviation), maximum(data),  precision)
         else
             throw(error("Polarity incorrect"))
         end
-        h = Distributions.fit(Histogram, data, bins; )
+        h = Distributions.fit(Histogram, all_points, bins)
         edges = collect(h.edges...)[2:end]
-        weights = h.weights./length(data)
+        weights = h.weights./length(all_points)
         
         #println(maximum(weights))
         #println(saturated_thresh)
@@ -100,7 +101,7 @@ function saturated_response(data::Experiment{T}; saturated_thresh = :determine, 
         if maximum(weights) > saturated_thresh
             push!(rmaxs, edges[argmax(weights)])
         else
-            push!(rmaxs, minimum(data))
+            push!(rmaxs, minimum(all_points))
         end
     end
     rmaxs
@@ -173,9 +174,9 @@ function time_to_peak(data::Experiment{T}, dim_idx::Array{Int64,1}) where T <: R
         for (ch, swp) in enumerate(dim_idx)
             if swp != 0
                 t_series = data.t[findall(data.t .>= 0.0)]
-                data = data[swp, findall(data.t .>= 0), ch]
+                temp_record = data[swp, findall(data.t .>= 0), ch]
                 #println(argmin(data))
-                push!(t_peak, t_series[argmin(data)])
+                push!(t_peak, t_series[argmin(temp_record)])
             else
                 push!(t_peak, NaN)
             end
@@ -208,7 +209,9 @@ This function conducts a Pepperburg analysis on a single data.
     1) A rmax is provided, does not need to calculate rmaxes
     2) No rmax is provided, so one is calculated
 """
-function pepperburg_analysis(data::Experiment{T}, rmaxes::Array{T, 1}; recovery_percent = 0.60, kwargs...) where T <: Real
+function pepperburg_analysis(data::Experiment{T}, rmaxes::Array{T, 1}; 
+    recovery_percent = 0.60, kwargs...
+    ) where T <: Real
     if size(data,1) == 1
         throw(error("Pepperburg will not work on single sweeps"))
     end
@@ -273,7 +276,7 @@ end
 """
 The dominant time constant is calculated by fitting the normalized Rdim with the response recovery equation
 """
-function recovery_tau(data::Experiment{T}, dim_idx::Array{Int64,1}; τRec::T = 1.0, report_residuals = false) where T <: Real
+function recovery_tau(data::Experiment{T}, dim_idx::Array{Int64,1}; τRec::T = 1.0) where T <: Real
     if size(data,3) != length(dim_idx)
         throw(error("Size of dim indexes does not match channel size for data"))
     else
@@ -315,9 +318,6 @@ function recovery_tau(data::Experiment{T}, dim_idx::Array{Int64,1}; τRec::T = 1
                 ȳ = sum(model(xdata, fit.param))/length(xdata)
                 SST = sum((ydata .- ȳ).^2)
                 GOF = 1- SSE/SST
-                if report_residuals 
-                    println(sum((fit.resid).^2))
-                end
                 push!(fits, fit.param)
                 push!(gofs, GOF)
             end
@@ -327,25 +327,24 @@ function recovery_tau(data::Experiment{T}, dim_idx::Array{Int64,1}; τRec::T = 1
 end
 
 
-function amplification(
-        data::Experiment{T}, rmaxes::Array{T,1}; 
-        report_residuals = false, GOF_limit = 0.90, 
+function amplification(data::Experiment{T}, rmaxes::Array{T,1}; 
+        time_cutoff = 0.1,
         lb = [0.0, 0.001], ub = [Inf, 0.040]
     ) where T <: Real
     amp = zeros(2, size(data,1), size(data,3))
     gofs = zeros(T, size(data,1), size(data,3))
     for swp in 1:size(data,1), ch in 1:size(data,3)
         model(x, p) = map(t -> AMP(t, p[1], p[2], rmaxes[ch]), x)
-        xdata = data.t
-        ydata = data[swp,:,ch]
-        p0 = [200.0, 0.2]        
+        idx_end = findall(data.t .>= time_cutoff)[1]
+        xdata = data.t[1:idx_end]
+        ydata = data[swp,1:idx_end,ch]
+        p0 = [200.0, 0.002]        
         fit = curve_fit(model, xdata, ydata, p0, lower = lb, upper = ub)
         #Check Goodness of fit
         SSE = sum(fit.resid.^2)
         ȳ = sum(model(xdata, fit.param))/length(xdata)
         SST = sum((ydata .- ȳ).^2)
         GOF = 1 - SSE/SST
-        println(GOF)
         amp[1, swp, ch] = fit.param[1] #Alpha amp value
         amp[2, swp, ch] = fit.param[2] #Effective time value
         gofs[swp, ch] = GOF
