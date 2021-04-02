@@ -1,12 +1,14 @@
 using NeuroPhys
 
 #%% Testing tau recovery mistakes
-file_ex = "E:\\Data\\ERG\\Gnat\\Paul\\Adult (NR) rods_14\\Green\\a-waves\\10_14_19_WT_P33_m1_D_Rods_Green.abf"
+#file_ex = "E:\\Data\\ERG\\Gnat\\Paul\\Adult (NR) rods_14\\Green\\a-waves\\10_14_19_WT_P33_m1_D_Rods_Green.abf"
+#file_ex = "E:\\Data\\ERG\\Gnat\\Paul\\Adult (NR) cones_10\\Green\\a-waves\\9_22_19_WT_P37_m1_D_Cones_Green.abf"
+file_ex = "E:\\Data\\ERG\\Gnat\\Matt\\2020_11_02_ERG\\Mouse1_Adult_HT\\Drugs\\365UV\\"
 data = extract_abf(file_ex; swps = -1)
 truncate_data!(data; t_post = 1.0);
 baseline_cancel!(data) #Mean mode is better    
 filter_data = lowpass_filter(data) #Lowpass filter using a 40hz 8-pole 
-rmax_lin = [0.10, 0.70]
+rmax_lin = [0.10, 0.30]
 rmaxes = saturated_response(filter_data)
 rdims, dim_idx = dim_response(filter_data, rmaxes; rmax_lin = rmax_lin)
 t_peak = time_to_peak(data, dim_idx)
@@ -20,19 +22,10 @@ println("Time to peak -> $(t_peak.*1000)")
 println("Integration time -> $t_Int")
 println("TauRec -> $(tau_rec)")
 println("Amplification -> $(amp[1,:,:])")
-#%%
-unsaturated_traces = findall(minima .> rmaxes')
-for i in 1:size(data,3)
-    selected_amps = map(I -> amp[1,I[1],i], findall(x -> x[2] == i, unsaturated_traces))
-    println(sum(selected_amps)/length(selected_amps))
-end
-#%%
-a = [1,3,4,3,2,1]
-sortperm(a)
+minima = minimum(data, dims = 2)[:,1,:]
 #%% find out saturated trace indexes
+data = filter_data
 plt = plot(data, c = :black, label_stim = true)
-plot!(plt, data, c = :red, linewidth = 2.0, to_plot = (dim_idx[1], 1), label = "Dim trace")
-plot!(plt, data, c = :red, linewidth = 2.0, to_plot = (dim_idx[2], 2), label = "Dim trace")
 saturated_traces = findall(minima .< rmaxes')
 for I in saturated_traces
     swp = I[1]
@@ -40,10 +33,12 @@ for I in saturated_traces
     plot!(plt[ch], data, c = :green, linewidth = 1.0, to_plot = (swp, ch), label ="")
 end
 
-hline!(plt[1], [rmaxes[1]], c = :green, label = "Saturation")
-hline!(plt[2], [rmaxes[2]], c = :green, label = "Saturation")
-vline!(plt[1], [t_peak[1]], c = :magenta, linewidth = 2.0, label = "Time to peak")
-vline!(plt[2], [t_peak[2]], c = :magenta, linewidth = 2.0, label = "Time to peak")
+
+for i in size(data,3)
+    plot!(plt, data, c = :red, linewidth = 2.0, to_plot = (dim_idx[i], i), label = "Dim trace")
+    hline!(plt[i], [rmaxes[i]], c = :green, label = "Saturation")
+    vline!(plt[i], [t_peak[i]], c = :magenta, linewidth = 2.0, label = "Time to peak")
+end
 # Plotting the recovery time constant
 model(x,p) = map(t -> REC(t, -1.0, p[2]), x)
 for ch in 1:size(data,3)
@@ -66,7 +61,7 @@ for ch in 1:size(data,3)
     plot!(plt[ch], xdata, x -> model(x-xdata[1], fit.param)*-norm_val, label = "TauRec fit", c = :blue, linewidth = 4.0)
 end
 # Plotting the amplification model
-time_cutoff = 0.1 #50ms after stimulus
+time_cutoff = 0.03 #50ms after stimulus
 
 for swp in 1:size(data,1), ch in 1:size(data,3)
     model(x, p) = map(t -> AMP(t, p[1], p[2], rmaxes[ch]), x)
@@ -75,8 +70,10 @@ for swp in 1:size(data,1), ch in 1:size(data,3)
     ydata = data[swp,1:idx_end,ch]
     p0 = [200.0, 0.002]
     lb = [0.0, 0.0]
-    ub = [Inf, 0.040]
+    ub = [Inf, 0.020]
     fit = curve_fit(model, xdata, ydata, p0, lower = lb, upper = ub)
+    println("Trace $swp")
+    println(fit.param)
     if swp == 1 
         label = "Amplification Fit"
     else
@@ -85,6 +82,7 @@ for swp in 1:size(data,1), ch in 1:size(data,3)
     plot!(plt[ch], x -> model(x, fit.param), xdata[1], time_cutoff, c = :blue, linewidth = 2.0, label = label)
 end
 plt
+
 #%% TODO: Build the equation for the Ih curve fitting
 test_file = "E:\\Data\\ERG\\Gnat\\Matt\\2020_11_02_ERG\\Mouse1_Adult_HT\\Drugs\\525Green"
 data = concat(test_file)
