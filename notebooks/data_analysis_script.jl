@@ -137,8 +137,10 @@ Pauls_IR_analysis = DataFrame(
 println("[$(Dates.now())]: Analyzing all datafiles")
 fail_files = String[];
 error_causes = [];
-for (i, row) in enumerate(eachrow(all_experiments))
-    try
+plot_reports = false; 
+save_reports = joinpath(target_folder, "figures")
+for (i, row) in enumerate(eachrow(all_experiments)[10:12])
+    #try
         if row[:Photoreceptors] == "cones" || row[:Photoreceptors] == "Both"
             #Cone responses are under 300ms
             t_post = 0.3
@@ -206,13 +208,81 @@ for (i, row) in enumerate(eachrow(all_experiments))
             end
             println("Completed")
         end
-         
-        
+        println(size(data))
+        println(size(minima))
+        println(unsaturated_traces)
+        #If we want to plot the final results we can set this to true
+        if plot_reports
+            println("Plotting data")
+            plt = plot(data, c = :black, label_stim = true)
+            saturated_traces = findall(minima .< rmaxes')
+            for I in saturated_traces
+                swp = I[1]
+                ch = I[2]
+                plot!(plt[ch], data, c = :green, linewidth = 1.0, to_plot = (swp, ch), label ="")
+            end
+            
+            
+            for i in size(data,3)
+                plot!(plt, data, c = :red, linewidth = 2.0, to_plot = (dim_idx[i], i), label = "Dim trace")
+                hline!(plt[i], [rmaxes[i]], c = :green, label = "Saturation")
+                vline!(plt[i], [t_peak[i]], c = :magenta, linewidth = 2.0, label = "Time to peak")
+            end
+            # Plotting the recovery time constant
+            for ch in 1:size(data,3)
+                model(x,p) = map(t -> REC(t, -1.0, p[2]), x)
+                xdata = data.t
+                ydata = data[dim_idx[ch], :, ch] 
+                norm_val = minimum(ydata)
+                ydata ./= norm_val #Normalize the Rdim
+                #cutoff all points below -0.5 and above -1.0
+                begin_rng = findall(ydata .>= 1.0)[end]
+                xdata = xdata[begin_rng:end]
+                ydata = ydata[begin_rng:end]
+                end_rng = findall(ydata .< 0.5)[1] 
+
+                xdata = xdata[1:end_rng]
+                ydata = -ydata[1:end_rng]
+                p0 = [ydata[1], 1.0]
+                fit = curve_fit(model, xdata.-xdata[1], ydata, p0)
+                println(fit.param)
+                #plot!(plt[ch], xdata, ydata*-norm_val, c = :blue, linewidth = 3.0)
+                plot!(plt[ch], xdata, x -> model(x-xdata[1], fit.param)*-norm_val, label = "TauRec fit", c = :blue, linewidth = 4.0)
+            end
+            # Plotting the amplification model
+            time_cutoff = 0.1 #50ms after stimulus
+
+            for swp in 1:size(data,1), ch in 1:size(data,3)
+                model(x, p) = map(t -> AMP(t, p[1], p[2], rmaxes[ch]), x)
+                idx_end = findall(data.t .>= time_cutoff)[1]
+                xdata = data.t[1:idx_end]
+                ydata = data[swp,1:idx_end,ch]
+                p0 = [200.0, 0.002]
+                lb = [0.0, 0.0]
+                ub = [Inf, 0.040]
+                fit = curve_fit(model, xdata, ydata, p0, lower = lb, upper = ub)
+                if swp == 1 
+                    label = "Amplification Fit"
+                else
+                    label = ""
+                end
+                plot!(plt[ch], x -> model(x, fit.param), xdata[1], time_cutoff, c = :blue, linewidth = 2.0, label = label)
+            end
+            save_loc = joinpath(save_reports, "$(data.ID).png")
+            println(save_loc)
+            savefig(plt, save_loc)
+
+        end
         for i = 1:size(data,3)
-            #Recording the AMplification values here
-            selected_amps = map(I -> amp[1,I[1],i], findall(x -> x[2] == i, unsaturated_traces))
-            selected_gofs = map(I -> amp_gofs[I[1],i], findall(x -> x[2] == i, unsaturated_traces))
-            if length(selected_amps) < 3
+            #Recording the Amplification values here
+            selected_idxs = map(i -> unsaturated_traces[i][1], findall(x -> x[2] == i, unsaturated_traces))
+            println(selected_idxs)
+            selected_amps = map(I -> amp[1,I[1],i], selected_idxs)
+            selected_gofs = map(I -> amp_gof[I[1],i], selected_idxs)
+            if isempty(unsaturated_traces)
+                amp_val = 0.0
+                amp_gofs = 0.0 
+            elseif length(selected_amps) < 3
                 amp_val = sum(selected_amps)/length(selected_amps)
                 amp_gofs = sum(selected_gofs)/length(selected_gofs)
             else
@@ -232,19 +302,19 @@ for (i, row) in enumerate(eachrow(all_experiments))
                     #tau fits
                     tau_fit[i][1], tau_fit[i][2]*1000, tau_GOF[i], 
                     #Amplification fits
-                    0.0, 0.0, 0.0
+                    amp_val, 0.0, amp_gofs
                 )
             )
         end
         println("[$(Dates.now())]: Data analysis of path $(row[:Root]) complete")
         println("********************************************************************")
-    catch error
-        println("Failed")
-        println("[$(Dates.now())]: Analyzing experiment $i $(row[:Root]) has failed.")
-        println(error)
-        push!(fail_files, row[:Root])
-        push!(error_causes, error)
-    end
+    #catch error
+    #    println("Failed")
+    #    println("[$(Dates.now())]: Analyzing experiment $i $(row[:Root]) has failed.")
+    #    println(error)
+    #    push!(fail_files, row[:Root])
+    #    push!(error_causes, error)
+    #end
 end
 
 println("[$(Dates.now())]: All files have been analyzed.")
@@ -262,7 +332,8 @@ category_averages = data_analysis |>
         Rdim  = 0.0, Rdim_sem  = 0.0,
         tPeak = 0.0, tPeak_sem = 0.0,
         tInt  = 0.0, tInt_sem  = 0.0, 
-        τRec  = 0.0, τRec_sem  = 0.0    
+        τRec  = 0.0, τRec_sem  = 0.0,
+        amp = 0.0, amp_sem = 0.0    
     }) |>
     DataFrame
 
@@ -279,7 +350,7 @@ for (i, row) in enumerate(eachrow(category_averages))
         
         @map({
                 _.Path, _.Age, _.Wavelength, _.Photoreceptors, 
-                _.Rearing, _.Rmax, _.Rdim, _.tPeak, _.tInt, _.τRec
+                _.Rearing, _.Rmax, _.Rdim, _.tPeak, _.tInt, _.τRec, _.alpha
             }) |> 
         DataFrame
     
@@ -305,6 +376,10 @@ for (i, row) in enumerate(eachrow(category_averages))
     τRec_q = Qi |> @filter(!isnan(_.τRec)) |> @map(_.τRec) |> collect
     category_averages[i, :τRec] = sum(τRec_q)/length(τRec_q)
     category_averages[i, :τRec_sem] = std(τRec_q)/(sqrt(length(τRec_q)))
+
+    amp_q = Qi |> @filter(!isnan(_.amp)) |> @map(_.amp) |> collect
+    category_averages[i, :amp] = sum(amp_q)/length(amp_q)
+    category_averages[i, :amp_sem] = std(amp_q)/(sqrt(length(amp_q)))
 end
 category_averages = category_averages |> 
     @orderby(_.Rearing) |> @thenby(_.Drugs) |> @thenby(_.Genotype) |> @thenby(_.Age) |> @thenby_descending(_.Photoreceptors) |> @thenby(_.Wavelength) |>
