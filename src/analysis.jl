@@ -137,7 +137,13 @@ function dim_response(data::Experiment{T}, rmaxes::Array{T, 1}; return_idx = tru
                 else
                     minima = maximum(data[swp, :, ch])
                 end
-                println(minima)
+                #println(rmax_val[1])
+                #println(minima)
+                #println(rmax_val[1]< minima)
+
+                #println(rmax_val[2])
+                #println(minima)
+                #println(minima <= rmax_val[2])
                 if rmax_val[1] < minima < rmax_val[2]
                     #println("Minima in range")
                     if minima < rdims[ch] && polarity < 0
