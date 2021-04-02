@@ -126,6 +126,7 @@ function dim_response(data::Experiment{T}, rmaxes::Array{T, 1}; return_idx = tru
         for swp in 1:size(data,1)
             for ch in 1:size(data,3)
                 rmax_val = rmax_lin .* rmaxes[ch]
+                #println(rmax_val)
                 if rmax_val[1] > rmax_val[2]
                     rmax_val = reverse(rmax_val)
                 end
@@ -136,6 +137,7 @@ function dim_response(data::Experiment{T}, rmaxes::Array{T, 1}; return_idx = tru
                 else
                     minima = maximum(data[swp, :, ch])
                 end
+                println(minima)
                 if rmax_val[1] < minima < rmax_val[2]
                     #println("Minima in range")
                     if minima < rdims[ch] && polarity < 0
@@ -352,6 +354,21 @@ function amplification(data::Experiment{T}, rmaxes::Array{T,1};
     return amp, gofs
 end
 
+P_30_A_Waves_365 = [
+1.583900864,
+3.167801729,
+16.68424576,
+25.02636865,
+33.36849153,
+43.05196897,
+86.10393794,
+172.2078759,
+#562.927922,
+#1125.855844,
+2251.711688,
+4857.026488,
+8867.786872
+]
 #Lets get the file we want to use first
 function IR_curve(data::Experiment{T}; 
         ih = 100.0, n::Real = 2.0,  lb = [0.0, 1.0, 0.0], ub = [Inf, 4.0, Inf],
