@@ -160,6 +160,7 @@ function dim_response(data::Experiment{T}, rmaxes::Array{T, 1}; return_idx = tru
             end
         end
         rdims = map(x -> x == 0.0 ? NaN : x, rdims)
+        #dim_idx = map(x -> x == 0.0 ? NaN : x, dim_idx)
         #println(rdims)
         if return_idx #In most cases, the rdim will be used to calculate the time to peak
             rdims |> vec, dim_idx |> vec
