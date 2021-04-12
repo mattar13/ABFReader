@@ -532,7 +532,6 @@ for (i, category) in enumerate(eachrow(category_averages))
         @filter(_.Wavelength == category.Wavelength) |>
         @filter(_.Drugs == category.Drugs) |>
         DataFrame
-    
     if isempty(Qi)
         #println(category)
         #println("No matching intensities")
@@ -595,7 +594,3 @@ catch
         println(error)
     end
 end
-
-#%% Look at all of the fail files and try to work through their mistakes
-#check_paths = paths[fail_files]
-#focus = check_paths[6]
