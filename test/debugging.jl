@@ -1,13 +1,18 @@
 using NeuroPhys
-
 #%% Testing tau recovery mistakes
 #file_ex = "E:\\Data\\ERG\\Gnat\\Paul\\Adult (NR) rods_14\\Green\\a-waves\\10_14_19_WT_P33_m1_D_Rods_Green.abf"
 #file_ex = "E:\\Data\\ERG\\Gnat\\Paul\\Adult (NR) cones_10\\Green\\a-waves\\9_22_19_WT_P37_m1_D_Cones_Green.abf"
-file_ex = "E:\\Data\\ERG\\Gnat\\Matt\\2020_11_02_ERG\\Mouse1_Adult_HT\\Drugs\\365UV\\"
+file_ex = "E:\\Data\\ERG\\Gnat\\Matt\\2020_11_16_ERG\\Mouse2_P14_KO\\NoDrugs\\525Green"
 data = extract_abf(file_ex; swps = -1)
 truncate_data!(data; t_post = 1.0);
 baseline_cancel!(data) #Mean mode is better    
 filter_data = lowpass_filter(data) #Lowpass filter using a 40hz 8-pole 
+#filter_data.data_array .*= 1000
+#%% find out saturated trace indexes 0.50
+plt = plot(filter_data, c = :black, label_stim = true, grid = false)
+#%%
+savefig("gnat_ko_P14_b_wave.png")
+#%%
 rmax_lin = [0.10, 0.30]
 rmaxes = saturated_response(filter_data)
 rdims, dim_idx = dim_response(filter_data, rmaxes; rmax_lin = rmax_lin)
@@ -23,16 +28,14 @@ println("Integration time -> $t_Int")
 println("TauRec -> $(tau_rec)")
 println("Amplification -> $(amp[1,:,:])")
 minima = minimum(data, dims = 2)[:,1,:]
-#%% find out saturated trace indexes
-data = filter_data
-plt = plot(data, c = :black, label_stim = true)
+
 saturated_traces = findall(minima .< rmaxes')
 for I in saturated_traces
     swp = I[1]
     ch = I[2]
     plot!(plt[ch], data, c = :green, linewidth = 1.0, to_plot = (swp, ch), label ="")
 end
-
+#%%
 
 for i in size(data,3)
     plot!(plt, data, c = :red, linewidth = 2.0, to_plot = (dim_idx[i], i), label = "Dim trace")
