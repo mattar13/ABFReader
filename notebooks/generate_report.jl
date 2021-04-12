@@ -28,9 +28,10 @@ begin
 	t_pre = 0.2;
 	t_post = 1.0;
 	truncate_data!(data; t_pre = t_pre, t_post = t_post);
+	baseline_cancel!(data, mode = :slope, region = :whole); 
 	baseline_cancel!(data); #Mean mode
-	#baseline_cancel!(data, mode = :slope, region = :whole); 
-	filter_data = lowpass_filter(data); #Lowpass filter using a 40hz 8-pole 
+	
+	filter_data = data#lowpass_filter(data); #Lowpass filter using a 40hz 8-pole 
 	data
 end
 
@@ -195,7 +196,7 @@ end
 # ╠═de4ec361-908f-4365-8fb2-ca2c3f08b930
 # ╟─70182ef7-d60a-4073-b55b-7565e6c4ab6c
 # ╟─f57ebcff-72d2-4c0d-9c39-4caaa967b4ef
-# ╟─1e0cfd94-a20b-4691-9b5e-58c5b9e38ff3
+# ╠═1e0cfd94-a20b-4691-9b5e-58c5b9e38ff3
 # ╟─b5863ba7-f332-43e1-a73f-20a1f6203201
 # ╟─41126fe9-6a3f-495f-9e03-32d980a91bb1
 # ╟─f4eff6dc-1d23-45a3-8514-521048ab5abc
