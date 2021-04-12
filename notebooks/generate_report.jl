@@ -19,7 +19,7 @@ md"
 "
 
 # ╔═╡ f57ebcff-72d2-4c0d-9c39-4caaa967b4ef
-analysis_file = "E:\\Data\\ERG\\Gnat\\Matt\\2020_11_16_ERG\\Mouse2_P14_KO\\Drugs\\525Green"
+analysis_file = "E:\\Data\\ERG\\Gnat\\Matt\\2020_11_16_ERG\\Mouse2_P14_KO\\NoDrugs\\525Green"
 
 # ╔═╡ 1e0cfd94-a20b-4691-9b5e-58c5b9e38ff3
 begin
@@ -135,7 +135,7 @@ begin
 		fit = curve_fit(tR_model, xdata.-xdata[1], ydata, p0)
 		plot!(fit_plt[ch], 
 			x -> tR_model(x-xdata[1], fit.param)*-norm_val,
-			xdata[1],xdata[end], 
+			LinRange(xdata[1], xdata[end], 10000), 
 			label = "TauRec fit", c = :blue, lw = 4.0
 		)
 	end
@@ -178,10 +178,9 @@ begin
 		ub = [Inf, 4.0, Inf]
 		pars = [10000.0, 2.0, rmaxes[ch]*-1000]
 		fit = curve_fit(IR_model, xdata, ydata, pars, lower = lb, upper = ub)
-		println(fit.param)
 		plot!(IR_plot,
 			x -> IR_model(x, fit.param), 
-			xdata[1], xdata[end], 
+			LinRange(xdata[1], xdata[end], 10000),
 			label = "Fitted IR curve", c = :red, lw = 2.0,
 			xlabel = "Intensity (Log Photons)", ylabel = "Response (μV)", 
 		)
@@ -195,7 +194,7 @@ end
 # ╠═e3e3b7e5-901b-41ff-88e2-d296891bdaa2
 # ╠═de4ec361-908f-4365-8fb2-ca2c3f08b930
 # ╟─70182ef7-d60a-4073-b55b-7565e6c4ab6c
-# ╠═f57ebcff-72d2-4c0d-9c39-4caaa967b4ef
+# ╟─f57ebcff-72d2-4c0d-9c39-4caaa967b4ef
 # ╟─1e0cfd94-a20b-4691-9b5e-58c5b9e38ff3
 # ╟─b5863ba7-f332-43e1-a73f-20a1f6203201
 # ╟─41126fe9-6a3f-495f-9e03-32d980a91bb1
