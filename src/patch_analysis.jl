@@ -121,7 +121,7 @@ function max_interval_algorithim(exp::Experiment{T}, threshold::Array{T}, rng::T
         end
         return fill(nothing, 4)
     else
-        println("Times detected")
+        #println("Times detected")
         #Lets organize the spipkes into intervals spikes and not spikes
         spike_durs = map(i -> timestamps[i][2]-timestamps[i][1], 1:length(timestamps))
         intervals = map(i -> timestamps[i][1] - timestamps[i-1][2], 2:length(timestamps))
@@ -214,6 +214,15 @@ function timescale_analysis(exp::Experiment{T}, rng::Tuple{T,T};
         Z::Int64 = 4, sweeps = -1,
         kwargs...
     ) where T <: Real
+    threshold = calculate_threshold(exp, Z = Z, sweeps = sweeps)
+    timescale_analysis(exp, threshold, rng; kwargs...)
+end
+
+function timescale_analysis(exp::Experiment{T}; 
+        Z::Int64 = 4, sweeps = -1,
+        kwargs...
+    ) where T <: Real
+    rng = (exp.t[1], exp.t[end])
     threshold = calculate_threshold(exp, Z = Z, sweeps = sweeps)
     timescale_analysis(exp, threshold, rng; kwargs...)
 end
