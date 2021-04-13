@@ -36,7 +36,7 @@ export cwt_filter, cwt_filter!
 export average_sweeps, average_sweeps!
 export normalize, normalize!
 #Analysis functions return a single number or numbers related to the Experiment
-include("analysis.jl")
+include("erg_analysis.jl")
 export RSQ
 export calculate_basic_stats
 export saturated_response, dim_response, time_to_peak
