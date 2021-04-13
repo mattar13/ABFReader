@@ -415,6 +415,9 @@ function truncate_data(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_ba
     if isempty(trace.stim_protocol)
         #println("No explicit stimulus has been set")
         return data
+    elseif truncate_based_on == :time_range 
+        #Use this if there is no stimulus, but rather you want to truncate according to time
+        println("truncate new use")
     else
         for swp in 1:size(trace, 1)
             stim_protocol = trace.stim_protocol[swp]
@@ -468,7 +471,15 @@ function truncate_data!(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_b
     dt = trace.dt
     size_of_array = 0
     overrun_time = 0 #This is for if t_pre is set too far before the stimulus
-    if isempty(trace.stim_protocol)
+    if truncate_based_on == :time_range 
+        #Use this if there is no stimulus, but rather you want to truncate according to time
+        start_rng = round(Int64, 140.0/dt)
+        end_rng = round(Int64, 240.0/dt)
+        println(start_rng)
+        println(end_rng)
+        trace.data_array = trace.data_array[:, start_rng:end_rng, :]
+        trace.t = trace.t[start_rng:end_rng] .- trace.t[start_rng]
+    elseif isempty(trace.stim_protocol)
         println("No explicit stimulus has been set")
         size_of_array = round(Int64, t_post / dt)
         trace.data_array = trace.data_array[:, 1:size_of_array, :] #remake the array with only the truncated data
