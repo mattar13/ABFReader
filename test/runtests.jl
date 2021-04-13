@@ -104,4 +104,19 @@ plot(p1, p2, layout = grid(1,2))
 
 #%% Sandbox area
 
-#%% TODO: Build the equation fot Amplification
+#%% Testing stuff for patch analysis
+target_file = "E:\\Data\\Patching\\2019_11_03_Patch\\Animal_2\\Cell_3\\19n03042.abf"
+data = extract_abf(target_file)
+#%%
+start_rng = round(Int64, 140.0/data.dt)
+end_rng = round(Int64, 240.0/data.dt)
+reduced_rng = start:100:end_rng
+plot(data.t[reduced_rng], data.data_array[1,reduced_rng,1])
+#Because there are so many points to plot, we can reduce the range
+#%%
+thresh = calculate_threshold(data)
+timestamps = get_timestamps(data, (130.0, 230.0))
+timestamps
+max_interval_algorithim(data, (130.0, 230.0))
+#%%
+timescale_analysis(data, (130.0, 230.0))

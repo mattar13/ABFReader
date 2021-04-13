@@ -47,7 +47,12 @@ export recovery_tau
 export amplification
 export curve_fit #curve fitting from LsqFit
 export IR_curve
-#export filtering functions
+#export patch clamp analysis functions
+include("patch_analysis.jl")
+export calculate_threshold
+export get_timestamps
+export max_interval_algorithim
+export timescale_analysis
 
 #Models are anything that is used to create new data
 include("models.jl") 

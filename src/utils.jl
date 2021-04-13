@@ -425,6 +425,9 @@ function truncate_data(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_ba
             elseif truncate_based_on == :stimulus_end
                 #This will set the beginning of the simulus as the truncation 
                 truncate_loc = stim_protocol.index_range[2]
+            elseif truncate_based_on == :time_range
+                truncate_loc = t_pre #Set the beginning to the 
+                t_pre = 0.0 #
             end
             idxs_begin = Int(t_pre/dt); 
             idxs_end = Int(t_post/dt)+1
