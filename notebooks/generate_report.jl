@@ -15,7 +15,7 @@ using DataFrames, Query
 
 # ╔═╡ 70182ef7-d60a-4073-b55b-7565e6c4ab6c
 md"
-### Using this notebook we can generate reports for experiments
+#### This notebook will analyze the data root that you enter in here
 "
 
 # ╔═╡ f57ebcff-72d2-4c0d-9c39-4caaa967b4ef
@@ -34,6 +34,12 @@ begin
 	filter_data = data#lowpass_filter(data); #Lowpass filter using a 40hz 8-pole 
 	data
 end
+
+# ╔═╡ 5b273f51-e6e1-4b2f-9789-6c42c290a8ef
+md"
+#### Rmaxes, Rdims, Time to peak, and Integration time Printouts
+
+"
 
 # ╔═╡ b5863ba7-f332-43e1-a73f-20a1f6203201
 begin
@@ -55,6 +61,11 @@ begin
 		)
 end
 
+# ╔═╡ 0f308136-d3a1-46d3-95a1-a99c6913b524
+md"
+#### Amplification, and Intensity Response curves
+"
+
 # ╔═╡ 41126fe9-6a3f-495f-9e03-32d980a91bb1
 #IR analysis
 begin
@@ -62,6 +73,7 @@ begin
 	IR_analysis = DataFrame(
 		:Trace => collect(1:size(data,1)),
 		:Photons => 0.0, 
+		
 	)
 	
 	for (idx, fn) in enumerate(data.filename)
@@ -80,6 +92,9 @@ begin
 		IR_analysis[!, Symbol("Rmax_$(ch)")] = repeat(
 			[rmaxes[ch]*-1000], size(data,1)
 		)
+		IR_analysis[!, Symbol("Amp_$(ch)")] = amp[1, :, ch]
+		IR_analysis[!, Symbol("tEff_$(ch)")] = amp[2, :, ch]
+		IR_analysis[!, Symbol("R2_$(ch)")] = amp_gof[:, ch]
 	end	
 	IR_analysis = IR_analysis |> @orderby(_.Photons) |> DataFrame
 end
@@ -99,27 +114,14 @@ begin
 			c = :green, lw = 1.0
 		)
 	end
-	for i in size(data,3)
-		plot!(plt, filter_data, to_plot = (dim_idx[i], i), label = "Dim trace",
+	for ch in size(data,3)
+		plot!(plt, filter_data, to_plot = (dim_idx[ch], ch), label = "Dim trace",
 			c = :red, lw = 2.0
 		)
 		
-		hline!(plt[i], [rmaxes[i]], c = :green,label = "Saturation")
-		vline!(plt[i], [t_peak[i]], c = :magenta,lw= 2.0, label = "Time to peak")
-	end
-	
-	plt
-end
-
-# ╔═╡ b6e6e3c9-58a5-4e5b-8a83-a516787fb870
-begin
-	fit_plt = plot(filter_data, 
-		c = :black, label_stim = true, grid = false, 
-		title = "Rmax, Rdim, and Time to peak"
-	)
-	# Plotting the recovery time constant
-	tR_model(x,p) = map(t -> REC(t, -1.0, p[2]), x)
-	for ch in 1:size(data,3)
+		hline!(plt[ch], [rmaxes[ch]], c = :green,label = "Saturation")
+		vline!(plt[ch], [t_peak[ch]], c = :magenta,lw= 2.0, label = "Time to peak")
+		tR_model(x,p) = map(t -> REC(t, p[1], -1.0), x)
 		xdata = data.t
 		ydata = data[dim_idx[ch], :, ch] 
 		norm_val = minimum(ydata)
@@ -132,14 +134,25 @@ begin
 
 		xdata = xdata[1:end_rng]
 		ydata = -ydata[1:end_rng]
-		p0 = [ydata[1], 1.0]
+		p0 = [ydata[1], -1.0]
 		fit = curve_fit(tR_model, xdata.-xdata[1], ydata, p0)
-		plot!(fit_plt[ch], 
+		plot!(plt[ch], 
 			x -> tR_model(x-xdata[1], fit.param)*-norm_val,
 			LinRange(xdata[1], xdata[end], 10000), 
 			label = "TauRec fit", c = :blue, lw = 4.0
 		)
 	end
+	plt
+end
+
+# ╔═╡ b6e6e3c9-58a5-4e5b-8a83-a516787fb870
+begin
+	fit_plt = plot(filter_data, 
+		#xlims = (0.0, 0.1), ylims = (-rmaxes[1], 0.0),
+		c = :black, label_stim = true, grid = false, 
+		title = "Amplification"
+	)
+	
 	
 	# Plotting the amplification model
 	time_cutoff = 0.03 #50ms after stimulus
@@ -159,6 +172,7 @@ begin
 		end
 		plot!(fit_plt[ch], 
 			x -> amp_model(x, fit.param), 
+			
 			xdata[1], time_cutoff, 
 			c = :blue, linewidth = 2.0, label = label)
 	end
@@ -196,9 +210,11 @@ end
 # ╠═de4ec361-908f-4365-8fb2-ca2c3f08b930
 # ╟─70182ef7-d60a-4073-b55b-7565e6c4ab6c
 # ╟─f57ebcff-72d2-4c0d-9c39-4caaa967b4ef
-# ╠═1e0cfd94-a20b-4691-9b5e-58c5b9e38ff3
+# ╟─1e0cfd94-a20b-4691-9b5e-58c5b9e38ff3
+# ╟─5b273f51-e6e1-4b2f-9789-6c42c290a8ef
 # ╟─b5863ba7-f332-43e1-a73f-20a1f6203201
-# ╟─41126fe9-6a3f-495f-9e03-32d980a91bb1
 # ╟─f4eff6dc-1d23-45a3-8514-521048ab5abc
+# ╟─0f308136-d3a1-46d3-95a1-a99c6913b524
+# ╟─41126fe9-6a3f-495f-9e03-32d980a91bb1
 # ╟─b6e6e3c9-58a5-4e5b-8a83-a516787fb870
 # ╟─512f83bb-9b54-4845-92dd-550c4fa4c79f
