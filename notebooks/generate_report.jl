@@ -78,7 +78,6 @@ begin
 	
 	for (idx, fn) in enumerate(data.filename)
 		nt = formatted_split(fn, format_bank)
-		println(nt)
 		stim_times = data.stim_protocol[idx].timestamps
 		t_stim = (stim_times[2] - stim_times[1])*1000
 		IR_analysis[idx, :Photons] = f_I(
