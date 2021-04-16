@@ -706,3 +706,13 @@ function test_file_analysis(path; verbose = true)
 
 
 end
+
+function photon_lookup(calibration_file::String, wavelength::Real, nd::Real, percent::Real)
+    df = DataFrame(XLSX.readtable(calibration_file, "Photon Calculations")...)
+    Qi = df |> 
+        @filter(_.Wavelength == wavelength && _.ND == nd && _.Percent == percent) |>
+        @map(_.Photons) |>
+        DataFrame
+    #%%
+    return Qi.value[1]
+end

@@ -8,7 +8,7 @@ using StatsBase
 using Polynomials, Distributions #Used for polynomial fitting
 using DSP, Wavelets, FFTW #Used for filtering
 using LsqFit #Used for fitting amplification and Intensity Response models
-using DataFrames, XLSX #Used for saving data
+using DataFrames, Query, XLSX #Used for saving data
 using Dates
 
 #Functions that can help with file extraction
@@ -25,6 +25,7 @@ export Experiment, getchannel, getsweep, getstim, findstimRng
 export eachchannel, eachsweep
 export truncate_data, truncate_data!
 export concat, concat!
+export photon_lookup
 
 
 #filtering are any functions that return a Experiment file and alter the old one
