@@ -361,21 +361,6 @@ function amplification(data::Experiment{T}, rmaxes::Array{T,1};
     return amp, gofs
 end
 
-P_30_A_Waves_365 = [
-1.583900864,
-3.167801729,
-16.68424576,
-25.02636865,
-33.36849153,
-43.05196897,
-86.10393794,
-172.2078759,
-#562.927922,
-#1125.855844,
-2251.711688,
-4857.026488,
-8867.786872
-]
 #Lets get the file we want to use first
 function IR_curve(data::Experiment{T}; 
         ih = 100.0, n::Real = 2.0,  lb = [0.0, 1.0, 0.0], ub = [Inf, 4.0, Inf],
