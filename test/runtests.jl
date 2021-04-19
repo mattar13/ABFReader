@@ -115,3 +115,11 @@ thresh = calculate_threshold(data)
 timestamps = get_timestamps(data)
 max_interval_algorithim(data)
 timescale_analysis(data)
+
+#%% Lets test the Photon intensity lookup table
+using DataFrames, Query, XLSX
+calibration_file = "E:\\Data\\photons_lookup.xlsx"
+wavelength = 520
+nd = 0
+per_int = 1
+photon_lookup(calibration_file, 520, 0, 1)
