@@ -61,50 +61,13 @@ begin
 		)
 end
 
-# ╔═╡ 0f308136-d3a1-46d3-95a1-a99c6913b524
-md"
-#### Amplification, and Intensity Response curves
-"
-
-# ╔═╡ 41126fe9-6a3f-495f-9e03-32d980a91bb1
-#IR analysis
-begin
-	minima = minimum(filter_data, dims = 2)[:,1,:]
-	IR_analysis = DataFrame(
-		:Trace => collect(1:size(data,1)),
-		:Photons => 0.0, 
-		
-	)
-	
-	for (idx, fn) in enumerate(data.filename)
-		nt = formatted_split(fn, format_bank)
-		stim_times = data.stim_protocol[idx].timestamps
-		t_stim = (stim_times[2] - stim_times[1])*1000
-		IR_analysis[idx, :Photons] = f_I(
-			nt[:ND]|>Float64, nt[:Intensity]|>Float64, t_stim
-		)
-
-		
-	end
-	for ch in 1:size(data,3)
-		IR_analysis[!, Symbol("Minima_$(ch)")] = minima[:, ch] *-1000
-		IR_analysis[!, Symbol("Rmax_$(ch)")] = repeat(
-			[rmaxes[ch]*-1000], size(data,1)
-		)
-		IR_analysis[!, Symbol("Amp_$(ch)")] = amp[1, :, ch]
-		IR_analysis[!, Symbol("tEff_$(ch)")] = amp[2, :, ch]
-		IR_analysis[!, Symbol("R2_$(ch)")] = amp_gof[:, ch]
-	end	
-	IR_analysis = IR_analysis |> @orderby(_.Photons) |> DataFrame
-end
-
 # ╔═╡ f4eff6dc-1d23-45a3-8514-521048ab5abc
 begin
 	plt = plot(filter_data, 
 		c = :black, label_stim = true, grid = false, 
 		title = "Rmax, Rdim, and Time to peak")
 	#Plot the saturated traces
-	
+	minima = minimum(data, dims = 2)
 	saturated_traces = findall(minima .< rmaxes')
 	for I in saturated_traces
 		swp = I[1]
@@ -142,6 +105,43 @@ begin
 		)
 	end
 	plt
+end
+
+# ╔═╡ 0f308136-d3a1-46d3-95a1-a99c6913b524
+md"
+#### Amplification, and Intensity Response curves
+"
+
+# ╔═╡ 41126fe9-6a3f-495f-9e03-32d980a91bb1
+#IR analysis
+begin
+	#minima = minimum(filter_data, dims = 2)[:,1,:]
+	IR_analysis = DataFrame(
+		:Trace => collect(1:size(data,1)),
+		:Photons => 0.0, 
+		
+	)
+	
+	for (idx, fn) in enumerate(data.filename)
+		nt = formatted_split(fn, format_bank)
+		stim_times = data.stim_protocol[idx].timestamps
+		t_stim = (stim_times[2] - stim_times[1])*1000
+		IR_analysis[idx, :Photons] = f_I(
+			nt[:ND]|>Float64, nt[:Intensity]|>Float64, t_stim
+		)
+
+		
+	end
+	for ch in 1:size(data,3)
+		IR_analysis[!, Symbol("Minima_$(ch)")] = minima[:, ch] *-1000
+		IR_analysis[!, Symbol("Rmax_$(ch)")] = repeat(
+			[rmaxes[ch]*-1000], size(data,1)
+		)
+		IR_analysis[!, Symbol("Amp_$(ch)")] = amp[1, :, ch]
+		IR_analysis[!, Symbol("tEff_$(ch)")] = amp[2, :, ch]
+		IR_analysis[!, Symbol("R2_$(ch)")] = amp_gof[:, ch]
+	end	
+	IR_analysis = IR_analysis |> @orderby(_.Photons) |> DataFrame
 end
 
 # ╔═╡ b6e6e3c9-58a5-4e5b-8a83-a516787fb870
