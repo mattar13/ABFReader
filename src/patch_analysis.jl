@@ -197,16 +197,23 @@ function max_interval_algorithim(exp::Experiment{T};
 end
 
 function timescale_analysis(exp::Experiment{T}, threshold::Array{T}, rng::Tuple{T,T};
+        DURmax::Int64 = 100,
         kwargs...
     ) where T <: Real
 
     timestamps = get_timestamps(exp, threshold, rng);
     durations = map(x -> x[2]-x[1], timestamps)
+
+    trimmed_durations = findall(durations .< DURmax)
+    #println(trimmed_durations)
+    durations = durations[trimmed_durations]
+
     if durations == Any[]
         #This essentially means that no spikes are detected, therefore no bursts occur
         return fill(NaN, 3)
     end
     burst_idxs, dur_list, spb_list, ibi_list = max_interval_algorithim(exp, threshold, rng, kwargs...);
+    #Remove all spikes that are close in length to the minimum burst
     return durations, dur_list, ibi_list
 end
 
