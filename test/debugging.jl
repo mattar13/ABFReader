@@ -1,5 +1,7 @@
+using Revise
 using NeuroPhys
 using DataFrames, XLSX, Query
+
 #%% 1) Plotting and analyzing the IR analysis from Cole and Dustin
 #Open the data frame first 
 IR_datafile = "E:\\Data\\ERG\\Gnat\\IR_analysis.xlsx"

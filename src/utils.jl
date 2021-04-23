@@ -54,6 +54,7 @@ function extract_abf(::Type{T}, abf_path::String;
         keep_stimulus_channel = false,
         swps = -1, 
         chs = ["Vm_prime","Vm_prime4", "IN 7"], 
+        continuous = false, #puts the sweeps next to each other
         average_sweeps = false,
         verbose = false#, logging = false
     ) where T <: Real
@@ -86,7 +87,6 @@ function extract_abf(::Type{T}, abf_path::String;
             data_sweeps = trace_file.sweepList
         end
         
-
         if isa(chs, Int) && chs != -1 #Pick a channel by index
             data_channels = [chs-1]
             n_data_channels = 1
@@ -102,14 +102,13 @@ function extract_abf(::Type{T}, abf_path::String;
         else #Choose all channels
             data_channels = trace_file.channelList
         end 
-        #println(data_channels)
 
         chNames = trace_file.adcNames[(data_channels.+1)]
         chUnits = trace_file.adcUnits[(data_channels.+1)]
 
         #Set up the data array
-        t = T.(trace_file.sweepX);
         #We won't include the stimulus channels in the data analysis
+        t = zeros(T, n_data_points)           
         data_array = zeros(T, n_data_sweeps, n_data_points, n_data_channels)
         labels = [trace_file.sweepLabelX, trace_file.sweepLabelY, trace_file.sweepLabelC, trace_file.sweepLabelD]
         if verbose 
@@ -118,8 +117,6 @@ function extract_abf(::Type{T}, abf_path::String;
             println("$n_sweeps Sweeps available: $(trace_file.sweepList)")
             println("$n_channels Channels available: $(trace_file.channelList)")
         end
-        
-        #convert the stimulus channel into an array to make this part easier
         
         #set up the stimulus protocol
         if isa(stim_ch, String)
@@ -150,14 +147,17 @@ function extract_abf(::Type{T}, abf_path::String;
         elseif stim_ch == -1
             #This is if there is no stimulus channel
         end
+
         stim_protocol = Array{StimulusProtocol}([])
         #println(stim_ch)
+        prev_idx = 1
+        prev_time = 0.0
         for (swp_idx, swp) in enumerate(data_sweeps), (ch_idx, ch) in enumerate(data_channels)
             #println(ch_idx)
             trace_file.setSweep(sweepNumber = swp, channel = ch);
-            data = Float64.(trace_file.sweepY);
-            t = Float64.(trace_file.sweepX);
-            dt = t[2]
+            data = T.(trace_file.sweepY);
+            t_sweep = T.(trace_file.sweepX);
+            dt = t_sweep[2]
             if ch_idx ∈ stim_ch 
                 stimulus_idxs = findall(data .> stimulus_threshold)
                 if isempty(stimulus_idxs)
@@ -191,11 +191,19 @@ function extract_abf(::Type{T}, abf_path::String;
                     println("Data was acquired at $(1/dt/1000) Hz")
                     println("$n_data_points data points")
                 end
+                t[:] = T.(trace_file.sweepX);
                 data_array[swp_idx, :, ch_idx] = data
             end
         end
 
-        #println(size(data_array))
+        if continuous
+            #println(t[3] - t[2])
+            temp = permutedims(data_array, [2, 1, 3])
+            temp = reshape(temp, (1, size(temp,1)*size(temp,2), size(temp,3)))
+            data_array = temp
+            t = (1:size(data_array,2) .- 1) .* (t[2]-t[1])
+        end
+
         if average_sweeps == true
             #println("$(size(data_array,1)) sweeps to average")
             data_array = sum(data_array, dims = 1)/size(data_array,1)
@@ -227,7 +235,9 @@ function extract_abf(::Type{T}, abf_path::String;
             [full_path]
             )
     catch error
+        #println(error)
         #println(kwargs)
+        #println("File is actually a directory")
         #This file may actually be a concatenation
         return concat(full_path; stim_ch = stim_ch, 
             stim_name = stim_name,
