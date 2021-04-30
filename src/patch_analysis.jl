@@ -63,7 +63,7 @@ function get_timestamps(exp::Experiment{T}, threshold::Array{T}, rng::Tuple{T,T}
                 for i in 1:length(idx_array)-1
                     if (idx_array[i+1] - idx_array[i]) != 1
                         end_point = idx_array[i]
-                        push!(points, (start_point*dt*factor, end_point*dt*factor))
+                        push!(points, (exp.t[start_point], exp.t[end_point]))
                         start_point = idx_array[i+1]
                     end
                 end
