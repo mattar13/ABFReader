@@ -106,14 +106,13 @@ function formatted_split(string::String, format::Tuple; dlm = "_", parse_numbers
         format = format[2:end]
     end
     split_str = split(string, dlm)
-
     nt_keys = Symbol[]
     nt_vals = Array([])
     misc_vals = String[]
     #First we go looking through all formats
     for (idx, nt_key) in enumerate(format)
         nt_val = split_str[idx] |> String
-        #println("Format: $nt_key | Value: $nt_val")
+        println("Format: $nt_key | Value: $nt_val")
         if nt_key == ~
             #if the key is ~, ignore this string
             #println("Ignore key")
@@ -205,9 +204,6 @@ function formatted_split(string::String, formats::Array{T} where T <: Tuple; kwa
     throw(error("No formats currently correct"))
 end
 
-
-
-
 function check_age(x::String)
     if x == "Adult"
         return (:Age, 30)
@@ -240,6 +236,13 @@ function check_pc(x::String)
     end
 end
 
+function contains_words(x::String, words = ["average", "concatenate"])
+    keywords = x |> number_seperator
+    contains_word = map(w -> w ∈ words, x[2])
+    println(contains_word)
+    return (:passing, "yes")
+end
+
 """
 This function works well with the formatted_split. 
     If there is a color it turns it into the wavelength
@@ -264,26 +267,25 @@ function throw_flag(x::String)
 end
 #Here are the common formats I will be using 
 exp_opt = [
-    ("_", (" ", ~, :Rearing, check_pc), :Sample_size), 
-    ("_", (" ", ~, :Rearing), :Sample_size),
+    ("_", :Month, :Day, :Year, check_geno, check_age, :Animal),
+    ("_", :Month, :Day, :Year, ~),
+    ("_", :Animal, check_age, check_geno)
 ]
 
-file_opt  = [
-    (".", ("_", :Month, :Day, :Year, check_geno, check_age, :Animal, ~, ~, ~), :ext),
-    (".", ("_", :Month, :Day, :Year, check_geno, check_age, :Animal, ~), :ext),
-    (".", ("_", :Month, :Day, :Year, :Animal, check_geno, check_age, ~,~,~), :ext),
-    (".", ("_", :Month, :Day, :Year, :Animal, check_geno, check_age, ~,~), :ext),
-    (".", ("_", :Month, :Day, :Year, check_geno, check_age, :Animal, ~, check_pc), :ext),
-    (".", ("_", :Month, :Day, :Year, check_geno, check_age, ~, check_pc, ~), :ext),
-    (".", ("_", :Month, :Day, :Year, :Animal, check_geno, check_age, ~, ~), :ext),
-    (".", ("_", :ND, :Intensity, :Stim_time, :ID), :ext),
-    (".", ("_", :ND, :Intensity, :Stim_time), :ext)
+nd_opt = [
+    ("_", :ND, :Intensity, :Stim_time),
+    ("_", :ND, :Intensity, :Stim_time, :ID)
+]
+
+
+file_opt = [
+    (".", contains_words, ~),
+    (".", nd_opt, :ext),
 ]
 
 format_bank = [
-    ("\\", ~, ~, ~, :Project, :Experimenter, exp_opt, check_color, :Drugs, file_opt),
-    ("\\", ~, ~, ~, :Project, :Experimenter, exp_opt, :Drugs, check_color, file_opt), 
-    ("\\", ~, ~, ~, :Project, :Experimenter, ("_", :Year, :Month, :Day, ~), ("_", :Animal, check_age, :Genotype), :Drugs, check_color, file_opt)
+    ("\\", :Drive, ~, :Method, :Project, :Experimenter, exp_opt, check_pc, :Drugs, check_color, nd_opt, file_opt),
+    ("\\", :Drive, ~, :Method, :Project, :Experimenter, exp_opt, exp_opt, :Drugs, check_color, file_opt)
 ]
 
 ########################### These are some functions that will make parsing folder names easier ##############
