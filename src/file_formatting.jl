@@ -112,19 +112,24 @@ function formatted_split(string::String, format::Tuple; dlm = "_", parse_numbers
     #First we go looking through all formats
     for (idx, nt_key) in enumerate(format)
         nt_val = split_str[idx] |> String
-        println("Format: $nt_key | Value: $nt_val")
+        #println("Format: $nt_key | Value: $nt_val")
         if nt_key == ~
             #if the key is ~, ignore this string
-            #println("Ignore key")
             nothing
         elseif isa(nt_key, Function)
             #If the format is an array it is a [name -> function]
-            #println(nt_key)
-            f_key, f_val = nt_key(nt_val)
-            push!(nt_keys, f_key)
-            push!(nt_vals, f_val)
+            try 
+                f_key, f_val = nt_key(nt_val)
+                #println("Function $nt_key passed: $f_key | $f_val")
+                push!(nt_keys, f_key)
+                push!(nt_vals, f_val)
+            catch error
+                println("Function: [$nt_key] failed")
+                throw(error)
+            end
         elseif isa(nt_key, Tuple)
             #If it is a tuple it is a nested format
+            
             inside_split = formatted_split(nt_val, nt_key)
             #If the nested format returns a misc arg, add it to misc
             for in_key in keys(inside_split)
@@ -150,6 +155,7 @@ function formatted_split(string::String, format::Tuple; dlm = "_", parse_numbers
             #If the key is misc, then the formatting will expect unlabeled arguments
             allow_misc = true
         else
+            
             if parse_numbers
                 #We have added number parsing functionality
                 num_data = number_seperator(nt_val)
@@ -172,6 +178,7 @@ function formatted_split(string::String, format::Tuple; dlm = "_", parse_numbers
         #If there is no keyword misc, and the allow_misc is set to false:
         if continue_type == :error
             #This will throw and error and prevent you from going further
+            println("WARNING: Misc key not allowed, arguments need to match string exactly")
             throw(error("Misc key not allowed, arguments need to match string exactly"))
         elseif continue_type == :warn
             #This will simply warn you that format may not be correct, but won't prevent you from continuing
@@ -197,11 +204,11 @@ function formatted_split(string::String, formats::Array{T} where T <: Tuple; kwa
             split = formatted_split(string, format; allow_misc = false, kwargs...)
             return split
         catch error
-            #println(error)
+            throw(error)
             nothing
         end
     end
-    throw(error("No formats currently correct"))
+    #
 end
 
 function check_age(x::String)
@@ -232,15 +239,35 @@ function check_pc(x::String)
     if x != "rods" || x != "cones"
         return (:Photoreceptors, x)
     else
-        throw(error("Wrong Key"))
+        throw(error("Key is incorrect"))
     end
 end
 
-function contains_words(x::String, words = ["average", "concatenate"])
+function contains_words(x::String, words = ["AVERAGE", "CONCATENATE"], result = :fail, flag = :error)
     keywords = x |> number_seperator
-    contains_word = map(w -> w ∈ words, x[2])
-    println(contains_word)
-    return (:passing, "yes")
+    contains_word = map(w -> uppercase(w) ∈ words, keywords[2])
+    if !isempty(contains_word) && any(contains_word)
+        if result == :fail
+            #if the result is set to fail, then fail the function if the word is present
+            if flag == :warn
+                println("WARNING: The category contains a disallowed word")
+                return (:passing, "no")
+            elseif flag == :error
+                #println("WARNING: The category contains a disallowed word")
+                throw(error("The category contains a disallowed word"))
+            end
+        end
+    else
+        if result == :required
+            if flag == :warn
+                println("WARNING: The category does not contain a required word")
+                return (:passing, "no")
+            elseif flag == :error
+                throw(error("The category lacks a required word"))
+            end
+        end
+        return (:passing, "yes")
+    end
 end
 
 """
