@@ -124,7 +124,7 @@ function formatted_split(string::String, format::Tuple; dlm = "_", parse_numbers
                 push!(nt_keys, f_key)
                 push!(nt_vals, f_val)
             catch error
-                println("Function: [$nt_key] failed")
+                print("Function: [$nt_key] failed")
                 throw(error)
             end
         elseif isa(nt_key, Tuple)
