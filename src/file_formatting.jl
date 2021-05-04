@@ -106,94 +106,91 @@ function formatted_split(string::String, format::Tuple; dlm = "_", parse_numbers
         format = format[2:end]
     end
     split_str = split(string, dlm)
-    nt_keys = Symbol[]
-    nt_vals = Array([])
-    misc_vals = String[]
-    #First we go looking through all formats
-    for (idx, nt_key) in enumerate(format)
-        nt_val = split_str[idx] |> String
-        #println("Format: $nt_key | Value: $nt_val")
-        if nt_key == ~
-            #if the key is ~, ignore this string
-            nothing
-        elseif isa(nt_key, Function)
-            #If the format is an array it is a [name -> function]
-            try 
-                f_key, f_val = nt_key(nt_val)
-                #println("Function $nt_key passed: $f_key | $f_val")
-                push!(nt_keys, f_key)
-                push!(nt_vals, f_val)
-            catch error
-                print("Function: [$nt_key] failed")
-                throw(error)
-            end
-        elseif isa(nt_key, Tuple)
-            #If it is a tuple it is a nested format
-            
-            inside_split = formatted_split(nt_val, nt_key)
-            #If the nested format returns a misc arg, add it to misc
-            for in_key in keys(inside_split)
-                if in_key == :misc
-                    push!(misc_vals, inside_split[:misc]...)
-                else
-                    push!(nt_keys, in_key)
-                    push!(nt_vals, inside_split[in_key])
-                end
-            end
-        elseif isa(nt_key, Array{T} where T <: Tuple) #This is for if a multiple options for the nested split is provided
-            #println("Nested Split")
-            inside_split = formatted_split(nt_val, nt_key) #Removed the need for a splat
-            for in_key in keys(inside_split)
-                if in_key == :misc
-                    push!(misc_vals, inside_split[:misc]...)
-                else
-                    push!(nt_keys, in_key)
-                    push!(nt_vals, inside_split[in_key])
-                end
-            end
-        elseif nt_key == :misc 
-            #If the key is misc, then the formatting will expect unlabeled arguments
-            allow_misc = true
-        else
-            
-            if parse_numbers
-                #We have added number parsing functionality
-                num_data = number_seperator(nt_val)
-                if isempty(num_data[1])
-                    #String contains no numbers
-                    nothing
-                else
-                    nt_val = num_data[1][1]
-                end
-            end
-            
-            push!(nt_keys, nt_key)
-            push!(nt_vals, nt_val)
-        end
-    end
-    if length(split_str) > length(format) && allow_misc
-        #This is where misc gets created. 
-        push!(misc_vals, split_str[length(format)+1:length(split_str)]...)
-    elseif length(split_str) > length(format) && !isempty(misc_vals)
-        #If there is no keyword misc, and the allow_misc is set to false:
-        if continue_type == :error
-            #This will throw and error and prevent you from going further
-            println("WARNING: Misc key not allowed, arguments need to match string exactly")
-            throw(error("Misc key not allowed, arguments need to match string exactly"))
-        elseif continue_type == :warn
-            #This will simply warn you that format may not be correct, but won't prevent you from continuing
-            println("WARNING: Misc key not allowed, arguments need to match string exactly")
-        elseif isnothing(continue_type)
-            #This will do nothing
-        end
-    end
     
-    if !isempty(misc_vals)
-        push!(nt_vals, misc_vals)
-        push!(nt_keys, :misc)
-    end
+    if length(format) == length(split_str)  #return nothing if the formats do not match
+        nt_keys = Symbol[]
+        nt_vals = Array([])
+        misc_vals = String[]
+        #First we go looking through all formats
+        for (idx, nt_key) in enumerate(format)
+            nt_val = split_str[idx] |> String
+            #println("Format: $nt_key | Value: $nt_val")
+            if nt_key == ~
+                #if the key is ~, ignore this string
+                nothing
+            elseif isa(nt_key, Function)
+                #If the format is an array it is a [name -> function]
+                try 
+                    result = nt_key(nt_val)
+                    #println(result)
+                    #println("Function $nt_key passed: $f_key | $f_val")
+                    if !isnothing(result)
+                        f_key, f_val = result
+                        push!(nt_keys, f_key)
+                        push!(nt_vals, f_val)
+                    end
+                catch error
+                    if error.msg == "ContainWordError"
+                        nothing
+                    end
+                    throw(error)
+                end
+            elseif isa(nt_key, Tuple)
+                #If it is a tuple it is a nested format
+                
+                inside_split = formatted_split(nt_val, nt_key)
+                #If the nested format returns a misc arg, add it to misc
+                for in_key in keys(inside_split)
+                    if in_key == :misc
+                        push!(misc_vals, inside_split[:misc]...)
+                    else
+                        push!(nt_keys, in_key)
+                        push!(nt_vals, inside_split[in_key])
+                    end
+                end
+            elseif isa(nt_key, Array{T} where T <: Tuple) #This is for if a multiple options for the nested split is provided
+                #println("Nested Split")
+                inside_split = formatted_split(nt_val, nt_key) #Removed the need for a splat
+                for in_key in keys(inside_split)
+                    if in_key == :misc
+                        push!(misc_vals, inside_split[:misc]...)
+                    else
+                        push!(nt_keys, in_key)
+                        push!(nt_vals, inside_split[in_key])
+                    end
+                end
+            elseif nt_key == :misc 
+                #If the key is misc, then the formatting will expect unlabeled arguments
+                allow_misc = true
+            else
+                if parse_numbers
+                    #We have added number parsing functionality
+                    num_data = number_seperator(nt_val)
+                    if isempty(num_data[1])
+                        #String contains no numbers
+                        nothing
+                    else
+                        nt_val = num_data[1][1]
+                    end
+                end
+                
+                push!(nt_keys, nt_key)
+                push!(nt_vals, nt_val)
+            end
+        end
+        
+        if length(split_str) > length(format) && allow_misc
+            #This is where misc gets created. 
+            push!(misc_vals, split_str[length(format)+1:length(split_str)]...)
+        end
+        
+        if !isempty(misc_vals)
+            push!(nt_vals, misc_vals)
+            push!(nt_keys, :misc)
+        end
 
-    return NamedTuple{Tuple(nt_keys)}(nt_vals)
+        return NamedTuple{Tuple(nt_keys)}(nt_vals)
+    end
 end
 
 #Basically this is what you pick when you aren't sure which format is correct out of a few options
@@ -202,13 +199,23 @@ function formatted_split(string::String, formats::Array{T} where T <: Tuple; kwa
         #println(format)
         try
             split = formatted_split(string, format; allow_misc = false, kwargs...)
-            return split
+            if !isnothing(split)
+                #This means that the format was valid
+                return split
+            else
+                #println("Incorrect format")
+            end
         catch error
-            throw(error)
-            nothing
+            #println(error)
+            if isa(error, AssertionError)
+                println(error)
+            else 
+                throw(error)
+            end
         end
     end
-    #
+    #If you made it here, then none of the current formats fit
+    throw(error("NoFormats"))
 end
 
 function check_age(x::String)
@@ -226,12 +233,11 @@ function check_age(x::String)
 end
 
 function check_geno(x; possible = ["WT", "KO", "HT", "UN"]) 
-    if x ∈ possible 
-        return (:Genotype, x)
-    elseif x == "DR" #This is a weird error Paul made in his filenames
+    if x == "DR" #This is a weird error Paul made in his filenames
         return (:Genotype, "WT")
     else
-        throw(error("Incorrect Genotype"))
+        @assert x ∈ possible "GenotypeError"
+        return (:Genotype, x)
     end
 end
 
@@ -245,28 +251,12 @@ end
 
 function contains_words(x::String, words = ["AVERAGE", "CONCATENATE"], result = :fail, flag = :error)
     keywords = x |> number_seperator
-    contains_word = map(w -> uppercase(w) ∈ words, keywords[2])
-    if !isempty(contains_word) && any(contains_word)
-        if result == :fail
-            #if the result is set to fail, then fail the function if the word is present
-            if flag == :warn
-                println("WARNING: The category contains a disallowed word")
-                return (:passing, "no")
-            elseif flag == :error
-                #println("WARNING: The category contains a disallowed word")
-                throw(error("The category contains a disallowed word"))
-            end
+    for w in keywords[2]
+        if result == :fail #We want the function to fail if the word exists 
+            @assert uppercase(w) ∉ words "ContainWordError"
+        elseif result == :pass #We want only the strings that contain the word to pass
+            @assert uppercase(w) ∈ words "LacksWordError"
         end
-    else
-        if result == :required
-            if flag == :warn
-                println("WARNING: The category does not contain a required word")
-                return (:passing, "no")
-            elseif flag == :error
-                throw(error("The category lacks a required word"))
-            end
-        end
-        return (:passing, "yes")
     end
 end
 
