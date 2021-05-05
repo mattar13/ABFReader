@@ -83,7 +83,9 @@ This is the formatted_split function.
         To use boolean statements use the oneline boolean functions:
             [:Wavelength, x -> x == "Green" || x == 594 ? 594 : 365]
 """
-function formatted_split(string::String, format::Tuple; dlm = "_", parse_numbers = true, allow_misc = false, continue_type = :error)
+function formatted_split(string::String, format::Tuple; 
+        dlm = "_", parse_numbers = true, verbose = false
+        )
     #If the first item in the format tuple is a string, it is the delimiter
     if isa(format[1], String)
         #If the first object in the format is a string, it becomes the new delimiter
@@ -91,16 +93,18 @@ function formatted_split(string::String, format::Tuple; dlm = "_", parse_numbers
         format = format[2:end]
     end
     split_str = split(string, dlm)
-    #println(length(format))
-    #println(length(split_str))
-    if length(format) == length(split_str)  #return nothing if the formats do not match
+    println(length(split_str))
+    println(length(format))
+    if length(format) == length(split_str)  
         nt_keys = Symbol[]
         nt_vals = Array([])
         misc_vals = String[]
         #First we go looking through all formats
         for (idx, nt_key) in enumerate(format)
             nt_val = split_str[idx] |> String
-            println("Format: $nt_key | Value: $nt_val")
+            if verbose
+                println("Format: $nt_key | Value: $nt_val")
+            end
             if nt_key == ~
                 nothing
             elseif isa(nt_key, Function)
@@ -120,19 +124,12 @@ function formatted_split(string::String, format::Tuple; dlm = "_", parse_numbers
                 if !isnothing(inside_split)
                     #If the nested format returns a misc arg, add it to misc
                     for in_key in keys(inside_split)
-                        if in_key == :misc
-                            push!(misc_vals, inside_split[:misc]...)
-                        else
-                            push!(nt_keys, in_key)
-                            push!(nt_vals, inside_split[in_key])
-                        end
+                        push!(nt_keys, in_key)
+                        push!(nt_vals, inside_split[in_key])
                     end
                 else
                     return inside_split #This returns the error code
                 end
-            elseif nt_key == :misc 
-                #If the key is misc, then the formatting will expect unlabeled arguments
-                allow_misc = true
             else
                 if parse_numbers
                     #We have added number parsing functionality
@@ -153,15 +150,20 @@ function formatted_split(string::String, format::Tuple; dlm = "_", parse_numbers
         end
 
         return NamedTuple{Tuple(nt_keys)}(nt_vals)
+    else
+        if verbose
+            print("The length of the formats do not match")
+            println("$(length(format)) ̸≠ $(length(split_str))")    
+        end
     end
 end
 
 #Basically this is what you pick when you aren't sure which format is correct out of a few options
-function formatted_split(string::String, formats::Array{T} where T <: Tuple; kwargs...)
+function formatted_split(string::String, formats::Array{T}; kwargs...)  where T <: Tuple
     for (i, format) in enumerate(formats)
-        split = formatted_split(string, format; allow_misc = false, kwargs...)
+        split = formatted_split(string, format; kwargs...)
         if isa(split, Symbol)
-            #println(split) #This means that something went wrong in the format
+            println(split) #This means that something went wrong in the format
         elseif !isnothing(split)
             #This means that the format was valid
             return split
@@ -256,7 +258,8 @@ exp_opt = [
 
 nd_opt = [
     ("_", :ND, :Intensity, :Stim_time),
-    ("_", :ND, :Intensity, :Stim_time, :ID)
+    ("_", :ND, :Intensity, :Stim_time, :ID),
+    ("_", :ND, :Intensity, :Stim_time, ~, ~, ~, :ID)
 ]
 
 
