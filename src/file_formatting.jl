@@ -93,10 +93,12 @@ function formatted_split(string::String, format::Tuple;
         format = format[2:end]
     end
     split_str = split(string, dlm)
-    print("Format size: ")
-    println(length(format))
-    print("String size: ")
-    println(length(split_str))
+    if verbose
+        print("Format size: ")
+        println(length(format))
+        print("String size: ")
+        println(length(split_str))
+    end
     if length(format) == length(split_str)  
         nt_keys = Symbol[]
         nt_vals = Array([])
