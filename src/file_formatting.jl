@@ -167,7 +167,7 @@ function formatted_split(string::String, formats::Array{T}; kwargs...)  where T 
     for (i, format) in enumerate(formats)
         split = formatted_split(string, format; kwargs...)
         if isa(split, Symbol)
-            println(split) #This means that something went wrong in the format
+            #println(split) #This means that something went wrong in the format
         elseif !isnothing(split)
             #This means that the format was valid
             return split
