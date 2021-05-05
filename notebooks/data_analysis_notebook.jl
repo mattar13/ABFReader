@@ -41,7 +41,7 @@ begin
 		Genotype = String[], Drugs = Bool[],
 		Photoreceptors = String[], 
 		#Parameters
-		t_pre = Float64[], t_post = Float64[], saturated_thresh = Float64[], 
+		t_pre = Float64[], t_post = Float64[], saturated_thresh = Any[], 
 		Rmax_lin_min = Float64[], Rmax_lin_max = Float64[], 
 		amp_time_cutoff = Float64[], amp_t_eff_cutoff = Float64[],
 		#Photon datasheet
@@ -49,14 +49,10 @@ begin
 	)
 	fail_list = String[]
 	for (i, path) in enumerate(paths)
-		nt = formatted_split(path, format_bank)
-		println(i)
-		println(nt)
-		println(nt[:ND])
-		
+		nt = formatted_split(path, format_bank)	
 		if !isnothing(nt)
-			println("$path works")
-			
+			println("$path $i works")
+
 			if nt[:Age] == 8 || nt[:Age] == 9 
 				PC = "Both" 
 			elseif !haskey(nt,:Photoreceptors)
@@ -109,7 +105,11 @@ begin
 			push!(files_to_analyze, row)
 		end
 	end
+	files_to_analyze
 end
+
+# ╔═╡ 4e865dad-4dac-4bac-ad40-c0fc18450801
+
 
 # ╔═╡ Cell order:
 # ╟─c3ae7050-2443-11eb-09ea-7f7e4929e64d
@@ -120,4 +120,5 @@ end
 # ╠═1b648280-2444-11eb-2064-f16e658562b7
 # ╠═3b5a45c0-2444-11eb-2178-31a7fdadc071
 # ╟─86c00aa1-9896-4e4d-b1b6-8757d2c5fea2
-# ╠═912d067a-7d0b-4efd-8f83-3453841a073b
+# ╟─912d067a-7d0b-4efd-8f83-3453841a073b
+# ╠═4e865dad-4dac-4bac-ad40-c0fc18450801
