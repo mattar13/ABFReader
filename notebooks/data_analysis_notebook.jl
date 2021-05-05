@@ -29,7 +29,7 @@ paths = target_folder |> parse_abf
 
 # ╔═╡ 86c00aa1-9896-4e4d-b1b6-8757d2c5fea2
 md"
-### Reading all files into a dataframe
+##### Reading all files into a dataframe and recording desired settings
 "
 
 # ╔═╡ 912d067a-7d0b-4efd-8f83-3453841a073b
@@ -108,8 +108,48 @@ begin
 	files_to_analyze
 end
 
-# ╔═╡ 4e865dad-4dac-4bac-ad40-c0fc18450801
+# ╔═╡ 117a206b-7503-428a-ae78-fd4b965c3149
+md"
+### Summarize the experiments
+"
 
+# ╔═╡ 19372459-ed69-4f99-88cd-6f29c3016083
+all_experiments = files_to_analyze |> 
+    @unique({_.Year, _.Month, _.Day, _.Animal, _.Wavelength, _.Drugs}) |> 
+    @map({
+            Root = get_root(_.Path, _.Experimenter), 
+            _.Experimenter, 
+            _.Year, _.Month, _.Day, _.Animal, 
+            _.Age, _.Rearing, _.Wavelength, 
+            _.Genotype, _.Drugs, _.Photoreceptors, 
+            _.t_pre, _.t_post, _.saturated_thresh, 
+			_.Rmax_lin_max, _.Rmax_lin_min, _.amp_time_cutoff, _.amp_t_eff_cutoff
+        }) |>
+    DataFrame
+
+# ╔═╡ 4e865dad-4dac-4bac-ad40-c0fc18450801
+md"
+##### Analyze the experiments
+"
+
+# ╔═╡ aaaf8c78-1254-437a-a0d0-4a9cac5f65af
+data_analysis = DataFrame(
+    Path = String[], 
+    Year = Int64[], Month = Int64[], Day = Int64[], 
+    Animal = Int64[], Age = Int64[], Rearing = String[], Wavelength = Int64[], Genotype = String[], Drugs = String[], Photoreceptors = String[],
+    Channel = String[], 
+    Rmax = Float64[], Rdim = Float64[], tPeak = Float64[],
+    tInt = Float64[],
+    #fit params for recovery model
+    V0 = Float64[], τRec = Float64[], tau_GOF = Float64[],
+    #fit params for amplification model
+    alpha = Float64[], t_eff = Float64[], amp_GOF = Float64[], 
+)
+
+# ╔═╡ fb7dda3b-5f41-4f19-8c00-86a995603921
+for (i, row) in enumerate(eachrow(all_experiments))
+	println(row[:Root])
+end
 
 # ╔═╡ Cell order:
 # ╟─c3ae7050-2443-11eb-09ea-7f7e4929e64d
@@ -121,4 +161,8 @@ end
 # ╠═3b5a45c0-2444-11eb-2178-31a7fdadc071
 # ╟─86c00aa1-9896-4e4d-b1b6-8757d2c5fea2
 # ╟─912d067a-7d0b-4efd-8f83-3453841a073b
-# ╠═4e865dad-4dac-4bac-ad40-c0fc18450801
+# ╟─117a206b-7503-428a-ae78-fd4b965c3149
+# ╠═19372459-ed69-4f99-88cd-6f29c3016083
+# ╟─4e865dad-4dac-4bac-ad40-c0fc18450801
+# ╠═aaaf8c78-1254-437a-a0d0-4a9cac5f65af
+# ╠═fb7dda3b-5f41-4f19-8c00-86a995603921
