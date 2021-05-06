@@ -252,7 +252,97 @@ function extract_abf(::Type{T}, abf_path::String;
 end
 
 extract_abf(abf_path::String; kwargs...) = extract_abf(Float64, abf_path ; kwargs...)
-extract_abf(abf_folder::AbstractArray{String}; kwargs...) = concat(abf_folder; kwargs...)
+
+function extract_abf(abf_folder::AbstractArray{String}; average_sweeps = true, kwargs...) 
+    sweeps = concat(abf_folder; average_sweeps = false, kwargs...) #In the inner loop we don't want to average the sweeps
+    #Save the sweep averaging for here
+    if average_sweeps == true
+        average_sweeps!(sweeps)
+    end
+    return sweeps
+end
+
+"""
+The files in path array or super folder are concatenated into a single Experiment file
+- There are a few modes
+    - pre_pad will add zeros at the beginning of a data array that is too short
+    - post_pad will add zeros at the end of a data array that is too short
+    - pre_chop will remove beginning datapoints of a data array that is too long
+    - post_chop will remove end datapoints of a data array that is too long
+    - auto mode will will select a mode for you
+        - If a majority of arrays are longer, it will pad the shorter ones
+        - If a majority of arrays are shorter, it will chop the longer ones
+"""
+
+function concat(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, position = :post, kwargs...) where T
+    new_data = deepcopy(data)
+    if size(data,2) > size(data_add,2)
+        #println("Original data larger $(size(data,2)) > $(size(data_add,2))")
+        n_vals = abs(size(data,2) - size(data_add,2))
+        if mode == :pad
+            pad!(data_add, n_vals; position = position)
+        elseif mode == :chop
+            chop!(data, n_vals; position = position)
+        end
+    elseif size(data,2) < size(data_add,2)
+        #println("Original data smaller $(size(data,2)) < $(size(data_add,2))")
+        n_vals = abs(size(data,2) - size(data_add,2))
+        if mode == :pad
+            pad!(data, n_vals; position = position)
+        elseif mode == :chop
+            chop!(data_add, n_vals; position = position)
+        end
+    end
+
+    push!(data, data_add)
+    push!(data.stim_protocol, data_add.stim_protocol...)
+
+    return new_data
+end
+
+function concat!(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, position = :post, kwargs...) where T
+    if size(data,2) > size(data_add,2)
+        #println("Original data larger $(size(data,2)) > $(size(data_add,2))")
+        n_vals = abs(size(data,2) - size(data_add,2))
+        if mode == :pad
+            pad!(data_add, n_vals; position = position)
+        elseif mode == :chop
+            chop!(data, n_vals; position = position)
+        end
+    elseif size(data,2) < size(data_add,2)
+        #println("Original data smaller $(size(data,2)) < $(size(data_add,2))")
+        n_vals = abs(size(data,2) - size(data_add,2))
+        if mode == :pad
+            pad!(data, n_vals; position = position)
+        elseif mode == :chop
+            chop!(data_add, n_vals; position = position)
+        end
+    end
+
+    if size(data,3) != size(data_add,3)
+        #We need to write a catch here to concatenate files with different numbers of channels
+        print("Don't concatenate these files")
+    else
+        #println(size(data))
+        #println(size(data_add))
+        #println(length(data.stim_protocol))
+        push!(data, data_add)
+        push!(data.stim_protocol, data_add.stim_protocol...)
+        #add the new stimulus as well
+    end
+end
+
+function concat(path_arr::Array{String,1}; average_sweeps = true, kwargs...)
+    data = extract_abf(path_arr[1]; average_sweeps = true, kwargs...)
+    #IN this case we want to ensure that the stim_protocol is only 1 stimulus longer
+    for path in path_arr[2:end]
+        data_add = extract_abf(path; average_sweeps = true, kwargs...)
+        concat!(data, data_add; kwargs...)
+    end
+    return data
+end
+
+concat(superfolder::String; kwargs...) = concat(parse_abf(superfolder); kwargs ...)
 
 import Base: size, length, getindex, setindex, sum, copy, maximum, minimum, push!
 
@@ -561,87 +651,7 @@ function truncate_data!(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_b
     end
 end
 
-"""
-The files in path array or super folder are concatenated into a single Experiment file
-- There are a few modes
-    - pre_pad will add zeros at the beginning of a data array that is too short
-    - post_pad will add zeros at the end of a data array that is too short
-    - pre_chop will remove beginning datapoints of a data array that is too long
-    - post_chop will remove end datapoints of a data array that is too long
-    - auto mode will will select a mode for you
-        - If a majority of arrays are longer, it will pad the shorter ones
-        - If a majority of arrays are shorter, it will chop the longer ones
-"""
 
-function concat(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, position = :post, kwargs...) where T
-    new_data = deepcopy(data)
-    if size(data,2) > size(data_add,2)
-        #println("Original data larger $(size(data,2)) > $(size(data_add,2))")
-        n_vals = abs(size(data,2) - size(data_add,2))
-        if mode == :pad
-            pad!(data_add, n_vals; position = position)
-        elseif mode == :chop
-            chop!(data, n_vals; position = position)
-        end
-    elseif size(data,2) < size(data_add,2)
-        #println("Original data smaller $(size(data,2)) < $(size(data_add,2))")
-        n_vals = abs(size(data,2) - size(data_add,2))
-        if mode == :pad
-            pad!(data, n_vals; position = position)
-        elseif mode == :chop
-            chop!(data_add, n_vals; position = position)
-        end
-    end
-
-    push!(data, data_add)
-    push!(data.stim_protocol, data_add.stim_protocol...)
-
-    return new_data
-end
-
-function concat!(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, position = :post, kwargs...) where T
-    if size(data,2) > size(data_add,2)
-        #println("Original data larger $(size(data,2)) > $(size(data_add,2))")
-        n_vals = abs(size(data,2) - size(data_add,2))
-        if mode == :pad
-            pad!(data_add, n_vals; position = position)
-        elseif mode == :chop
-            chop!(data, n_vals; position = position)
-        end
-    elseif size(data,2) < size(data_add,2)
-        #println("Original data smaller $(size(data,2)) < $(size(data_add,2))")
-        n_vals = abs(size(data,2) - size(data_add,2))
-        if mode == :pad
-            pad!(data, n_vals; position = position)
-        elseif mode == :chop
-            chop!(data_add, n_vals; position = position)
-        end
-    end
-
-    if size(data,3) != size(data_add,3)
-        #We need to write a catch here to concatenate files with different numbers of channels
-        print("Don't concatenate these files")
-    else
-        #println(size(data))
-        #println(size(data_add))
-        #println(length(data.stim_protocol))
-        push!(data, data_add)
-        push!(data.stim_protocol, data_add.stim_protocol...)
-        #add the new stimulus as well
-    end
-end
-
-function concat(path_arr::Array{String,1}; average_sweeps = true, kwargs...)
-    data = extract_abf(path_arr[1]; average_sweeps = true, kwargs...)
-    #IN this case we want to ensure that the stim_protocol is only 1 stimulus longer
-    for path in path_arr[2:end]
-        data_add = extract_abf(path; average_sweeps = true, kwargs...)
-        concat!(data, data_add; kwargs...)
-    end
-    return data
-end
-
-concat(superfolder::String; kwargs...) = concat(parse_abf(superfolder); kwargs ...)
 
 exclude(A, exclusions) = A[filter(x -> !(x ∈ exclusions), eachindex(A))]
 """
