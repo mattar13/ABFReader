@@ -251,7 +251,19 @@ function extract_abf(::Type{T}, abf_path::String;
     end
 end
 
-extract_abf(abf_path::String ; kwargs...) = extract_abf(Float64, abf_path ; kwargs...)
+extract_abf(abf_path::String; kwargs...) = extract_abf(Float64, abf_path ; kwargs...)
+function extract_abf(abf_folder::AbstractArray{String}; kwargs...) 
+    println("Extracting all abfs")
+    return concat(abf_folder; stim_ch = stim_ch, 
+        stim_name = stim_name,
+        stimulus_threshold = stimulus_threshold,
+        keep_stimulus_channel = keep_stimulus_channel,
+        swps = swps, 
+        chs = chs, 
+        average_sweeps = average_sweeps,
+        verbose = verbose        
+    )
+end
 
 import Base: size, length, getindex, setindex, sum, copy, maximum, minimum, push!
 
