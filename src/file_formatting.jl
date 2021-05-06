@@ -1,6 +1,19 @@
 
-get_root(path::T, experimenter::T) where T <: DataFrame = joinpath(split(path.value, "\\")[1:end-1]...)
-get_root(path::String, experimenter::String) = joinpath(split(path, "\\")[1:end-1]...)
+function get_root(path::T, experimenter::T) where T <: DataFrame 
+    if experimenter == "Matt"
+        return joinpath(split(path.value, "\\")[1:end-1]...)
+    elseif experimenter == "Paul"
+        return joinpath(split(path.value, "\\")[1:end-2]...)
+    end
+end
+
+function get_root(path::String, experimenter::String)
+    if experimenter == "Matt"
+        return joinpath(split(path.value, "\\")[1:end-1]...)
+    elseif experimenter == "Paul"
+        return joinpath(split(path.value, "\\")[1:end-2]...)
+    end
+end
 
 """
 This function walks through the directory tree and locates any .abf file. 
