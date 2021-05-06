@@ -3,7 +3,7 @@ function get_root(path::T, experimenter::T) where T <: DataFrame
     if experimenter.value == "Matt"
         return joinpath(split(path.value, "\\")[1:end-1]...)
     elseif experimenter.value == "Paul"
-        return joinpath(split(path.value, "\\")[1:end-2]...)
+        return joinpath(split(path.value, "\\")[1:end-1]...)
     end
 end
 
@@ -11,7 +11,7 @@ function get_root(path::String, experimenter::String)
     if experimenter == "Matt"
         return joinpath(split(path, "\\")[1:end-1]...)
     elseif experimenter == "Paul"
-        return joinpath(split(path, "\\")[1:end-2]...)
+        return joinpath(split(path, "\\")[1:end-1]...)
     end
 end
 
