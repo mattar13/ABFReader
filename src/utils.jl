@@ -253,7 +253,7 @@ end
 
 extract_abf(abf_path::String; kwargs...) = extract_abf(Float64, abf_path ; kwargs...)
 
-function extract_abf(abf_folder::AbstractArray{String}; average_sweeps = true, kwargs...) 
+function extract_abf(abf_folder::AbstractArray{String}; average_sweeps = false, kwargs...) 
     sweeps = concat(abf_folder; average_sweeps = false, kwargs...) #In the inner loop we don't want to average the sweeps
     #Save the sweep averaging for here
     if average_sweeps == true
