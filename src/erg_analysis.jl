@@ -44,10 +44,22 @@ This function uses a histogram method to find the saturation point.
     - Setting the saturated threshold to infinity will completely disregard the histogram method
 """
 function saturated_response(data::Experiment{T}; 
-    saturated_thresh = :determine, polarity::Int64 = -1, precision = 500, z = 1.3, kwargs...) where T
+        contains_nose = true, saturated_thresh = :determine, polarity::Int64 = -1, 
+        precision = 500, z = 1.3, kwargs...
+    ) where T
+    if contains_nose == false
+        #We want to then return the minimum value if the polarity is negative 
+        if polarity == -1
+            return minimum(minimum(data, dims = 2), dims = 1)[1,1,:]
+        elseif polarity == 1
+            return maximum(maximum(data, dims = 2), dims = 1)[1,1,:]
+        end
+    end
     if isa(saturated_thresh, Symbol)
-        #Figure out if the saturated threshold needs to be determined
-        saturated_thresh = size(data,1)/precision/2
+        if saturated_thresh == :determine
+            #Figure out if the saturated threshold needs to be determined
+            saturated_thresh = size(data,1)/precision/2
+        end
     end
     #Make an empty array for recording the rmaxes
     rmaxs = T[]
@@ -93,10 +105,6 @@ function saturated_response(data::Experiment{T};
         h = Distributions.fit(Histogram, all_points, bins)
         edges = collect(h.edges...)[2:end]
         weights = h.weights./length(all_points)
-        
-        #println(maximum(weights))
-        #println(saturated_thresh)
-        #return edges, weights
 
         if maximum(weights) > saturated_thresh
             push!(rmaxs, edges[argmax(weights)])
