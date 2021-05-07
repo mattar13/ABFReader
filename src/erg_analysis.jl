@@ -48,6 +48,7 @@ function saturated_response(data::Experiment{T};
         precision = 500, z = 1.3, kwargs...
     ) where T
     if contains_nose == false
+        println("Here")
         #We want to then return the minimum value if the polarity is negative 
         if polarity == -1
             return minimum(minimum(data, dims = 2), dims = 1)[1,1,:]
