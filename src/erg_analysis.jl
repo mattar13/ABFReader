@@ -48,72 +48,73 @@ function saturated_response(data::Experiment{T};
         precision = 500, z = 1.3, kwargs...
     ) where T
     if contains_nose == false
-        println("Here")
         #We want to then return the minimum value if the polarity is negative 
         if polarity == -1
+            println("Here")
             return minimum(minimum(data, dims = 2), dims = 1)[1,1,:]
         elseif polarity == 1
             return maximum(maximum(data, dims = 2), dims = 1)[1,1,:]
         end
-    end
-    if isa(saturated_thresh, Symbol)
-        if saturated_thresh == :determine
-            #Figure out if the saturated threshold needs to be determined
-            saturated_thresh = size(data,1)/precision/2
+    else
+        if isa(saturated_thresh, Symbol)
+            if saturated_thresh == :determine
+                #Figure out if the saturated threshold needs to be determined
+                saturated_thresh = size(data,1)/precision/2
+            end
         end
-    end
-    #Make an empty array for recording the rmaxes
-    rmaxs = T[]
-    for ch in 1:size(data,3)
-        all_points = Float64[]
-        for swp in 1:size(data,1)
-            if isempty(data.stim_protocol)
-                #This catch is here for if no stim protocol has been set
-                #println("No stimulus protocol exists")
-                stim_begin = 1
+        #Make an empty array for recording the rmaxes
+        rmaxs = T[]
+        for ch in 1:size(data,3)
+            all_points = Float64[]
+            for swp in 1:size(data,1)
+                if isempty(data.stim_protocol)
+                    #This catch is here for if no stim protocol has been set
+                    #println("No stimulus protocol exists")
+                    stim_begin = 1
+                else
+                    stim_begin = data.stim_protocol[swp].index_range[1] #We don't want to pull values from before the stim
+                end
+                push!(all_points,  data[:, stim_begin:size(data,2), ch]...)
+            end
+            #We are going to concatenate all sweeps together into one histogram
+            mean = sum(all_points)/length(all_points)
+            deviation = z*std(all_points)
+            #Here we cutoff all points after the sweep returns to the mean
+            if polarity < 0
+                idxs = findall(all_points .< (mean - deviation))
+                if isempty(idxs)
+                    #This is a weird catch, but no points fall under the mean. 
+                    push!(rmaxs, minimum(all_points))
+                    continue
+                end
+                all_points = all_points[idxs]
+                #For negative components
+                bins = LinRange(minimum(all_points), min(0.0, mean-deviation), precision)
+            elseif polarity > 0
+                idxs = findlast(all_points .> (mean + deviation))
+                if isempty(idxs)
+                    #This is a weird catch, but no points fall under the mean. 
+                    push!(rmaxs, minimum(all_points))
+                    continue
+                end
+                all_points = all_points[idxs]
+                #For positive components
+                bins = LinRange(max(0.0, mean+deviation), maximum(data),  precision)
             else
-                stim_begin = data.stim_protocol[swp].index_range[1] #We don't want to pull values from before the stim
+                throw(error("Polarity incorrect"))
             end
-            push!(all_points,  data[:, stim_begin:size(data,2), ch]...)
-        end
-        #We are going to concatenate all sweeps together into one histogram
-        mean = sum(all_points)/length(all_points)
-        deviation = z*std(all_points)
-        #Here we cutoff all points after the sweep returns to the mean
-        if polarity < 0
-            idxs = findall(all_points .< (mean - deviation))
-            if isempty(idxs)
-                #This is a weird catch, but no points fall under the mean. 
-                push!(rmaxs, minimum(all_points))
-                continue
-            end
-            all_points = all_points[idxs]
-            #For negative components
-            bins = LinRange(minimum(all_points), min(0.0, mean-deviation), precision)
-        elseif polarity > 0
-            idxs = findlast(all_points .> (mean + deviation))
-            if isempty(idxs)
-                #This is a weird catch, but no points fall under the mean. 
-                push!(rmaxs, minimum(all_points))
-                continue
-            end
-            all_points = all_points[idxs]
-            #For positive components
-            bins = LinRange(max(0.0, mean+deviation), maximum(data),  precision)
-        else
-            throw(error("Polarity incorrect"))
-        end
-        h = Distributions.fit(Histogram, all_points, bins)
-        edges = collect(h.edges...)[2:end]
-        weights = h.weights./length(all_points)
+            h = Distributions.fit(Histogram, all_points, bins)
+            edges = collect(h.edges...)[2:end]
+            weights = h.weights./length(all_points)
 
-        if maximum(weights) > saturated_thresh
-            push!(rmaxs, edges[argmax(weights)])
-        else
-            push!(rmaxs, minimum(all_points))
+            if maximum(weights) > saturated_thresh
+                push!(rmaxs, edges[argmax(weights)])
+            else
+                push!(rmaxs, minimum(all_points))
+            end
         end
+        return rmaxs
     end
-    rmaxs
 end
 
 """
