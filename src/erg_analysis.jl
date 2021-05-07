@@ -51,8 +51,10 @@ function saturated_response(data::Experiment{T};
         #We want to then return the minimum value if the polarity is negative 
         if polarity == -1
             println("Here")
+            println(minimum(minimum(data, dims = 2), dims = 1)[1,1,:])
             return minimum(minimum(data, dims = 2), dims = 1)[1,1,:]
         elseif polarity == 1
+            println("Here")
             return maximum(maximum(data, dims = 2), dims = 1)[1,1,:]
         end
     else
