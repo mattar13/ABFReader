@@ -27,7 +27,6 @@ export truncate_data, truncate_data!
 export concat, concat!
 export photon_lookup
 
-
 #filtering are any functions that return a Experiment file and alter the old one
 include("filtering.jl") 
 export baseline_cancel, baseline_cancel! 

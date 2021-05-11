@@ -368,23 +368,21 @@ end
 
 concat(superfolder::String; kwargs...) = concat(parse_abf(superfolder); kwargs ...)
 
-import Base: size, length, getindex, setindex, sum, copy, maximum, minimum, push!
-
-#Extending for Experiment
-size(trace::Experiment) = size(trace.data_array)
-size(trace::Experiment, dim::Int64) = size(trace.data_array, dim)
-
-length(trace::Experiment) = size(trace,2)
- 
-#Extending get index for Experiment
-getindex(trace::Experiment, I...) = trace.data_array[I...]
-setindex!(trace::Experiment, v, I...) = trace.data_array[I...] = v
-
 import Base: +, -, *, / #Import these basic functions to help 
 +(trace::Experiment, val::Real) = trace.data_array = trace.data_array .+ val
 -(trace::Experiment, val::Real) = trace.data_array = trace.data_array .- val
 *(trace::Experiment, val::Real) = trace.data_array = trace.data_array .* val
 /(trace::Experiment, val::Real) = trace.data_array = trace.data_array ./ val
+
+import Base: size, length, getindex, setindex, sum, copy, maximum, minimum, push!, cumsum
+#Extending for Experiment
+size(trace::Experiment) = size(trace.data_array)
+size(trace::Experiment, dim::Int64) = size(trace.data_array, dim)
+
+length(trace::Experiment) = size(trace,2)
+
+#Extending get index for Experiment
+getindex(trace::Experiment, I...) = trace.data_array[I...]
 
 #This function allows you to enter in a timestamp and get the data value relating to it
 function getindex(trace::Experiment, timestamp::Float64) 
@@ -415,13 +413,18 @@ function getindex(trace::Experiment, timestamp_rng::StepRangeLen{Float64})
     return trace[:, start_idx:end_idx, :]
 end
 
-"""
-This function pushes traces to the datafile
-    -It initiates in a sweepwise function and if the item dims match the data dims, 
-    the data will be added in as new sweeps
-    - Sweeps are 
+setindex!(trace::Experiment, v, I...) = trace.data_array[I...] = v
 
-"""
+sum(trace::Experiment; kwargs...) = sum(trace.data_array; kwargs...)
+
+copy(nt::Experiment) = Experiment([getfield(nt, fn) for fn in fieldnames(nt |> typeof)]...)
+
+minimum(trace::Experiment; kwargs...) = minimum(trace.data_array; kwargs...)
+
+maximum(trace::Experiment; kwargs...) = maximum(trace.data_array; kwargs...)
+
+cumsum(trace::Experiment; kwargs...) = cumsum(trace.data_array; kwargs...)
+
 function push!(nt::Experiment{T}, item::AbstractArray{T}; new_name = "Unnamed") where T<:Real
     
     #All of these options assume the new data point length matches the old one
@@ -490,13 +493,7 @@ function chop!(trace::Experiment, n_chop::Int64; position::Symbol = :post, dims:
     trace.data_array = trace.data_array[resize_size...]
 end
 
-minimum(trace::Experiment; kwargs...) = minimum(trace.data_array; kwargs...)
 
-maximum(trace::Experiment; kwargs...) = maximum(trace.data_array; kwargs...)
-
-sum(trace::Experiment; kwargs...) = sum(trace.data_array; kwargs...)
-
-copy(nt::Experiment) = Experiment([getfield(nt, fn) for fn in fieldnames(nt |> typeof)]...)
 
 """
 This gets the channel based on either the name or the index of the channel
