@@ -40,23 +40,45 @@ mutable struct Experiment{T}
 end
 
 """
-TODO: I need to do a massive restructure. 
-1) ERG files need to be a seperate object. This will allow for more extensive stimulus protocols
-2) I need to do something different with stimulus files
-This function extracts an ABF file from a path
-    - It creates a Experiment object which 
-Maybe by adding the average the sweeps here I can avoid any averaging issues later
+    extract_abf(T, path::String, 
+        [, 
+            stim_ch, stim_name, stim_threshold, keep_stimulus_channel, 
+            swps, chs, 
+            continuous, average_sweeps, verbose
+        ]
+    ) where T <: Real
+
+Extracts the abf file by utilizing the pyABF function. In order for this to work, 
+miniconda must have installed pyABF. T specified at the beginning is the type in which
+the data will be converted into once it is extracted. This defaults to Float64. 
+
+The data extracted will be in the size of 
+    (sweeps, datapoints, channels)
+and the data file can be indexed by simply calling the datafile and then providing the indexes. 
+
+...
+#Arguments
+    -'swps':The sweeps chosen to extract. If sweeps is set to -1, this extracts all sweeps (Default behavior)
+    -'chs':The channels that will be extracted from the datafile. If chs is set to -1, this extracts all channels
+    -'stim_ch': The channel which is set to be the explicit stimulus 
+    -'stim_name': This is the type of stimulus that will be included in the datafile
+    -'stim_threshold::T = 0.2': This is the threshold set for determining the stimulus. In some cases this might need to be higher
+    -'keep_stimulus_channel::Bool': In some cases, it may be useful for keeping the stimulus channel, but most of the time it can be stored in a different file
+    -'continuous::Bool': Some recordings are large files broken down as gap-free sweeps. This mode places all data points in one sweep. By default this is false
+    -'average_sweeps::Bool':In some cases all of the sweeps can be averaged from opening the file. (in terms of concatenations). By default this is false. 
+    -'verbose::Bool': With ease of debugging, this can be activated to print more detailed reports of how the function is working. 
+...
 """
 function extract_abf(::Type{T}, abf_path::String; 
-        stim_ch::Union{Array{Int64}, Int64, String, Array{String}} = "IN 7", 
-        stim_name::Union{Array{String}, Array{Symbol}, String, Symbol} = :test,
-        stimulus_threshold::Float64 = 0.2,
-        keep_stimulus_channel = false,
         swps = -1, 
         chs = ["Vm_prime","Vm_prime4", "IN 7"], 
-        continuous = false, #puts the sweeps next to each other
-        average_sweeps = false,
-        verbose = false#, logging = false
+        stim_ch = "IN 7", 
+        stim_name = :test,
+        stim_threshold::T = 0.2,
+        keep_stimulus_channel::Bool = false,
+        continuous::Bool = false, #puts the sweeps next to each other
+        average_sweeps::Bool = false,
+        verbose::Bool = false
     ) where T <: Real
 
     #We need to make sure the stimulus names provided match the stimulus channels
@@ -159,7 +181,7 @@ function extract_abf(::Type{T}, abf_path::String;
             t_sweep = T.(trace_file.sweepX);
             dt = t_sweep[2]
             if ch_idx ∈ stim_ch 
-                stimulus_idxs = findall(data .> stimulus_threshold)
+                stimulus_idxs = findall(data .> stim_threshold)
                 if isempty(stimulus_idxs)
                     if verbose
                         println("Could not find any stimulus")
@@ -241,7 +263,7 @@ function extract_abf(::Type{T}, abf_path::String;
         #This file may actually be a concatenation
         return concat(full_path; stim_ch = stim_ch, 
             stim_name = stim_name,
-            stimulus_threshold = stimulus_threshold,
+            stim_threshold = stim_threshold,
             keep_stimulus_channel = keep_stimulus_channel,
             swps = swps, 
             chs = chs, 
