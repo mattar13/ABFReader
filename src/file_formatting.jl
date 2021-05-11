@@ -124,6 +124,7 @@ function formatted_split(string::String, format::Tuple;
             elseif isa(nt_key, Tuple) || isa(nt_key, Array{T} where T <: Tuple)
                 #Nested formats
                 inside_split = formatted_split(nt_val, nt_key)
+                println(inside_split)
                 if !isnothing(inside_split)
                     #If the nested format returns a misc arg, add it to misc
                     for in_key in keys(inside_split)
@@ -231,6 +232,8 @@ function check_color(x::String)
         return :InvalidColor
     end
 end
+
+check_color(x::Real) = x
 
 function check_drugs(x::String)
     if x == "Drugs"
