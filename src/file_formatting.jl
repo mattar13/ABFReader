@@ -281,12 +281,11 @@ format_bank = [
     ("\\", :Drive, ~, :Method, :Project, :Experimenter, exp_opt, exp_opt, check_drugs, check_color, file_opt)
 ]
 
-stim_format = [
-    ("\\", :Drive, ~, ~, 
-        ("_", check_color, ~),
+stim_format = (
+		"\\", :Drive, ~, ~, 
+        ("_", :Wavelength, ~),
         ("_", :ND, ~, (".", :Intensity, :Extension))
     )
-]
 
 
 
