@@ -66,13 +66,19 @@ md"
 The number on the side of our ND filter is the optical density (D). How does optical density relate to %transmittance (T)?
 
 $ T = f_T(D) = 10^{-D}$
+- ND0 = 100%   transferrance or multiply photons by 1
+- ND1 = 10%    transferrance or multiply photons by 0.1
+- ND2 = 1%     transferrance or multiply photons by 0.01
+- ND3 = 0.1%   transferrance or multiply photons by 0.001
+- ND4 = 0.01%  transferrance or multiply photons by 0.0001
+- ND5 = 0.001% transferrance or multiply photons by 0.00001
 
 #### Stim time and number of photons
 
 The number of photons is integrated. This means that we can easily double the amount of photons appearing at 1ms. 
 "
 
-# ╔═╡ 282786d2-6552-40a5-938a-17278e8e9e0c
+# ╔═╡ f73cfdd5-40e5-4d75-995b-44e88d739585
 
 
 # ╔═╡ Cell order:
@@ -85,4 +91,4 @@ The number of photons is integrated. This means that we can easily double the am
 # ╠═3e8c4504-328d-461a-8873-afdcf6221e15
 # ╟─4c73fb07-2f80-48bf-bc1a-5177704bc9c8
 # ╠═1afd7a70-b1fd-49bd-9b8f-b5b81ab63354
-# ╠═282786d2-6552-40a5-938a-17278e8e9e0c
+# ╠═f73cfdd5-40e5-4d75-995b-44e88d739585
