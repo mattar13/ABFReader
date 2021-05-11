@@ -195,13 +195,6 @@ for (i, row) in enumerate(eachrow(all_experiments))
     
     rmaxes = saturated_response(filter_data; saturated_thresh = row[:saturated_thresh])
     rmax_lin = [row[:Rmax_lin_min], row[:Rmax_lin_max]]
-    #println(rmax_lin)
-    #if row[:Age] < 14 #Developmental data
-        #println("Make the limit larger")
-    #    rmax_lin = [0.1, 0.8] #widen the range to look for rdim
-    #else 
-    #    rmax_lin = [0.20, 0.30]
-    #end
 
     print("[$(Dates.now())]: Finding Rmax, Rdim, tPeak, and tInt...")
     rdims, dim_idx = dim_response(filter_data, rmaxes; rmax_lin = rmax_lin)

@@ -27,6 +27,19 @@ target_folder = "E:\\Data\\ERG\\Gnat\\"
 # ╔═╡ 3b5a45c0-2444-11eb-2178-31a7fdadc071
 paths = target_folder |> parse_abf
 
+# ╔═╡ 2cb226dc-11fb-433a-a3ca-71e5e3b7d910
+md"
+### Opening the photon calibration file
+"
+
+# ╔═╡ c0ccf9a1-207d-40d8-b796-f604904d8b08
+begin
+	calibration_file = "E:\\Data\\photons_lookup.xlsx"
+	PhotonLookup = DataFrame(
+		XLSX.readtable(calibration_file, "Photon Calculations")...
+	)
+end
+
 # ╔═╡ 86c00aa1-9896-4e4d-b1b6-8757d2c5fea2
 md"
 ##### Reading all files into a dataframe and recording desired settings
@@ -45,7 +58,10 @@ begin
 		Rmax_lin_min = Float64[], Rmax_lin_max = Float64[], 
 		amp_time_cutoff = Float64[], amp_t_eff_cutoff = Float64[],
 		#Photon datasheet
-		ND = Float64[], Stimulus_Percent = Float64[], Stimulus_Time = Float64[]
+		ND = Float64[], Stimulus_Percent = Float64[], Stimulus_Time = Float64[], 
+		Photons = Float64[], 
+		#Data Analysis categories
+		min_response = [], max_response = []
 	)
 	fail_list = String[]
 	for (i, path) in enumerate(paths)
@@ -89,6 +105,21 @@ begin
 				Rmax_lin_max = 0.3
 			end
 			
+			#Can we do a quick extraction to find the stimulus time?
+			data = extract_abf(path)
+			tstops = data.stim_protocol[1].timestamps
+			stim_time = round((tstops[2]-tstops[1])*1000)
+			min_res = minimum(minimum(data, dims = 2), dims =1)[1,1,:]
+			max_res = maximum(maximum(data, dims = 2), dims =1)[1,1,:]
+			
+			PhotonQuery = PhotonLookup |> 
+				@filter(_.Percent == nt[:Intensity] 
+					&& _.ND == nt[:ND] 
+					&& _.Wavelength == 520
+				) |> 
+				DataFrame
+			Photons = PhotonQuery.Photons[1] * stim_time
+			
 			row = [
 				path, nt[:Experimenter],
 				nt[:Year], nt[:Month], nt[:Day], 
@@ -100,7 +131,9 @@ begin
 				t_pre, t_post, saturated_thresh, 
 				Rmax_lin_min, Rmax_lin_max, 
 				amp_time_cutoff, 0.040, 
-				nt[:ND], nt[:Intensity], 0.0
+				nt[:ND], nt[:Intensity], stim_time, 
+				Photons, 
+				min_res, max_res
 			]
 			push!(files_to_analyze, row)
 		end
@@ -132,24 +165,79 @@ md"
 ##### Analyze the experiments
 "
 
-# ╔═╡ aaaf8c78-1254-437a-a0d0-4a9cac5f65af
-data_analysis = DataFrame(
-    Path = String[], 
-    Year = Int64[], Month = Int64[], Day = Int64[], 
-    Animal = Int64[], Age = Int64[], Rearing = String[], Wavelength = Int64[], Genotype = String[], Drugs = String[], Photoreceptors = String[],
-    Channel = String[], 
-    Rmax = Float64[], Rdim = Float64[], tPeak = Float64[],
-    tInt = Float64[],
-    #fit params for recovery model
-    V0 = Float64[], τRec = Float64[], tau_GOF = Float64[],
-    #fit params for amplification model
-    alpha = Float64[], t_eff = Float64[], amp_GOF = Float64[], 
-)
-
 # ╔═╡ fb7dda3b-5f41-4f19-8c00-86a995603921
-for (i, row) in enumerate(eachrow(all_experiments))
-	println(row[:Root])
+begin
+	data_analysis = DataFrame(
+		Path = String[], 
+		Year = Int64[], Month = Int64[], Day = Int64[], 
+		Animal = Int64[], Age = Int64[], Rearing = String[], Wavelength = Int64[], Genotype = String[], Drugs = Bool[], Photoreceptors = String[],
+		Channel = String[], 
+		Rmax = Float64[], Rdim = Float64[], tPeak = Float64[],
+		tInt = Float64[],
+		#fit params for recovery model
+		V0 = Float64[], τRec = Float64[], tau_GOF = Float64[],
+		#fit params for amplification model
+		alpha = Float64[], t_eff = Float64[], amp_GOF = Float64[], 
+	)
+
+	for (i, row) in enumerate(eachrow(all_experiments)[1:2]) #Not analyzing all of them
+		println("Analyzing experiment $i : $(row[:Root])")
+		if row[:Experimenter] == "Paul"
+			top = all_experiments[end, :]
+			qi = files_to_analyze |> 
+				#Extract all files from the same date
+				@filter(_.Year == row.Year && _.Month == row.Month && _.Day == row.Day) |> 
+				#Extract all files from the same animal
+				@filter(_.Animal == row.Animal) |>
+				#Extract all files from the same wavelength
+				@filter(_.Wavelength == row.Wavelength) |>
+				DataFrame
+			println(size(qi))
+			data = extract_abf(qi.Path; swps = -1)
+
+		else
+			println("Matt Experiment")
+			data = extract_abf(row[:Root])
+		end
+		println(data |> size)
+		truncate_data!(data; t_post = row[:t_post])
+		baseline_cancel!(data) #Mean mode is better 
+		filter_data = lowpass_filter(data) #Lowpass filter using a 40hz 8-pole 
+		rmaxes = saturated_response(filter_data; 
+			#contains_nose = false,
+			saturated_thresh = row[:saturated_thresh]
+		)
+		rmax_lin = [row[:Rmax_lin_min], row[:Rmax_lin_max]]
+		rdims, dim_idx = dim_response(filter_data, rmaxes; rmax_lin = rmax_lin)
+		t_peak = time_to_peak(data, dim_idx)
+		t_Int = integration_time(filter_data, dim_idx)
+		println("Completed")
+		println("Rmaxes -> $(rmaxes.*-1000)")
+		println("Rdims -> $(rdims.*-1000)")
+		println("tPeak -> $(t_peak.*1000)")
+		println(row[:Drugs])
+		for i = 1:size(data,3)
+			push!(data_analysis, (
+						row[:Root], 
+						row[:Year], row[:Month], row[:Day], 
+						row[:Animal], row[:Age], row[:Rearing], row[:Wavelength],
+						row[:Genotype], row[:Drugs], row[:Photoreceptors],
+						data.chNames[i],
+						-rmaxes[i]*1000, -rdims[i]*1000, t_peak[i]*1000, t_Int[i], 
+						#tau fits
+						0.0, 0.0, 0.0,
+						#tau_fit[i][1], tau_fit[i][2]*1000, tau_GOF[i], 
+						#Amplification fits
+						0.0, 0.0, 0.0,
+						#amp_val, 0.0, amp_gofs
+					)
+				)
+		end
+	end
 end
+
+# ╔═╡ 01e5d502-927e-496a-a685-cbdfacac4017
+files
 
 # ╔═╡ Cell order:
 # ╟─c3ae7050-2443-11eb-09ea-7f7e4929e64d
@@ -159,10 +247,12 @@ end
 # ╠═d8d401a0-246d-11eb-257b-f741c3fe3a86
 # ╠═1b648280-2444-11eb-2064-f16e658562b7
 # ╠═3b5a45c0-2444-11eb-2178-31a7fdadc071
+# ╠═2cb226dc-11fb-433a-a3ca-71e5e3b7d910
+# ╠═c0ccf9a1-207d-40d8-b796-f604904d8b08
 # ╟─86c00aa1-9896-4e4d-b1b6-8757d2c5fea2
-# ╟─912d067a-7d0b-4efd-8f83-3453841a073b
+# ╠═912d067a-7d0b-4efd-8f83-3453841a073b
 # ╟─117a206b-7503-428a-ae78-fd4b965c3149
 # ╠═19372459-ed69-4f99-88cd-6f29c3016083
 # ╟─4e865dad-4dac-4bac-ad40-c0fc18450801
-# ╠═aaaf8c78-1254-437a-a0d0-4a9cac5f65af
 # ╠═fb7dda3b-5f41-4f19-8c00-86a995603921
+# ╠═01e5d502-927e-496a-a685-cbdfacac4017
