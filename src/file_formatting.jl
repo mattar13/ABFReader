@@ -284,7 +284,7 @@ format_bank = [
 stim_format = (
 		"\\", :Drive, ~, ~, 
         ("_", :Wavelength, ~),
-        ("_", :ND, ~, (".", :Intensity, :Extension))
+        ("_", :ND, ~, (".", :Intensity, ~))
     )
 
 
