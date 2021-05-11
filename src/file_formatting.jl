@@ -323,6 +323,7 @@ This extracts the stimulus intensities from a light calibration trial
     - This might become deprecated if i can't find a way 
 """
 function stim_intensity(filename; kwargs...)
+    @assert 1 == 2 "This function is deprecated and will be integrated into other functions"
     t, data_array, dt = extract_abf(filename; kwargs...);
     stim_t = sum(data_array[:,:,2] .> 1.0, dims = 2) .* dt*1000
     stim_i = sum(data_array[:,:,1], dims = 2) .* dt
