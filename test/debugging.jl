@@ -2,21 +2,8 @@ using Revise
 using NeuroPhys
 using DataFrames, XLSX, Query
 
-#%% 1) Plotting and analyzing the IR analysis from Cole and Dustin
-#Open the data frame first 
-IR_datafile = "E:\\Data\\ERG\\Gnat\\IR_analysis.xlsx"
-df = DataFrame(XLSX.readtable(IR_datafile, "Pauls_IR_analysis")...)
+#%% Opening the photon calibration file
 
-#%%
-experiments = df |> 
-    @unique({_.Age, _.Genotype, _.Wavelength, _.Drugs, _.Photoreceptors, _.Rearing}) |> 
-    #@filter(_.Photons > 0.0) |> 
-    DataFrame
-
-experiments
-#%%
-
-df
 #%%
 for (i, row) in enumerate(eachrow(experiments))
     #println(row)
