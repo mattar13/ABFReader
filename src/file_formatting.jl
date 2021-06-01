@@ -101,7 +101,6 @@ function formatted_split(string::String, format::Tuple;
     if length(format) == length(split_str)  
         nt_keys = Symbol[]
         nt_vals = Array([])
-        misc_vals = String[]
         #First we go looking through all formats
         for (idx, nt_key) in enumerate(format)
             nt_val = split_str[idx] |> String
