@@ -86,7 +86,6 @@ function formatted_split(string::String, format::Tuple;
         dlm = "_", parse_numbers = true, verbose = false
         )
     #If the first item in the format tuple is a string, it is the delimiter
-    println("We are here")
     if isa(format[1], String)
         #If the first object in the format is a string, it becomes the new delimiter
         dlm = format[1]
