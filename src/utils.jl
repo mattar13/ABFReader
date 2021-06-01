@@ -374,6 +374,16 @@ import Base: +, -, *, / #Import these basic functions to help
 *(trace::Experiment, val::Real) = trace.data_array = trace.data_array .* val
 /(trace::Experiment, val::Real) = trace.data_array = trace.data_array ./ val
 
+-(exp1::Experiment, exp2::Experiment) = sub_exp(exp1, exp2)
+
+function sub_exp(exp1::Experiment, exp2::Experiment)
+    @assert size(exp1) == size(exp2)
+    data = deepcopy(exp1)
+    #return a new experiment? make a new exp
+    data.data_array = exp1.data_array - exp2.data_array
+    return data
+end
+
 import Base: size, length, getindex, setindex, sum, copy, maximum, minimum, push!, cumsum
 #Extending for Experiment
 size(trace::Experiment) = size(trace.data_array)
