@@ -1,17 +1,29 @@
 ### A Pluto.jl notebook ###
-# v0.14.1
+# v0.14.5
 
 using Markdown
 using InteractiveUtils
 
+# This Pluto notebook uses @bind for interactivity. When running this notebook outside of Pluto, the following 'mock version' of @bind gives bound variables a default value (instead of an error).
+macro bind(def, element)
+    quote
+        local el = $(esc(element))
+        global $(esc(def)) = Core.applicable(Base.get, el) ? Base.get(el) : missing
+        el
+    end
+end
+
+# ╔═╡ df0c886a-05e7-42da-93fc-019c0c823cca
+using Pkg; Pkg.add("JSON")
+
 # ╔═╡ eb956370-9ba4-11eb-002e-bd530ec32c36
-using Revise
+using Revise, PlutoUI
 
 # ╔═╡ e3e3b7e5-901b-41ff-88e2-d296891bdaa2
 using NeuroPhys
 
 # ╔═╡ de4ec361-908f-4365-8fb2-ca2c3f08b930
-using DataFrames, Query
+using DataFrames, Query, JSON
 
 # ╔═╡ 70182ef7-d60a-4073-b55b-7565e6c4ab6c
 md"
@@ -19,19 +31,32 @@ md"
 "
 
 # ╔═╡ f57ebcff-72d2-4c0d-9c39-4caaa967b4ef
-analysis_file = "E:\\Data\\ERG\\Gnat\\Matt\\2020_11_16_ERG\\Mouse2_P14_KO\\NoDrugs\\525Green"
+analysis_file = "E:\\Data\\ERG\\Retinoschisis\\2021_05_18_ERG_RS\\Mouse3_Adult\\NoBaCl\\UV"
+
+# ╔═╡ 5941c57a-68a3-41a9-9661-a52972b9dd02
+md"
+#### Settings for extracting and filtering data
+Pre stim duration (t_pre) s
+
+$(@bind t_pre NumberField(0.2:0.1:1.0, default = 0.2))ms
+
+Post stim duration (t_post) s
+
+$(@bind t_post NumberField(0.2:0.1:5.0, default = 1.0))ms
+"
 
 # ╔═╡ 1e0cfd94-a20b-4691-9b5e-58c5b9e38ff3
 begin
 	#extract the file
-	data = extract_abf(analysis_file; swps = -1)
-	t_pre = 0.2;
-	t_post = 1.0;
-	truncate_data!(data; t_pre = t_pre, t_post = t_post);
+	data = extract_abf(analysis_file; swps = -1, chs = ["Vm_prime", "Vm_prime4","IN 7"])
+	truncate_data!(data; 
+		t_pre = t_pre, t_post = t_post, 
+		#truncate_based_on = :stimulus_end
+		);
 	baseline_cancel!(data, mode = :slope, region = :whole); 
 	baseline_cancel!(data); #Mean mode
 	
-	filter_data = data#lowpass_filter(data); #Lowpass filter using a 40hz 8-pole 
+	filter_data = lowpass_filter(data); #Lowpass filter using a 40hz 8-pole 
 	data
 end
 
@@ -61,9 +86,24 @@ begin
 		)
 end
 
+# ╔═╡ db5e0f94-2f70-420e-9bfa-ddefcf5798c8
+begin
+	plot(filter_data, 
+		c = :black, label_stim = true, grid = false, 
+		title = "Rmax, Rdim, and Time to peak"
+	)
+	plot!(filter_data, 
+		to_plot = (6, :channels),
+		c = :red, linewidth = 3.0,
+		label_stim = true, grid = false, 
+		title = "Rmax, Rdim, and Time to peak"
+	)
+end
+
 # ╔═╡ f4eff6dc-1d23-45a3-8514-521048ab5abc
 begin
 	plt = plot(filter_data, 
+		#to_plot = (3, 1),
 		c = :black, label_stim = true, grid = false, 
 		title = "Rmax, Rdim, and Time to peak")
 	#Plot the saturated traces
@@ -76,41 +116,87 @@ begin
 			c = :green, lw = 1.0
 		)
 	end
-	for ch in size(data,3)
-		plot!(plt, filter_data, to_plot = (dim_idx[ch], ch), label = "Dim trace",
-			c = :red, lw = 2.0
-		)
-		
+	for ch in 1:size(data,3)
+		println(ch)
 		hline!(plt[ch], [rmaxes[ch]], c = :green,label = "Saturation")
 		vline!(plt[ch], [t_peak[ch]], c = :magenta,lw= 2.0, label = "Time to peak")
-		tR_model(x,p) = map(t -> REC(t, p[1], -1.0), x)
-		xdata = data.t
-		ydata = data[dim_idx[ch], :, ch] 
-		norm_val = minimum(ydata)
-		ydata ./= norm_val #Normalize the Rdim
-		#cutoff all points below -0.5 and above -1.0
-		begin_rng = findall(ydata .>= 1.0)[end]
-		xdata = xdata[begin_rng:end]
-		ydata = ydata[begin_rng:end]
-		end_rng = findall(ydata .< 0.5)[1] 
-
-		xdata = xdata[1:end_rng]
-		ydata = -ydata[1:end_rng]
-		p0 = [ydata[1], -1.0]
-		fit = curve_fit(tR_model, xdata.-xdata[1], ydata, p0)
-		plot!(plt[ch], 
-			x -> tR_model(x-xdata[1], fit.param)*-norm_val,
-			LinRange(xdata[1], xdata[end], 10000), 
-			label = "TauRec fit", c = :blue, lw = 4.0
-		)
+		
+		if dim_idx[ch] != 0
+			plot!(plt, filter_data, to_plot = (dim_idx[ch], ch), label = "Dim trace",
+				c = :red, lw = 2.0
+			)
+			tR_model(x,p) = map(t -> REC(t, p[1], -1.0), x)
+			xdata = data.t
+			ydata = data[dim_idx[ch], :, ch] 
+			norm_val = minimum(ydata)
+			ydata ./= norm_val #Normalize the Rdim
+			#cutoff all points below -0.5 and above -1.0
+			begin_rng = findall(ydata .>= 1.0)[end]
+			xdata = xdata[begin_rng:end]
+			ydata = ydata[begin_rng:end]
+			println("Here")
+			end_rng = findall(ydata .< 0.5)
+			if !isempty(end_rng)
+				xdata = xdata[1:end_rng[1]]
+				ydata = -ydata[1:end_rng[1]]
+			end
+			p0 = [ydata[1], -1.0]
+			fit = curve_fit(tR_model, xdata.-xdata[1], ydata, p0)
+			plot!(plt[ch], 
+				x -> tR_model(x-xdata[1], fit.param)*-norm_val,
+				LinRange(xdata[1], xdata[end], 10000), 
+				label = "TauRec fit", c = :blue, lw = 4.0
+			)
+		end
 	end
 	plt
 end
 
 # ╔═╡ 0f308136-d3a1-46d3-95a1-a99c6913b524
 md"
-#### Amplification, and Intensity Response curves
+#### Amplification
 "
+
+# ╔═╡ 08060804-c7f2-49db-8390-554f2ccdccd7
+md"
+###### Amplification range (t_cutoff) =
+
+$(@bind time_cutoff NumberField(0.00:0.001:0.1, default = 0.03)) ms
+
+"
+
+# ╔═╡ b6e6e3c9-58a5-4e5b-8a83-a516787fb870
+begin
+	fit_plt = plot(filter_data, 
+		xlims = (0.0, time_cutoff),
+		c = :black, label_stim = true, grid = false, 
+		title = "Amplification"
+	)
+	
+	
+	# Plotting the amplification model
+	for swp in 1:size(data,1), ch in 1:size(data,3)
+		amp_model(x, p) = map(t -> AMP(t, p[1], p[2], rmaxes[ch]), x)
+		idx_end = findall(data.t .>= time_cutoff)[1]
+		xdata = data.t[1:idx_end]
+		ydata = data[swp,1:idx_end,ch]
+		p0 = [200.0, 0.010]
+		lb = [0.0, 0.0]
+		ub = [Inf, 0.060]
+		fit = curve_fit(amp_model, xdata, ydata, p0, lower = lb, upper = ub)
+		if swp == 1 
+			label = "Amplification Fit"
+		else
+			label = ""
+		end
+		plot!(fit_plt[ch], 
+			x -> amp_model(x, fit.param), 
+			
+			xdata[1], time_cutoff, 
+			c = :blue, linewidth = 2.0, label = label)
+	end
+	fit_plt
+end
 
 # ╔═╡ 41126fe9-6a3f-495f-9e03-32d980a91bb1
 #IR analysis
@@ -144,40 +230,6 @@ begin
 	IR_analysis = IR_analysis |> @orderby(_.Photons) |> DataFrame
 end
 
-# ╔═╡ b6e6e3c9-58a5-4e5b-8a83-a516787fb870
-begin
-	fit_plt = plot(filter_data, 
-		#xlims = (0.0, 0.1), ylims = (-rmaxes[1], 0.0),
-		c = :black, label_stim = true, grid = false, 
-		title = "Amplification"
-	)
-	
-	
-	# Plotting the amplification model
-	time_cutoff = 0.03 #50ms after stimulus
-	for swp in 1:size(data,1), ch in 1:size(data,3)
-		amp_model(x, p) = map(t -> AMP(t, p[1], p[2], rmaxes[ch]), x)
-		idx_end = findall(data.t .>= time_cutoff)[1]
-		xdata = data.t[1:idx_end]
-		ydata = data[swp,1:idx_end,ch]
-		p0 = [200.0, 0.002]
-		lb = [0.0, 0.0]
-		ub = [Inf, 0.020]
-		fit = curve_fit(amp_model, xdata, ydata, p0, lower = lb, upper = ub)
-		if swp == 1 
-			label = "Amplification Fit"
-		else
-			label = ""
-		end
-		plot!(fit_plt[ch], 
-			x -> amp_model(x, fit.param), 
-			
-			xdata[1], time_cutoff, 
-			c = :blue, linewidth = 2.0, label = label)
-	end
-	fit_plt
-end
-
 # ╔═╡ 512f83bb-9b54-4845-92dd-550c4fa4c79f
 begin
 	IR_plot = plot(title = "Intensity Response Curve")
@@ -207,13 +259,17 @@ end
 # ╠═eb956370-9ba4-11eb-002e-bd530ec32c36
 # ╠═e3e3b7e5-901b-41ff-88e2-d296891bdaa2
 # ╠═de4ec361-908f-4365-8fb2-ca2c3f08b930
+# ╠═df0c886a-05e7-42da-93fc-019c0c823cca
 # ╟─70182ef7-d60a-4073-b55b-7565e6c4ab6c
-# ╟─f57ebcff-72d2-4c0d-9c39-4caaa967b4ef
-# ╟─1e0cfd94-a20b-4691-9b5e-58c5b9e38ff3
+# ╠═f57ebcff-72d2-4c0d-9c39-4caaa967b4ef
+# ╠═5941c57a-68a3-41a9-9661-a52972b9dd02
+# ╠═1e0cfd94-a20b-4691-9b5e-58c5b9e38ff3
 # ╟─5b273f51-e6e1-4b2f-9789-6c42c290a8ef
 # ╟─b5863ba7-f332-43e1-a73f-20a1f6203201
+# ╠═db5e0f94-2f70-420e-9bfa-ddefcf5798c8
 # ╟─f4eff6dc-1d23-45a3-8514-521048ab5abc
 # ╟─0f308136-d3a1-46d3-95a1-a99c6913b524
+# ╟─08060804-c7f2-49db-8390-554f2ccdccd7
+# ╠═b6e6e3c9-58a5-4e5b-8a83-a516787fb870
 # ╟─41126fe9-6a3f-495f-9e03-32d980a91bb1
-# ╟─b6e6e3c9-58a5-4e5b-8a83-a516787fb870
 # ╟─512f83bb-9b54-4845-92dd-550c4fa4c79f
