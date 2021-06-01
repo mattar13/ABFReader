@@ -111,6 +111,10 @@ function formatted_split(string::String, format::Tuple;
                 nothing
             elseif isa(nt_key, Function)
                 result = nt_key(nt_val)
+                if verbose
+                    println("Function has returned: $result")
+                end
+
                 if isa(result, Symbol)
                     #println("Something has gone wrong in the file format, pass it upward")
                     return result
@@ -151,11 +155,10 @@ function formatted_split(string::String, format::Tuple;
             push!(nt_vals, split_str[length(format)+1:length(split_str)]...)
             push!(nt_keys, :misc)
         end
-
         return NamedTuple{Tuple(nt_keys)}(nt_vals)
     else
         if verbose
-            print("The length of the formats do not match")
+            print("The length of the formats do not match ")
             println("$(length(format)) ̸≠ $(length(split_str))")    
         end
     end
@@ -163,12 +166,16 @@ end
 
 #Basically this is what you pick when you aren't sure which format is correct out of a few options
 function formatted_split(string::String, formats::Array{T}; kwargs...)  where T
-    println("Here")
-    for format in formats
+    for (i,format) in enumerate(formats)
+        if haskey(kwargs, :verbose) && kwargs[:verbose] == true
+            println(i)
+            println(format)
+            println(length(formats))
+        end
         split_path = formatted_split(string, format; kwargs...)
-        if isa(split, Symbol)
+        if isa(split_path, Symbol)
             #println(split) #This means that something went wrong in the format
-        elseif !isnothing(split)
+        elseif !isnothing(split_path)
             #This means that the format was valid
             return split_path
         end
