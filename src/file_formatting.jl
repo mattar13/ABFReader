@@ -184,6 +184,9 @@ function formatted_split(string::String, formats::Array{T}; kwargs...)  where T
 end
 
 ########################### These are some functions that will make parsing folder names easier ##############
+function contiditon_check(x::String)
+    return (:Conditions, x)
+end
 
 function contains_words(x::String, words = ["AVERAGE", "CONCATENATE"], result = :fail)
     keywords = x |> number_seperator
