@@ -184,7 +184,7 @@ function formatted_split(string::String, formats::Array{T}; kwargs...)  where T
 end
 
 ########################### These are some functions that will make parsing folder names easier ##############
-function contiditon_check(x::String)
+function condition_check(x::String)
     #Don't parse the conditions as numbers
     return (:Conditions, x)
 end
