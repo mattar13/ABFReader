@@ -186,7 +186,7 @@ end
 ########################### These are some functions that will make parsing folder names easier ##############
 function condition_check(x::String)
     #Don't parse the conditions as numbers
-    return (:Conditions, x)
+    return (:Condition, x)
 end
 
 function contains_words(x::String, words = ["AVERAGE", "CONCATENATE"], result = :fail)
