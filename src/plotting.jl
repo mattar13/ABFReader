@@ -45,14 +45,23 @@ Plotting function.
         exp::Experiment{T}; 
         to_plot = (:sweeps, :channels), 
         layout = (:channels, 1),
-        plot_stim_mode = :none, 
-        label = "", label_stim = false
+        plot_stim_mode = :none, #We will set this as default none for now
+        label = "", label_stim = false,
+        kwargs...
     ) where T <: Real
     
+    #Set the basic characteristics of each plot
     grid := false
+    if haskey(kwargs, :c) 
+        color := kwargs[:c]
+    elseif haskey(kwargs, :color)
+        color := kwargs[:color]
+    else
+        color := :black
+    end
 
     layout := map(lay -> layout_helper(lay, size(exp)), layout)
-    #println(layout)
+    
     swp_rng, ch_rng = map(subp -> subplot_selector(subp, size(exp)), to_plot)
     #println(ch_rng)
     for swp in swp_rng, ch in ch_rng
