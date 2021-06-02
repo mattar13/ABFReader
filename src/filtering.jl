@@ -97,7 +97,7 @@ function baseline_cancel!(trace::Experiment; mode::Symbol = :mean, region = :pre
                         #Now offset the array by the linear range
                         trace.data_array[swp, :, ch] .= trace[swp, :, ch] - pfit.(trace.t)
                     else
-                        trace.data_array[swp, :, ch] .= trace[swp, :, ch] 
+                        #trace.data_array[swp, :, ch] .= trace[swp, :, ch] 
                         #println("no pre-stimulus range exists")
                     end
                 end
