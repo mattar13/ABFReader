@@ -45,7 +45,7 @@ Plotting function.
         exp::Experiment{T}; 
         to_plot = (:sweeps, :channels), 
         layout = (:channels, 1),
-        plot_stim_mode = :overlay_vspan, 
+        plot_stim_mode = :none, 
         label = "", label_stim = false
     ) where T <: Real
     
@@ -71,7 +71,7 @@ Plotting function.
             yguide := "$(exp.chNames[ch])($(exp.chUnits[ch]))"
             ()
         end
-        if !isempty(exp.stim_protocol)
+        if !isempty(exp.stim_protocol) && plot_stim_mode == :none
             @series begin
                 subplot := ch
                 seriescolor := :yellow
