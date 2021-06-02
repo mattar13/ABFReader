@@ -65,14 +65,15 @@ Plotting function.
     swp_rng, ch_rng = map(subp -> subplot_selector(subp, size(exp)), to_plot)
     #println(ch_rng)
     for swp in swp_rng, ch in ch_rng
+        if label != ""&& swp == 1
+            label := label
+        end
         if size(exp,3) == 1
             xlabels = "Time ($(exp.tUnits))"
         else
             xlabels = reshape(repeat([""], size(exp,3)-1), (1, size(exp,3)-1))
             xlabels[end] = "Time ($(exp.tUnits))"
-            if label != ""
-                label := label
-            end
+
         end
         xguide := xlabels
         @series begin
