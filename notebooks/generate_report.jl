@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.14.5
+# v0.14.7
 
 using Markdown
 using InteractiveUtils
@@ -12,9 +12,6 @@ macro bind(def, element)
         el
     end
 end
-
-# ╔═╡ df0c886a-05e7-42da-93fc-019c0c823cca
-using Pkg; Pkg.add("JSON")
 
 # ╔═╡ eb956370-9ba4-11eb-002e-bd530ec32c36
 using Revise, PlutoUI
@@ -31,7 +28,7 @@ md"
 "
 
 # ╔═╡ f57ebcff-72d2-4c0d-9c39-4caaa967b4ef
-analysis_file = "E:\\Data\\ERG\\Retinoschisis\\2021_05_18_ERG_RS\\Mouse3_Adult\\NoBaCl\\UV"
+analysis_file = "E:\\Data\\ERG\\Retinoschisis\\2021_05_28_ERG_RS\\Mouse2_P13_WT\\BaCl_LAP4\\UV"
 
 # ╔═╡ 5941c57a-68a3-41a9-9661-a52972b9dd02
 md"
@@ -53,8 +50,8 @@ begin
 		t_pre = t_pre, t_post = t_post, 
 		#truncate_based_on = :stimulus_end
 		);
-	baseline_cancel!(data, mode = :slope, region = :whole); 
-	baseline_cancel!(data); #Mean mode
+	baseline_cancel!(data, mode = :slope); 
+	#baseline_cancel!(data, region = :whole); #Mean mode
 	
 	filter_data = lowpass_filter(data); #Lowpass filter using a 40hz 8-pole 
 	data
@@ -93,7 +90,7 @@ begin
 		title = "Rmax, Rdim, and Time to peak"
 	)
 	plot!(filter_data, 
-		to_plot = (6, :channels),
+		to_plot = (3, :channels),
 		c = :red, linewidth = 3.0,
 		label_stim = true, grid = false, 
 		title = "Rmax, Rdim, and Time to peak"
@@ -166,6 +163,8 @@ $(@bind time_cutoff NumberField(0.00:0.001:0.1, default = 0.03)) ms
 "
 
 # ╔═╡ b6e6e3c9-58a5-4e5b-8a83-a516787fb870
+md"
+#Comment this section out if you want a quick plot
 begin
 	fit_plt = plot(filter_data, 
 		xlims = (0.0, time_cutoff),
@@ -197,6 +196,7 @@ begin
 	end
 	fit_plt
 end
+"
 
 # ╔═╡ 41126fe9-6a3f-495f-9e03-32d980a91bb1
 #IR analysis
@@ -259,10 +259,9 @@ end
 # ╠═eb956370-9ba4-11eb-002e-bd530ec32c36
 # ╠═e3e3b7e5-901b-41ff-88e2-d296891bdaa2
 # ╠═de4ec361-908f-4365-8fb2-ca2c3f08b930
-# ╠═df0c886a-05e7-42da-93fc-019c0c823cca
 # ╟─70182ef7-d60a-4073-b55b-7565e6c4ab6c
 # ╠═f57ebcff-72d2-4c0d-9c39-4caaa967b4ef
-# ╠═5941c57a-68a3-41a9-9661-a52972b9dd02
+# ╟─5941c57a-68a3-41a9-9661-a52972b9dd02
 # ╠═1e0cfd94-a20b-4691-9b5e-58c5b9e38ff3
 # ╟─5b273f51-e6e1-4b2f-9789-6c42c290a8ef
 # ╟─b5863ba7-f332-43e1-a73f-20a1f6203201
@@ -271,5 +270,5 @@ end
 # ╟─0f308136-d3a1-46d3-95a1-a99c6913b524
 # ╟─08060804-c7f2-49db-8390-554f2ccdccd7
 # ╠═b6e6e3c9-58a5-4e5b-8a83-a516787fb870
-# ╟─41126fe9-6a3f-495f-9e03-32d980a91bb1
-# ╟─512f83bb-9b54-4845-92dd-550c4fa4c79f
+# ╠═41126fe9-6a3f-495f-9e03-32d980a91bb1
+# ╠═512f83bb-9b54-4845-92dd-550c4fa4c79f
