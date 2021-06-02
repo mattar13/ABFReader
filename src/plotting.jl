@@ -70,6 +70,9 @@ Plotting function.
         else
             xlabels = reshape(repeat([""], size(exp,3)-1), (1, size(exp,3)-1))
             xlabels[end] = "Time ($(exp.tUnits))"
+            if label != ""
+                label := label
+            end
         end
         xguide := xlabels
         @series begin
