@@ -71,7 +71,7 @@ Plotting function.
             yguide := "$(exp.chNames[ch])($(exp.chUnits[ch]))"
             ()
         end
-        if !isempty(exp.stim_protocol) && plot_stim_mode == :none
+        if !isempty(exp.stim_protocol) && plot_stim_mode != :none
             @series begin
                 subplot := ch
                 seriescolor := :yellow
