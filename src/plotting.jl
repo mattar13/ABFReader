@@ -47,18 +47,18 @@ Plotting function.
         layout = (:channels, 1),
         plot_stim_mode = :none, #We will set this as default none for now
         label = "", label_stim = false,
-        kwargs...
+        #kwargs...
     ) where T <: Real
     
     #Set the basic characteristics of each plot
     grid := false
-    if haskey(kwargs, :c) 
-        color := kwargs[:c]
-    elseif haskey(kwargs, :color)
-        color := kwargs[:color]
-    else
-        color := :black
-    end
+    #if haskey(kwargs, :c) 
+    #    color := kwargs[:c]
+    #elseif haskey(kwargs, :color)
+    #    color := kwargs[:color]
+    #else
+    #    color := :black
+    #end
 
     layout := map(lay -> layout_helper(lay, size(exp)), layout)
     
