@@ -772,5 +772,8 @@ function photon_lookup(wavelength::Real, nd::Real, percent::Real, stim_time::Rea
         @map(_.Photons) |>
         DataFrame
     #%%
-    return Qi.value[1]
+    if size(Qi, 1) != 0
+        #Only return f an entry exists
+        return Qi.value[1]
+    end
 end
