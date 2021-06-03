@@ -767,7 +767,7 @@ function photon_lookup(wavelength::Real, nd::Real, percent::Real, stim_time::Rea
     Qi = df |> 
         @filter(_.Wavelength == wavelength) |>
         @filter(_.ND == nd) |>
-        @filter(_.Percent == percent) |>
+        @filter(_.Intensity== percent) |>
         @filter(_.stim_time == stim_time) |>
         @map(_.Photons) |>
         DataFrame
