@@ -283,13 +283,14 @@ function extract_abf(abf_folder::AbstractArray{String}; average_sweeps = false, 
     return sweeps
 end
 
-function extract_stimulus(abf_path::String; stim_name = "IN 7")
+function extract_stimulus(abf_path::String; stim_name = "IN 7", stim_threshold::Float64 = 0.2)
     #This function is a fast track for extracting only the stimulus
+    println("edited")
     pyABF = pyimport("pyabf")
     trace_file = pyABF.ABF(abf_path)
-    stim_ch = findall(x -> x == stim_ch, trace_file.chNames)
-    trace_file.setSweep(channel = stim_ch);
-    
+    stim_ch = findall(x -> x == stim_name, trace_file.adcNames)[1]
+    trace_file.setSweep(sweepNumber = 0, channel = stim_ch-1);
+    t = trace_file.sweepX
     data = trace_file.sweepY
     stimulus_idxs = findall(data .> stim_threshold)
     if isempty(stimulus_idxs)
@@ -302,7 +303,7 @@ function extract_stimulus(abf_path::String; stim_name = "IN 7")
         stim_time_start = t[stim_begin]
         stim_time_end = t[stim_end]
         stim = StimulusProtocol(
-            called|>Symbol, swp_idx, 
+            :test, 1, 
             (stim_begin, stim_end), 
             (stim_time_start, stim_time_end)    
         )
