@@ -505,6 +505,7 @@ end
 
 
 
+
 """
 This gets the channel based on either the name or the index of the channel
 """
@@ -683,6 +684,26 @@ function truncate_data!(trace::Experiment; t_pre = 0.2, t_post = 1.0, truncate_b
 end
 
 
+"""
+    split_data(exp::Experiment, [, split_by = :channel])
+
+This function splits the data 
+"""
+function split_data(exp::Experiment; split_by = :channel)
+    if split_by == :channel
+        split_exp = Array{Experiment}([])
+        for ch in 1:size(exp, 3)
+            new_data = deepcopy(exp)
+            split_trace = reshape(exp[:,:,ch], (size(exp,1), size(exp,2), 1))
+            println(size(split_trace))
+            new_data.data_array = split_trace
+            new_data.chNames = [exp.chNames[ch]]
+            new_data.chUnits = [exp.chUnits[ch]]
+            push!(split_exp, new_data)
+        end
+        split_exp  
+    end
+end
 
 exclude(A, exclusions) = A[filter(x -> !(x ∈ exclusions), eachindex(A))]
 """
@@ -693,72 +714,11 @@ function openABF(trace::Experiment)
     pyABF.ABF(trace.filename).launchInClampFit()
 end
 
-function test_file_analysis(path; verbose = true)
-    #first test the extraction of the path name
-    nt = formatted_split(path, format_bank)
-    
-    if verbose
-        println("File format successful")
-    end
+"""
+    photon_lookup(wavelength, nd, percent, stim_time, calibration_file[,sheet_name])
 
-    if nt.Experimenter == "Matt" #I have files organized by intensities
-
-    elseif nt.Experimenter == "Paul" #He has files organized by concatenations
-        data = extract_abf(path; swps = -1)
-            
-        if nt.Age == 8 || nt.Age == 9
-            println("Photoreceptors equals both")
-            Photoreceptors = "Both"
-        else
-            if haskey(nt, :Photoreceptors)
-                Photoreceptors = nt.Photoreceptors
-            else
-                println("No key equaling Photoreceptors")
-                Photoreceptors = "Both"
-            end
-        end
-        
-        if Photoreceptors == "cones" || Photoreceptors == "Both"
-            #Cone responses are under 300ms
-            t_post = 0.3
-            saturated_thresh = Inf
-        else
-            #Rod Responses can last a bit longer, so a second is fine for the max time
-            t_post = 1.0
-            saturated_thresh = :determine
-        end
-        
-        if !haskey(nt, :Animal)
-            animal = 1
-        else
-            animal = nt[:Animal]
-        end
-        if verbose 
-            println("Data successfully extracted")
-        end 
-
-        truncate_data!(data; t_post = t_post)
-        baseline_cancel!(data)
-        
-        if verbose 
-            println("Data successfully adjusted")
-        end
-
-        filter_data = lowpass_filter(data) #Lowpass filter using a 40hz 8-pole 
-        rmaxes = saturated_response(filter_data; saturated_thresh = saturated_thresh)
-        rdims, dim_idx = dim_response(filter_data, rmaxes)
-        t_peak = time_to_peak(data, dim_idx)
-        t_Int = integration_time(filter_data, dim_idx)
-        tau_rec = recovery_tau(filter_data, dim_idx)
-        
-        if verbose 
-            println("Data successfully analyzed")
-        end
-    end
-
-
-end
-
+Uses the calibration file or datasheet to look up the photon density. The Photon datasheet should be either 
+"""
 function photon_lookup(wavelength::Real, nd::Real, percent::Real, stim_time::Real, 
         calibration_file::String, 
         sheet_name::String = "Sheet1"

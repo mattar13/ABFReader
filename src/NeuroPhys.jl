@@ -24,6 +24,7 @@ export StimulusProtocol, get_stim_channels
 export Experiment, getchannel, getsweep, getstim, findstimRng
 export eachchannel, eachsweep
 export truncate_data, truncate_data!
+export split_data
 export concat, concat!
 export photon_lookup
 
