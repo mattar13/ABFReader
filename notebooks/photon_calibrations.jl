@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.14.5
+# v0.14.7
 
 using Markdown
 using InteractiveUtils
@@ -20,61 +20,73 @@ using Revise, PlutoUI
 using NeuroPhys
 
 # ╔═╡ 7fc3efe0-1eea-11eb-25e3-a15506944123
-using DataFrames, Query
+using DataFrames, Query, XLSX
 
 # ╔═╡ 7acebd60-1ee7-11eb-0cb9-1f9722a11f29
-using Plots
-
-# ╔═╡ 4572cda0-1ece-11eb-33da-212c1c12cb49
-#In order to make this script work, this file is needed
-target_folder = "E:\\Data\\Calibrations"
-
-# ╔═╡ 03afd290-1ecf-11eb-2738-b5c190ada7a4
-stim_files = target_folder |> parse_abf
+using Plots, StatsPlots
 
 # ╔═╡ 3e8c4504-328d-461a-8873-afdcf6221e15
 begin
-	data_photon = DataFrame(
-		Wavelength = Int64[], ND = Int64[], Intensity = Float64[], stim_time = Int64[],
-		Joules = Float64[], Frequency = Float64[], Photons = Float64[]
-	)
-	for (idx, file) in enumerate(stim_files)
-		format = formatted_split(file, stim_format)
-		println(format)
-		#Extract the data from the calibration file
-		data = extract_abf(file, chs = ["Opt3", "IN 7"])
-		#calculate photon energy (joules)
-		joules = sum(data, dims = 2)[1,1,1] * data.dt * 1000
-		frequency = 299792458 / (format.Wavelength * 10e-9)
-		photons = (joules/(6.626e-34*frequency))*10e-8
-		for nd in 0:5, t in 1:4
+	calibration_file = "E:\\Data\\Calibrations\\photon_lookup.xlsx"
+	target_folder = "D:\\Data\\Calibrations"
+	if !isfile(calibration_file)
+		stim_files = target_folder |> parse_abf
+		data_photon = DataFrame(
+			Wavelength = Int64[], ND = Int64[], Intensity = Float64[], 
+			stim_time = Int64[],
+			Joules = Float64[], Frequency = Float64[], Photons = Float64[]
+		)
+		for (idx, file) in enumerate(stim_files)
+			format = formatted_split(file, stim_format)
+			println(format)
+			#Extract the data from the calibration file
+			data = extract_abf(file, chs = ["Opt3", "IN 7"])
+			#calculate photon energy (joules)
+			joules = sum(data, dims = 2)[1,1,1] * data.dt * 1000
+			frequency = 299792458 / (format.Wavelength * 10e-9)
+			photons = (joules/(6.626e-34*frequency))*10e-8
 			#Extrapolate for ND filters and stim time
-			push!(data_photon, 
-				(
-					format.Wavelength, nd, format.Intensity, t,
-					(joules*10^-Float64(nd))*t, frequency, (photons*10^-Float64(nd))*t
-				)
-			)
-		end
+			for t in 1:4
+				push!(data_photon, 
+					(
+							format.Wavelength, format.ND, format.Intensity+1, t,
+							joules*t, frequency, photons*t
+						)
+					)
+				end
+			end
+		data_photon
+		XLSX.writetable(fn_save, 
+			collect(DataFrames.eachcol(data_photon)), DataFrames.names(data_photon)
+		)
+	else
+		println("File exists")
+		data_photon = DataFrame(XLSX.readtable(calibration_file, "Sheet1")...)
 	end
 end
+
+# ╔═╡ f9f446ee-b022-40b9-a2d3-dd0c73eae816
+photon_lookup(525, 4, 1, 2, calibration_file)
 
 # ╔═╡ 4c73fb07-2f80-48bf-bc1a-5177704bc9c8
 begin
 	qGREEN = data_photon |> 
-		@filter(_.Wavelength == 525 && _.ND == 0 && _.stim_time == 1) |> 
-	DataFrame
-	pGREEN = plot(qGREEN.Intensity, qGREEN.Photons, label = "ND0",
-		xlabel = "Stimulus intensity", ylabel = "Photons per micron",
-		st = :scatter, c = colormatch(525), legend = :topleft
-		
+		@filter(_.Wavelength == 525) |>
+		#@filter(_.ND == 1) |>
+		@filter(_.stim_time == 1) |> 
+		DataFrame
+
+	pGREEN = @df qGREEN plot(
+		:ND, :Intensity, :Photons, st = :surf, c = colormatch(525), cbar = false
 	)
+	
 	qUV = data_photon |> 
-		@filter(_.Wavelength == 365 && _.ND == 0 && _.stim_time == 1) |>  
+		@filter(_.Wavelength == 365) |>
+		#@filter(_.ND == 1) |>
+		@filter(_.stim_time == 1) |>  
 	DataFrame
-	pUV = plot(qUV.Intensity, qUV.Photons, label = "ND0",
-		xlabel = "Stimulus intensity", ylabel = "Photons per micron",
-		st = :scatter, c = colormatch(440), legend = :topleft
+	pUV = @df qUV plot(
+		:ND, :Intensity, :Photons, st = :surface, c = colormatch(440), cbar = false
 	)
 	plot(pGREEN, pUV, layout = grid(1,2))
 end
@@ -233,10 +245,9 @@ R-Squared = $(GOF)
 # ╠═41e9ea6e-1ecd-11eb-3dfc-ab8db76a04bc
 # ╠═7fc3efe0-1eea-11eb-25e3-a15506944123
 # ╠═7acebd60-1ee7-11eb-0cb9-1f9722a11f29
-# ╠═4572cda0-1ece-11eb-33da-212c1c12cb49
-# ╟─03afd290-1ecf-11eb-2738-b5c190ada7a4
 # ╟─3e8c4504-328d-461a-8873-afdcf6221e15
-# ╟─4c73fb07-2f80-48bf-bc1a-5177704bc9c8
+# ╠═f9f446ee-b022-40b9-a2d3-dd0c73eae816
+# ╠═4c73fb07-2f80-48bf-bc1a-5177704bc9c8
 # ╟─1afd7a70-b1fd-49bd-9b8f-b5b81ab63354
 # ╠═f73cfdd5-40e5-4d75-995b-44e88d739585
 # ╟─87d6f3b9-96c6-428d-a9a1-633d4ca5e837
