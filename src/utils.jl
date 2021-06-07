@@ -171,9 +171,8 @@ function extract_abf(::Type{T}, abf_path::String;
         end
 
         stim_protocol = Array{StimulusProtocol}([])
-        #println(stim_ch)
-        prev_idx = 1
-        prev_time = 0.0
+        #prev_idx = 1
+        #prev_time = 0.0
         for (swp_idx, swp) in enumerate(data_sweeps), (ch_idx, ch) in enumerate(data_channels)
             #println(ch_idx)
             trace_file.setSweep(sweepNumber = swp, channel = ch);
@@ -256,7 +255,7 @@ function extract_abf(::Type{T}, abf_path::String;
             stim_protocol,
             [full_path]
             )
-    catch error
+    catch
         #println(error)
         #println(kwargs)
         #println("File is actually a directory")
@@ -283,6 +282,34 @@ function extract_abf(abf_folder::AbstractArray{String}; average_sweeps = false, 
     end
     return sweeps
 end
+
+function extract_stimulus(abf_path::String; stim_name = "IN 7")
+    #This function is a fast track for extracting only the stimulus
+    pyABF = pyimport("pyabf")
+    trace_file = pyABF.ABF(full_path)
+    stim_ch = findall(x -> x == stim_ch, trace_file.chNames)
+    trace_file.setSweep(channel = stim_ch);
+    
+    data = trace_file.sweepY
+    stimulus_idxs = findall(data .> stim_threshold)
+    if isempty(stimulus_idxs)
+        if verbose
+            println("Could not find any stimulus")
+        end
+    else
+        stim_begin = stimulus_idxs[1]
+        stim_end = stimulus_idxs[end]+1
+        stim_time_start = t[stim_begin]
+        stim_time_end = t[stim_end]
+        stim = StimulusProtocol(
+            called|>Symbol, swp_idx, 
+            (stim_begin, stim_end), 
+            (stim_time_start, stim_time_end)    
+        )
+        return stim
+    end
+end
+
 
 """
 The files in path array or super folder are concatenated into a single Experiment file
