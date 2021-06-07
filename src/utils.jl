@@ -286,7 +286,7 @@ end
 function extract_stimulus(abf_path::String; stim_name = "IN 7")
     #This function is a fast track for extracting only the stimulus
     pyABF = pyimport("pyabf")
-    trace_file = pyABF.ABF(full_path)
+    trace_file = pyABF.ABF(abf_path)
     stim_ch = findall(x -> x == stim_ch, trace_file.chNames)
     trace_file.setSweep(channel = stim_ch);
     
