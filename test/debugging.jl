@@ -10,4 +10,4 @@ data = extract_abf(experiment)
 #%%
 size(data)
 #%%
-@time split_arr = split_data(data)
+split_arr = split_data(data)
