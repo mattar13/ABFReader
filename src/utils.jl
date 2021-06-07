@@ -285,7 +285,7 @@ end
 
 function extract_stimulus(abf_path::String; stim_name = "IN 7", stim_threshold::Float64 = 0.2)
     #This function is a fast track for extracting only the stimulus
-    println("edited")
+    #println("edited")
     pyABF = pyimport("pyabf")
     trace_file = pyABF.ABF(abf_path)
     stim_ch = findall(x -> x == stim_name, trace_file.adcNames)[1]
