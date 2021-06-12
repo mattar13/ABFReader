@@ -285,21 +285,32 @@ file_opt = [
     (".", contains_words, ~),
 ]
 
-format_bank = [
+format_bank_GNAT = [
     ("\\", :Drive, ~, :Method, :Project, :Experimenter, exp_opt, check_pc, check_drugs, check_color, nd_opt, file_opt),
     ("\\", :Drive, ~, :Method, :Project, :Experimenter, exp_opt, check_drugs, check_pc, check_color, nd_opt, file_opt),
     ("\\", :Drive, ~, :Method, :Project, :Experimenter, exp_opt, check_drugs, check_color, nd_opt, file_opt),
     ("\\", :Drive, ~, :Method, :Project, :Experimenter, exp_opt, exp_opt, check_drugs, check_color, file_opt)
 ]
 
-stim_format = (
-		"\\", ~, ~, ~, 
-        ("_", :Wavelength, ~),
-        ("_", :ND, ~, (".", :Intensity, ~))
-    )
-
-
-
+file_format = [
+    ("_", :ND, :Percent, ~), 
+    ("_", :ND, :Percent, ~, ~), 
+    ("_", :ND, :Percent, ~, ~, ~)
+    
+]
+format_bank_RS = [
+    ("\\", :Drive, ~, :Method, :Project, 
+            ("_", :Year, :Month, :Date, ~, ~), 
+            ("_", :Animal, check_age, :Genotype), 
+            condition_check, :Photoreceptor, check_color, file_format
+    ),
+    
+    ("\\", :Drive, ~, :Method, :Project, 
+            ("_", :Year, :Month, :Date, ~, ~), 
+            ("_", :Animal, check_age, :Genotype), 
+            condition_check, check_color, file_format 
+    ),	
+]
 """
 This extracts info from each filename.
 ND -> Intensity -> Stimulus time

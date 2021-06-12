@@ -28,45 +28,69 @@ using Plots, StatsPlots
 # ╔═╡ 3e8c4504-328d-461a-8873-afdcf6221e15
 begin
 	calibration_file = "E:\\Data\\Calibrations\\photon_lookup.xlsx"
-	target_folder = "D:\\Data\\Calibrations"
-	if !isfile(calibration_file)
-		stim_files = target_folder |> parse_abf
-		data_photon = DataFrame(
-			Wavelength = Int64[], ND = Int64[], Intensity = Float64[], 
-			stim_time = Int64[],
-			Joules = Float64[], Frequency = Float64[], Photons = Float64[]
-		)
-		for (idx, file) in enumerate(stim_files)
-			format = formatted_split(file, stim_format)
-			println(format)
-			#Extract the data from the calibration file
-			data = extract_abf(file, chs = ["Opt3", "IN 7"])
-			#calculate photon energy (joules)
-			joules = sum(data, dims = 2)[1,1,1] * data.dt * 1000
-			frequency = 299792458 / (format.Wavelength * 10e-9)
-			photons = (joules/(6.626e-34*frequency))*10e-8
-			#Extrapolate for ND filters and stim time
-			for t in 1:4
-				push!(data_photon, 
-					(
-							format.Wavelength, format.ND, format.Intensity+1, t,
-							joules*t, frequency, photons*t
-						)
-					)
-				end
-			end
-		data_photon
-		XLSX.writetable(fn_save, 
-			collect(DataFrames.eachcol(data_photon)), DataFrames.names(data_photon)
-		)
-	else
+	target_folder = "D:\\Calibrations"
+	
+	if isfile(calibration_file)
 		println("File exists")
-		data_photon = DataFrame(XLSX.readtable(calibration_file, "Sheet1")...)
+		rm(calibration_file)
 	end
+	
+	stim_format = (
+		"\\", ~, ~, 
+		("_", :Wavelength, ~),
+		("_", :ND, ~, (".", :Intensity, ~))
+	)
+	stim_files = target_folder |> parse_abf
+	data_photon = DataFrame(
+		Wavelength = Int64[], ND = Int64[], Intensity = Float64[], 
+		stim_time = Int64[],
+		Joules = Float64[], Frequency = Float64[], Photons = Float64[]
+	)
+	for (idx, file) in enumerate(stim_files)
+		format = formatted_split(file, stim_format)
+		println(format)
+		#Extract the data from the calibration file
+		data = extract_abf(file, chs = ["Opt3", "IN 7"])
+		#calculate photon energy (joules)
+		joules = sum(data, dims = 2)[1,1,1] * data.dt / 0.001 
+		frequency = 299792458 / (format.Wavelength*1e-9)
+		#the factors are all over the place
+		if format.ND == 0 || format.ND == 3
+			joules *= 0.1
+		elseif format.ND == 1 || format.ND == 2 || format.ND == 4
+			joules *= 0.01
+		else
+		end
+		photons = (joules/(6.626e-34*frequency))*1e-8
+		#Extrapolate for ND filters and stim time
+		for t in 1:4
+			push!(data_photon, 
+				(
+						format.Wavelength, format.ND, format.Intensity+1, t,
+						joules*t, frequency, photons*t
+					)
+				)
+			end
+		end
+	data_photon
+	XLSX.writetable(calibration_file, 
+		collect(DataFrames.eachcol(data_photon)), DataFrames.names(data_photon)
+	)
+	data_photon
 end
 
+# ╔═╡ 9a6982f6-b953-45f5-8ccb-b61115e9d6da
+6.626e-34
+
+# ╔═╡ 75660e71-e90f-444e-bc1a-32087e087118
+data_photon |> 
+	@filter(_.Wavelength == 525) |>  
+	@filter(_.stim_time == 1) |>
+	@filter(_.Intensity == 1) |>
+	DataFrame
+
 # ╔═╡ f9f446ee-b022-40b9-a2d3-dd0c73eae816
-photon_lookup(525, 4, 1, 2, calibration_file)
+photon_lookup(525, 0, 1, 1, calibration_file)
 
 # ╔═╡ 4c73fb07-2f80-48bf-bc1a-5177704bc9c8
 begin
@@ -245,7 +269,9 @@ R-Squared = $(GOF)
 # ╠═41e9ea6e-1ecd-11eb-3dfc-ab8db76a04bc
 # ╠═7fc3efe0-1eea-11eb-25e3-a15506944123
 # ╠═7acebd60-1ee7-11eb-0cb9-1f9722a11f29
-# ╟─3e8c4504-328d-461a-8873-afdcf6221e15
+# ╠═3e8c4504-328d-461a-8873-afdcf6221e15
+# ╠═9a6982f6-b953-45f5-8ccb-b61115e9d6da
+# ╠═75660e71-e90f-444e-bc1a-32087e087118
 # ╠═f9f446ee-b022-40b9-a2d3-dd0c73eae816
 # ╠═4c73fb07-2f80-48bf-bc1a-5177704bc9c8
 # ╟─1afd7a70-b1fd-49bd-9b8f-b5b81ab63354
@@ -254,7 +280,7 @@ R-Squared = $(GOF)
 # ╟─50598ab8-6fbc-48af-80c5-f22bdcd8520f
 # ╟─e404fd99-d613-42cc-a58d-6b9a869203c7
 # ╟─0065c026-10a6-4659-b4fa-9768da1bc4b5
-# ╟─9d81b556-460f-49db-8d89-9f33513a1061
+# ╠═9d81b556-460f-49db-8d89-9f33513a1061
 # ╠═7096cc7e-f27f-460e-956c-5c930ae69902
 # ╠═df0ca5b9-d7d8-4f51-9a75-2937bb267c7d
 # ╟─092b4d0f-105e-4903-940a-1fe6dbfaf5e9

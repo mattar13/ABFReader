@@ -13,7 +13,7 @@ using Dates
 
 #Functions that can help with file extraction
 include("file_formatting.jl")
-export formatted_split, format_bank, stim_format
+export formatted_split, format_bank_GNAT, format_band_RS
 export check_age, check_color, check_pc, check_geno, get_root, contains_words, condition_check
 export parse_abf, extract_abf 
 export number_extractor, filename_extractor
