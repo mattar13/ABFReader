@@ -25,6 +25,9 @@ using NeuroPhys
 # ╔═╡ 1896d7c6-1685-481e-84cd-50c4583f14de
 using DataFrames, Query, XLSX, StatsPlots
 
+# ╔═╡ d03dae62-0918-46d7-af2a-9a458c9271a4
+using Distributions, Statistics
+
 # ╔═╡ 7fb2fcdc-445d-4429-830f-5eb929539d9e
 begin
 	root = "E:\\Data\\ERG\\Retinoschisis\\"
@@ -32,106 +35,73 @@ begin
 	calibration_file = "E:\\Data\\Calibrations\\photon_lookup.xlsx"
 end
 
-# ╔═╡ ac25d26c-b8e8-43e8-8bbc-55aea2ced179
+# ╔═╡ bd5889f5-12d3-4739-90de-094e2a6f414f
 begin
-	all_paths = root |> parse_abf
-	#extract the all of the data files so far
-	if !isfile("$(root)\\data_analysis.xlsx")
-		all_files = DataFrame(
-			:Path => all_paths, 
-			:Year => 0, :Month => 0, :Date => 0,
-			:Animal => 0, :Age => 9, :Genotype => "", 
-			:Condition => "Nothing", :Wavelength => 525, 
-			:Photoreceptor => "Rods", 
-			:ND => 0, :Percent => 1, :Stim_time => 1.0, :Photons => 0.0
-			#:Min => [0.0], :Mean => [0.0], :Max => [0.0]
-		)
-		for (idx, path) in enumerate(all_paths)
-			println(path)
-			println("file $idx")
-			nt = formatted_split(path, format_bank_RS)
-			println(nt)
-			all_files[idx, :Year] = nt.Year
-			all_files[idx, :Month] = nt.Month
-			all_files[idx, :Date] = nt.Date
-			all_files[idx, :Animal] = nt.Animal
-			all_files[idx, :Age] = nt.Age
-			all_files[idx, :Condition] = nt.Condition
-			all_files[idx, :Wavelength] = nt.Wavelength
-			if nt.Genotype == 141
-				all_files[idx, :Genotype] = "R141C"
-			elseif nt.Genotype == 1
-				all_files[idx, :Genotype] = "RS1KO"
-			else
-				all_files[idx, :Genotype] = nt.Genotype
-			end
-			
-			if haskey(nt, :Photoreceptor)
-				all_files[idx, :Photoreceptor] = nt.Photoreceptor
-			end
-			all_files[idx, :ND] = nt.ND
-			all_files[idx, :Percent] = nt.Percent
+	#This is a long script which simply makes a dataframe
+	all_paths = root |> parse_abf #define the paths in the outer
+	all_files = include("make_RS_datasheet.jl")
+	backup = deepcopy(all_files)
+end
 
-			stim_protocol = extract_stimulus(path)
-			tstops = stim_protocol.timestamps
-			stim_time = round((tstops[2]-tstops[1])*1000)
-			println(stim_time)
-			all_files[idx, :Stim_time] = stim_time
-			#Now we want to apply photons using the photon lookup
-			photon = photon_lookup(
-				nt.Wavelength, nt.ND, nt.Percent, stim_time, calibration_file
+# ╔═╡ 11e7a62a-f21b-4c04-a890-df3ab4d79107
+df_names = Symbol.(DataFrames.names(all_files))
+
+# ╔═╡ c6b58084-4de0-4978-9d5d-bbc5a2c3dc18
+begin	
+	wt1 = "E:\\Data\\ERG\\Gnat\\Paul\\"
+	wt_paths = wt1 |> parse_abf
+	for (idx, path) in enumerate(wt_paths)
+		println(path)
+		println("File $idx of $(length(wt_paths)) analyzed")
+		nti = formatted_split(path, format_bank_GNAT)
+		#println(choose_filename(splitpath(path)[end]))
+		if !isnothing(nti) && haskey(nti, :Genotype) && haskey(nti, :Photoreceptor) 
+			contains = map(entry -> haskey(nti, entry), df_names)
+			println(nti)
+			photons = photon_lookup(
+				nti.Wavelength, nti.ND, nti.Percent, nti.Stim_time, 
+				calibration_file
 			)
-			println(photon)
-			if !isnothing(photon)
-				all_files[idx, :Photons] = photon
+			if !isnothing(photons)
+				data_row = (
+					path, map(key -> nti[key], df_names[contains])..., photons
+				)
+				push!(all_files, data_row)
 			end
 		end
-		#we can use this section to add a few of pauls files
-		
-		
-		#save the file as a excel file
-		XLSX.writetable("$(root)\\data_analysis.xlsx", 
-				All_Files = (
-					collect(DataFrames.eachcol(all_files)), 
-					DataFrames.names(all_files)
-				)
-			)
-		
-	else
-		all_files = DataFrame(
-			XLSX.readtable("$(root)\\data_analysis.xlsx", "All_Files")...
-		)
-		all_files[!, :Path] = convert.(String, all_files[!,:Path])
 	end
 	all_files
 end
 
-# ╔═╡ 7e33796c-8477-4d6b-909f-bb482188cd32
+# ╔═╡ 3f66b1f9-90bc-47d4-b058-a84f93e85e1e
+all_files
+
+# ╔═╡ 3781dc5f-e9e0-4a60-adb9-a422741d375d
 begin
-	#extract files from some of Pauls files
-	wt1 = "E:\\Data\\ERG\\Gnat\\Paul\\9_22_19_WT_P37_m1\\"
-	wt_paths = wt1 |> parse_abf
-	for (idx, path) in enumerate(wt_paths)
-		println(path)
-		println("file $idx")
-		nti = formatted_split(path, format_bank_GNAT)
-		println(nti)
-	end
+	q_A = all_files |> 
+		@filter(_.Condition == "BaCl_LAP4" || _.Condition == "LAP4_BaCl") |>
+		@filter(_.Photoreceptor == "Rods" && _.Wavelength == 525) |>
+		DataFrame
+	q_AB = all_files |> 
+		@filter(_.Condition == "BaCl") |>
+		@filter(_.Photoreceptor == "Rods" && _.Wavelength == 525) |>
+		DataFrame
+	q_ABG = all_files |> 
+		@filter(_.Condition == "NoDrugs") |>
+		@filter(_.Photoreceptor == "Rods" && _.Wavelength == 525) |>
+		DataFrame
 end
 
 # ╔═╡ c8cccfc3-7fe6-4de3-a54f-43ccc511ac00
 md"
-#### Displaying IR curve information
+#### A-wave data
 "
 
 # ╔═╡ cbd04c8d-cbe4-4b97-ba6c-057136582a1e
 begin
 	#Pick a certain experiment to analyze
-	q_group = all_files |> 
-		#@filter(_.Genotype == "WT") |> 
-		@filter(_.Age == 13) |>
-		@filter(_.Condition == "BaCl_LAP4")|>
-		@filter(_.Photoreceptor == "Rods" && _.Wavelength == 525) |>
+	q_group = q_A |> 
+		@filter(_.Age == 30) |>
 		@map({_.Path, _.Age, _.Genotype, _.Condition, _.Photons, Response = 0.0}) |>
 		DataFrame
 	for (idx, exp) in enumerate(eachrow(q_group))
@@ -155,17 +125,16 @@ begin
 			q_group[idx, :Response] = resp[1]
 		end
 	end
+end
+
+# ╔═╡ d9270d72-bb61-43df-af25-3554ca9b3d94
+q_group
+
+# ╔═╡ 883e9dd2-6b7d-4aca-accc-86343847a8f3
 	@df q_group plot(
 		:Photons, :Response, 
 		st = :scatter, group = :Genotype, xaxis = :log
 	)
-end
-
-# ╔═╡ fef50b9e-12c3-47df-ba13-2ab0e42395d1
-@df q_group plot(:Photons, :Response, st = :scatter, group = :Genotype, xaxis = :log)
-
-# ╔═╡ e6c3117d-d267-4668-8bda-0abf0f4c59ff
-test_file = q_group[argmin(q_group.Response), :Path]
 
 # ╔═╡ 13b294c3-d100-4cf5-981d-a98a463afa6f
 md"
@@ -247,14 +216,32 @@ $(@bind max_val NumberField(0.0:0.1:10.0, default = 0.4))uV
 
 "
 
-# ╔═╡ 901ae308-4c4b-42b2-a584-73cc64ede67c
+# ╔═╡ 58c78257-5897-494d-aad6-42e3aac6c0be
 begin
-	test_data = extract_abf(test_file, average_sweeps = true)
+	q_peek = q_group |> 
+		@filter(_.Genotype == "WT")|>
+		@orderby(_.Photons) |>
+		DataFrame
+	
+	test_data = extract_abf(String[q_peek.Path[end]])
 	baseline_cancel!(test_data, mode = :slope); 
 	truncate_data!(test_data, t_pre = t_pre, t_post = t_post);
 	#baseline_cancel!(test_data, mode = :slope, region = :whole); 
 	filter_test_data = lowpass_filter(test_data); 
 	plot(filter_test_data)
+end
+
+# ╔═╡ a1d18daf-83d4-4355-8123-9e0173f1cd06
+begin
+	#can we determine if the response contains a nose or not
+	local_min = minimum(test_data, dims = 2)[1,1,:]
+ 	stim_begin = test_data.stim_protocol[1].index_range[1]
+	x_data = test_data.t[stim_begin:end] 
+	y_data = test_data.data_array[1,stim_begin:end,:]
+	plot(x_data, y_data[:,1])#, layout = grid(2,1))
+	h = Distributions.fit(Histogram, all_points, bins)
+	edges = collect(h.edges...)[2:end]
+	weights = h.weights./length(all_points)
 end
 
 # ╔═╡ 9cb1e14e-e718-4eff-ac80-d5185ffbb512
@@ -393,13 +380,18 @@ ih
 # ╠═60eb055d-2772-49af-af4b-12c2f8a9a98c
 # ╠═1896d7c6-1685-481e-84cd-50c4583f14de
 # ╠═7fb2fcdc-445d-4429-830f-5eb929539d9e
-# ╠═ac25d26c-b8e8-43e8-8bbc-55aea2ced179
-# ╠═7e33796c-8477-4d6b-909f-bb482188cd32
+# ╟─bd5889f5-12d3-4739-90de-094e2a6f414f
+# ╠═11e7a62a-f21b-4c04-a890-df3ab4d79107
+# ╠═c6b58084-4de0-4978-9d5d-bbc5a2c3dc18
+# ╠═3f66b1f9-90bc-47d4-b058-a84f93e85e1e
+# ╠═3781dc5f-e9e0-4a60-adb9-a422741d375d
 # ╟─c8cccfc3-7fe6-4de3-a54f-43ccc511ac00
 # ╠═cbd04c8d-cbe4-4b97-ba6c-057136582a1e
-# ╠═fef50b9e-12c3-47df-ba13-2ab0e42395d1
-# ╠═e6c3117d-d267-4668-8bda-0abf0f4c59ff
-# ╠═901ae308-4c4b-42b2-a584-73cc64ede67c
+# ╠═d9270d72-bb61-43df-af25-3554ca9b3d94
+# ╠═883e9dd2-6b7d-4aca-accc-86343847a8f3
+# ╠═58c78257-5897-494d-aad6-42e3aac6c0be
+# ╠═a1d18daf-83d4-4355-8123-9e0173f1cd06
+# ╠═d03dae62-0918-46d7-af2a-9a458c9271a4
 # ╟─13b294c3-d100-4cf5-981d-a98a463afa6f
 # ╟─b13e1c5b-8ccf-4fb8-9169-85118412e05a
 # ╟─e8917e60-3cdb-4c86-9c43-700b7f0264ab
