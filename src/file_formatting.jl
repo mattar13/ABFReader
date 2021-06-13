@@ -228,7 +228,7 @@ end
 
 function check_pc(x::String)
     if uppercase(x) == "RODS" || uppercase(x) == "CONES"
-        return (:Photoreceptors, x)
+        return (:Photoreceptor, x)
     else
         return :InvalidPC
     end
@@ -268,15 +268,15 @@ end
 
 ########################### These are some common formats I use
 exp_opt = [
-    ("_", :Month, :Day, :Year, check_geno, check_age, :Animal),
-    ("_", :Month, :Day, :Year, ~),
+    ("_", :Month, :Date, :Year, check_geno, check_age, :Animal),
+    ("_", :Month, :Date, :Year, ~),
     ("_", :Animal, check_age, check_geno)
 ]
 
 nd_opt = [
-    ("_", :ND, :Intensity, :Stim_time),
-    ("_", :ND, :Intensity, :Stim_time, :ID),
-    ("_", :ND, :Intensity, :Stim_time, ~, ~, :ID)
+    ("_", :ND, :Percent, :Stim_time),
+    ("_", :ND, :Percent, :Stim_time, :ID),
+    ("_", :ND, :Percent, :Stim_time, ~, ~, :ID)
 ]
 
 
