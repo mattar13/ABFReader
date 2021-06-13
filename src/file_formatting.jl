@@ -207,6 +207,7 @@ function choose_filename(x::String)
     t1 = contains_words(x; words = ["CONCATENATE"], result = :fail)
 	t2 = contains_words(x; words = ["AVERAGE"], result = :pass)
     if !isnothing(t1) || !isnothing(t2)
+        println("returning")
         return t1 #no need to return both
     end
 end
