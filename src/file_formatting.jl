@@ -291,7 +291,7 @@ nd_opt = [
 
 file_opt = [
     (".", nd_opt, ~),
-    (".", contains_words, ~),
+    (".", choose_filename, ~),
 ]
 
 format_bank_GNAT = [
