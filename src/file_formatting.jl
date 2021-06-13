@@ -189,7 +189,7 @@ function condition_check(x::String)
     return (:Condition, x)
 end
 
-function contains_words(x::String, words = ["AVERAGE", "CONCATENATE"], result = :fail)
+function contains_words(x::String; words = ["AVERAGE", "CONCATENATE"], result = :fail)
     keywords = x |> number_seperator
     for w in keywords[2]
         if result == :fail && uppercase(w) ∈ words #We want the function to fail if the word exists 
