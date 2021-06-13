@@ -191,6 +191,9 @@ end
 
 function contains_words(x::String; words = ["AVERAGE", "CONCATENATE"], result = :fail)
     keywords = x |> number_seperator
+    if isempty(keywords[2]) #There are no letters
+        return :NoWords
+    end
     for w in keywords[2]
         if result == :fail && uppercase(w) ∈ words #We want the function to fail if the word exists 
             return :ContainsWord
