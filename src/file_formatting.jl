@@ -248,9 +248,9 @@ check_color(x::Real) = x
 
 function check_drugs(x::String)
     if x == "Drugs"
-        return (:Drugs, true)
+        return (:Condition, "BaCl_LAP4")
     elseif x == "NoDrugs" || x == "No Drugs"
-        return (:Drugs, false)
+        return (:Condition, "BaCl")
     else 
         return :InvalidDrug
     end
