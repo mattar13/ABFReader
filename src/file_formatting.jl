@@ -202,6 +202,15 @@ function contains_words(x::String; words = ["AVERAGE", "CONCATENATE"], result = 
     end
 end
 
+function choose_filename(x::String)
+    #We want to skip files containing concatenate but pass files containing average only
+    t1 = contains_words(test; words = ["CONCATENATE"], result = :fail)
+	t2 = contains_words(test; words = ["AVERAGE"], result = :pass)
+    if !isnothing(t1) || !isnothing(t2)
+        return t1 #no need to return both
+    end
+end
+
 function check_age(x::String)
     if x == "Adult"
         return (:Age, 30)
