@@ -412,7 +412,7 @@ function sub_exp(exp1::Experiment, exp2::Experiment)
     return data
 end
 
-import Base: size, length, getindex, setindex, sum, copy, maximum, minimum, push!, cumsum
+import Base: size, length, getindex, setindex, sum, copy, maximum, minimum, push!, cumsum, argmin, argmax
 #Extending for Experiment
 size(trace::Experiment) = size(trace.data_array)
 size(trace::Experiment, dim::Int64) = size(trace.data_array, dim)
@@ -462,6 +462,11 @@ minimum(trace::Experiment; kwargs...) = minimum(trace.data_array; kwargs...)
 maximum(trace::Experiment; kwargs...) = maximum(trace.data_array; kwargs...)
 
 cumsum(trace::Experiment; kwargs...) = cumsum(trace.data_array; kwargs...)
+
+argmin(trace::Experiment; dims = 2) = argmin(trace.data_array, dims = dims)
+
+argmax(trace::Experiment; dims = 2) = argmax(trace.data_array, dims = dims)
+
 
 function push!(nt::Experiment{T}, item::AbstractArray{T}; new_name = "Unnamed") where T<:Real
     
