@@ -45,7 +45,6 @@ This function uses a histogram method to find the saturation point.
 """
 function saturated_response(data::Experiment{T}; 
           polarity::Int64 = -1, precision::Int64 = 500, z = 4
-          family = false
      ) where T <: Real
      #We want to pick the region to analyze first
      if polarity < 0
