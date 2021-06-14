@@ -56,30 +56,30 @@ function saturated_response(data::Experiment{T};
                first_idxs[idx[1], idx[3]] = idx[2]
           end
           for swp in 1:size(data,1), ch in 1:size(data,3)
-               first_idx = first_idxs[swp, ch]
-               x_data = data.t[first_idx:end] 
-	          y_data = data.data_array[swp,first_idx:end,ch]
-               mean = sum(y_data)/length(y_data)
-	          deviation = z*std(y_data)
-	          last_idx = findall(y_data .> mean)[1]
-               x_data = x_data[1:last_idx] 
-	          y_data = y_data[1:last_idx]
-               d1 = diff(y_data)
-	          z_diff = sum(d1)/length(d1) + 4*std(d1)
-	          idxs = findall(d1.>z_diff)
-               if !isempty(idxs)
+                first_idx = first_idxs[swp, ch]
+                x_data = data.t[first_idx:end] 
+	            y_data = data.data_array[swp,first_idx:end,ch]
+                mean = sum(y_data)/length(y_data)
+	            deviation = z*std(y_data)
+	            last_idx = findall(y_data .> mean)[1]
+                x_data = x_data[1:last_idx] 
+	            y_data = y_data[1:last_idx]
+                d1 = diff(y_data)
+	            z_diff = sum(d1)/length(d1) + 4*std(d1)
+	            idxs = findall(d1.>z_diff)
+                if !isempty(idxs)
                     #There is a nose component
                     bins = LinRange(mean, min(0.0, mean-deviation),  500)
                     h = Distributions.fit(Histogram, y_data[y_data.<mean], bins)
                     edges = collect(h.edges...)[2:end]
                     weights = h.weights./length(y_data)
                     rmax = edges[argmax(weights)]
-               else
+                else
                     rmax = minimum(y_data)
-               end
-               rmaxes[swp, ch] = rmax
-          end
-          return rmaxes
+                end
+                rmaxes[swp, ch] = rmax
+            end
+            return rmaxes
      elseif polarity > 0
           #In this case we should just return the local maxima  
           return maximum(data, dims = 2)
