@@ -207,11 +207,11 @@ end
 
 function choose_filename(x::String)
     #We want to skip files containing concatenate but pass files containing average only
-    println(x)
+    println("Is reactive?")
     t1 = contains_words(x; words = ["CONCATENATE"], result = :fail)
 	t2 = contains_words(x; words = ["AVERAGE"], result = :pass)
-    println(t1)
-    println(t2)
+    #println(t1)
+    #println(t2)
     if !isnothing(t1) 
         return t1 #no need to return both
     end
