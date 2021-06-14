@@ -44,76 +44,48 @@ This function uses a histogram method to find the saturation point.
     - Setting the saturated threshold to infinity will completely disregard the histogram method
 """
 function saturated_response(data::Experiment{T}; 
-        contains_nose = true, saturated_thresh = :determine, polarity::Int64 = -1, 
-        precision = 500, z = 1.3, kwargs...
-    ) where T
-    if contains_nose == false
-        #We want to then return the minimum value if the polarity is negative 
-        if polarity == -1
-            return minimum(minimum(data, dims = 2), dims = 1)[1,1,:]
-        elseif polarity == 1
-            return maximum(maximum(data, dims = 2), dims = 1)[1,1,:]
-        end
-    else
-        if isa(saturated_thresh, Symbol)
-            if saturated_thresh == :determine
-                #Figure out if the saturated threshold needs to be determined
-                saturated_thresh = size(data,1)/precision/2
-            end
-        end
-        #Make an empty array for recording the rmaxes
-        rmaxs = T[]
-        for ch in 1:size(data,3)
-            all_points = Float64[]
-            for swp in 1:size(data,1)
-                if isempty(data.stim_protocol)
-                    #This catch is here for if no stim protocol has been set
-                    #println("No stimulus protocol exists")
-                    stim_begin = 1
-                else
-                    stim_begin = data.stim_protocol[swp].index_range[1] #We don't want to pull values from before the stim
-                end
-                push!(all_points,  data[:, stim_begin:size(data,2), ch]...)
-            end
-            #We are going to concatenate all sweeps together into one histogram
-            mean = sum(all_points)/length(all_points)
-            deviation = z*std(all_points)
-            #Here we cutoff all points after the sweep returns to the mean
-            if polarity < 0
-                idxs = findall(all_points .< (mean - deviation))
-                if isempty(idxs)
-                    #This is a weird catch, but no points fall under the mean. 
-                    push!(rmaxs, minimum(all_points))
-                    continue
-                end
-                all_points = all_points[idxs]
-                #For negative components
-                bins = LinRange(minimum(all_points), min(0.0, mean-deviation), precision)
-            elseif polarity > 0
-                idxs = findlast(all_points .> (mean + deviation))
-                if isempty(idxs)
-                    #This is a weird catch, but no points fall under the mean. 
-                    push!(rmaxs, minimum(all_points))
-                    continue
-                end
-                all_points = all_points[idxs]
-                #For positive components
-                bins = LinRange(max(0.0, mean+deviation), maximum(data),  precision)
-            else
-                throw(error("Polarity incorrect"))
-            end
-            h = Distributions.fit(Histogram, all_points, bins)
-            edges = collect(h.edges...)[2:end]
-            weights = h.weights./length(all_points)
-
-            if maximum(weights) > saturated_thresh
-                push!(rmaxs, edges[argmax(weights)])
-            else
-                push!(rmaxs, minimum(all_points))
-            end
-        end
-        return rmaxs
-    end
+          polarity::Int64 = -1, precision::Int64 = 500, z = 4
+          family = false
+     ) where T <: Real
+     #We want to pick the region to analyze first
+     if polarity < 0
+          #Pick the local minima
+          first_idxs = zeros(Int64, size(data,1), size(data,3))
+          rmaxes = zeros(size(data,1), size(data,3))
+          minima = argmin(data, dims = 2)
+          for idx in minima
+               first_idxs[idx[1], idx[3]] = idx[2]
+          end
+          for swp in 1:size(data,1), ch in 1:size(data,3)
+               first_idx = first_idxs[swp, ch]
+               x_data = data.t[first_idx:end] 
+	          y_data = data.data_array[swp,first_idx:end,ch]
+               mean = sum(y_data)/length(y_data)
+	          deviation = z*std(y_data)
+	          last_idx = findall(y_data .> mean)[1]
+               x_data = x_data[1:last_idx] 
+	          y_data = y_data[1:last_idx]
+               d1 = diff(y_data)
+	          z_diff = sum(d1)/length(d1) + 4*std(d1)
+	          idxs = findall(d1.>z_diff)
+               if !isempty(idxs)
+                    #There is a nose component
+                    bins = LinRange(mean, min(0.0, mean-deviation),  500)
+                    h = Distributions.fit(Histogram, y_data[y_data.<mean], bins)
+                    edges = collect(h.edges...)[2:end]
+                    weights = h.weights./length(y_data)
+                    rmax = edges[argmax(weights)]
+               else
+                    rmax = minimum(y_data)
+               end
+               rmaxes[swp, ch] = rmax
+          end
+          return rmaxes
+     elseif polarity > 0
+          #In this case we should just return the local maxima  
+          return maximum(data, dims = 2)
+     end
+     #First we want to find out if the nose component exists. Otherwise we can just return the minima
 end
 
 """
