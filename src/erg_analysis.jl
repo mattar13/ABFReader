@@ -69,7 +69,7 @@ function saturated_response(data::Experiment{T};
 	            idxs = findall(d1.>z_diff)
                 if !isempty(idxs)
                     #There is a nose component
-                    bins = LinRange(mean, min(0.0, mean-deviation),  500)
+                    bins = LinRange(mean, min(0.0, mean-deviation),  precision)
                     h = Distributions.fit(Histogram, y_data[y_data.<mean], bins)
                     edges = collect(h.edges...)[2:end]
                     weights = h.weights./length(y_data)
