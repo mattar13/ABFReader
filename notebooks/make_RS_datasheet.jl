@@ -1,4 +1,5 @@
 #everything in here is alot of code that does not necessarily need to be run every time 
+#using Query
 verbose = false
 try #This only works if every directory is in the correct place
      #all_paths = root |> parse_abf
@@ -16,6 +17,8 @@ try #This only works if every directory is in the correct place
 			#:Min => [0.0], :Mean => [0.0], :Max => [0.0]
 		)
 		for (idx, path) in enumerate(all_paths)
+               print("Analyzing path number $idx of $(length(all_paths))")
+               println(path)
 			nt = formatted_split(path, format_bank_RS)
 			all_files[idx, :Year] = nt.Year
 			all_files[idx, :Month] = nt.Month
