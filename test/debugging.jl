@@ -4,6 +4,7 @@ using DataFrames, XLSX, Query, Statistics, StatsBase
 
 #%%
 root = "E:\\Data\\ERG\\Retinoschisis\\"
+calibration_file = "E:\\Data\\Calibrations\\photon_lookup.xlsx"
 all_paths = root |> parse_abf #define the paths in the outer
 #%%
-update_RS_datasheet(root)
+update_RS_datasheet(root, calibration_file, verbose = true)

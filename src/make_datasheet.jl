@@ -1,6 +1,6 @@
 #everything in here is alot of code that does not necessarily need to be run every time 
 #using Query
-function update_RS_datasheet(root; verbose = false)
+function update_RS_datasheet(root, calibration_file; verbose = false)
      try #This only works if every directory is in the correct place
           all_paths = root |> parse_abf
           println(length(all_paths))
@@ -181,7 +181,6 @@ function update_RS_datasheet(root; verbose = false)
                          )
                     )
                end
-               println(" Completed")
                return all_files
           end
      catch error
