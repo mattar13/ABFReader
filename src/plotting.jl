@@ -47,19 +47,11 @@ Plotting function.
         layout = (:channels, 1),
         plot_stim_mode = :none, #We will set this as default none for now
         label = "", label_stim = false,
-        #kwargs...
+        xlabel = nothing, ylabel = nothing
     ) where T <: Real
     
     #Set the basic characteristics of each plot
     grid := false
-    #if haskey(kwargs, :c) 
-    #    color := kwargs[:c]
-    #elseif haskey(kwargs, :color)
-    #    color := kwargs[:color]
-    #else
-    #    color := :black
-    #end
-
     layout := map(lay -> layout_helper(lay, size(exp)), layout)
     
     swp_rng, ch_rng = map(subp -> subplot_selector(subp, size(exp)), to_plot)
@@ -68,20 +60,28 @@ Plotting function.
         if label != ""&& swp == 1
             label := label
         end
-        if size(exp,3) == 1
+        if size(exp,3) == 1 && isnothing(xlabel)
             xlabels = "Time ($(exp.tUnits))"
-        else
+        elseif isnothing(xlabel)
             xlabels = reshape(repeat([""], size(exp,3)-1), (1, size(exp,3)-1))
             xlabels[end] = "Time ($(exp.tUnits))"
-
+        else
+            xlabels = ""
         end
+
+        if isnothing(ylabels)
+            ylabels = "$(exp.chNames[ch])($(exp.chUnits[ch]))"
+        else
+            ylabels = ylabel
+        end
+
         xguide := xlabels
         @series begin
             label := label
             subplot := ch
             x := exp.t #t_series
             y := exp[swp, :, ch]
-            yguide := "$(exp.chNames[ch])($(exp.chUnits[ch]))"
+            yguide := ylabels
             ()
         end
         if !isempty(exp.stim_protocol) && plot_stim_mode != :none
