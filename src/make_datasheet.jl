@@ -101,7 +101,9 @@ function update_RS_datasheet(root; verbose = false)
                     end
                end
 
-               println(" Completed")
+               if verbose
+                    println(" Completed")
+               end
                if !isempty(added_files)
                     if verbose
                          println(" Files have been added $added_files")
