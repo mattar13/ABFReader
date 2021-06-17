@@ -65,4 +65,8 @@ export IR, IR_dev, AMP, REC
 include("plotting.jl")
 export plot, plot!, vline!, hline!, savefig, histogram, grid, title!
 
+#These functions are specific for making datasheets
+include("make_datasheet.jl")
+export update_RS_datasheet
+
 end # module

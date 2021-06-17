@@ -1,7 +1,6 @@
 #everything in here is alot of code that does not necessarily need to be run every time 
 #using Query
-function update_RS_datasheet(root)
-     verbose = false
+function update_RS_datasheet(root; verbose = false)
      try #This only works if every directory is in the correct place
           all_paths = root |> parse_abf
           println(length(all_paths))
@@ -18,8 +17,10 @@ function update_RS_datasheet(root)
                     #:Min => [0.0], :Mean => [0.0], :Max => [0.0]
                )
                for (idx, path) in enumerate(all_paths)
-                    print("Analyzing path number $idx of $(length(all_paths))")
-                    println(path)
+                    if verbose
+                         print("Analyzing path number $idx of $(length(all_paths))")
+                         println(path)
+                    end
                     nt = formatted_split(path, format_bank_RS)
                     all_files[idx, :Year] = nt.Year
                     all_files[idx, :Month] = nt.Month
@@ -50,7 +51,6 @@ function update_RS_datasheet(root)
                     photon = photon_lookup(
                          nt.Wavelength, nt.ND, nt.Percent, stim_time, calibration_file
                     )
-                    println(photon)
                     if !isnothing(photon)
                          all_files[idx, :Photons] = photon
                     end
@@ -63,26 +63,29 @@ function update_RS_datasheet(root)
                     DataFrame
 
                #save the file as a excel file
+               if verbose
+                    print("Dataframe created, saving...")
+               end
                XLSX.writetable("$(root)\\data_analysis.xlsx", 
                          All_Files = (
                               collect(DataFrames.eachcol(all_files)), 
                               DataFrames.names(all_files)
                          )
                     )
+               if verbose 
+                    println(" Completed")
+               end
                return all_files
           else
                #The file exists, we need to check for changes now
                if verbose 
-                    println("The file previously exists, checking for changes") 
+                    print("The file previously exists, checking for changes...") 
                end
                
                all_files = DataFrame(
                     XLSX.readtable("$(root)\\data_analysis.xlsx", "All_Files")...
                )
 
-               if verbose
-                    println("Checking for modifications")
-               end
                added_files = []
                for path in all_paths
                     if path ∉ all_files.Path
@@ -94,13 +97,15 @@ function update_RS_datasheet(root)
                for (idx, path) in enumerate(all_files.Path)
                     if path ∉ all_paths
                          push!(removed_files, idx)
-                         println("File $idx has been removed")
                          delete!(all_files, idx)
                     end
                end
 
+               println(" Completed")
                if !isempty(added_files)
-                    println("Files have been added $added_files")
+                    if verbose
+                         println(" Files have been added $added_files")
+                    end
                     for new_file in added_files
                          nt = formatted_split(new_file, format_bank_RS)
                          println(nt)
@@ -155,6 +160,9 @@ function update_RS_datasheet(root)
                     end
                elseif !isempty(removed_files)
                     #This is a catch for if files are removed but none are added
+                    if verbose
+                         println("Files have been removed $removed_files")
+                    end
                     all_files= all_files |> 
                          @orderby(_.Year) |> @thenby(_.Month) |> @thenby(_.Date)|>
                          @thenby(_.Animal)|> @thenby(_.Genotype) |> @thenby(_.Condition) |> 
@@ -171,6 +179,7 @@ function update_RS_datasheet(root)
                          )
                     )
                end
+               println(" Completed")
                return all_files
           end
      catch error
