@@ -52,7 +52,7 @@ Plotting function.
     
     #Set the basic characteristics of each plot
     grid := false
-    layout := map(lay -> layout_helper(lay, size(exp)), layout)
+    layout := (map(lay -> layout_helper(lay, size(exp)), layout))
     
     swp_rng, ch_rng = map(subp -> subplot_selector(subp, size(exp)), to_plot)
     #println(ch_rng)
@@ -69,7 +69,7 @@ Plotting function.
             xlabels = ""
         end
 
-        if isnothing(ylabels)
+        if isnothing(ylabel)
             ylabels = "$(exp.chNames[ch])($(exp.chUnits[ch]))"
         else
             ylabels = ylabel
