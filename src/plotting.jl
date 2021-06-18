@@ -47,7 +47,7 @@ Plotting function.
         layout = (:channels, 1),
         plot_stim_mode = :none, #We will set this as default none for now
         label = "", label_stim = false,
-        xlabel = nothing, ylabel = nothing
+        xlabels = nothing, ylabels = nothing
     ) where T <: Real
     
     #Set the basic characteristics of each plot
@@ -60,19 +60,13 @@ Plotting function.
         if label != ""&& swp == 1
             label := label
         end
-        if size(exp,3) == 1 && isnothing(xlabel)
+        if size(exp,3) == 1 && isnothing(xlabels)
             xlabels = "Time ($(exp.tUnits))"
-        elseif isnothing(xlabel)
+        elseif isnothing(xlabels)
             xlabels = reshape(repeat([""], size(exp,3)-1), (1, size(exp,3)-1))
             xlabels[end] = "Time ($(exp.tUnits))"
         else
-            xlabels = ""
-        end
-
-        if isnothing(ylabel)
-            ylabels = "$(exp.chNames[ch])($(exp.chUnits[ch]))"
-        else
-            ylabels = ylabel
+            xlabels = xlabels
         end
 
         xguide := xlabels
@@ -81,7 +75,7 @@ Plotting function.
             subplot := ch
             x := exp.t #t_series
             y := exp[swp, :, ch]
-            yguide := ylabels
+            yguide := isnothing(ylabels) ? "$(exp.chNames[ch])($(exp.chUnits[ch]))" : ylabels
             ()
         end
         if !isempty(exp.stim_protocol) && plot_stim_mode != :none
