@@ -7,8 +7,5 @@ file = "E:\\Data\\ERG\\Retinoschisis\\2021_05_28_ERG_RS\\Mouse2_P13_WT\\BaCl_LAP
 data = extract_abf(file)
 truncate_data!(data, t_pre = 1.0, t_post = 1.5);
 baseline_cancel!(data, mode = :slope); 
-plot(data)
-#%%
-drop!(data)
-println(size(data))
-plot(data)
+data * 1000
+plot(data, xlabels = ["T" "T2"], ylabels = "Response")
