@@ -536,7 +536,14 @@ function chop!(trace::Experiment, n_chop::Int64; position::Symbol = :post, dims:
     trace.data_array = trace.data_array[resize_size...]
 end
 
-
+function drop!(trace::Experiment; dim = 3, drop_idx = 1)
+    n_dims = collect(1:length(size(trace)))
+    n_dims = [dim, n_dims[n_dims .!= dim]...]
+	perm_data = permutedims(trace.data_array, n_dims)
+    perm_data = perm_data[drop_idx.∉(1:size(trace, dim)), :, :]
+    perm_data = permutedims(perm_data, sortperm(n_dims))
+    trace.data_array = perm_data
+end
 
 
 """
