@@ -234,10 +234,10 @@ function check_age(x::String)
     end
 end
 
-function check_geno(x; possible = ["WT", "KO", "HT", "UN"]) 
-    if x == "DR" #This is a weird error Paul made in his filenames
-        return (:Genotype, "WT")
-    elseif x ∈ possible
+function check_geno(x; possible = ["DR", "WT", "KO", "HT", "UN"]) 
+    #if x == "DR" #This is a weird error Paul made in his filenames
+    #    return (:Genotype, "WT")
+    if x ∈ possible
         return (:Genotype, x)
     else
         return :InvalidGenotype
