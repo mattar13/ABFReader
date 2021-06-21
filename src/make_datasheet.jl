@@ -111,9 +111,11 @@ function update_RS_datasheet(root, calibration_file; verbose = false)
                          nt = formatted_split(new_file, format_bank_RS)
                          println(nt)
                          if nt.flag == "remove"
+                              
                               #this is actually a file we should remove from the analysis
                               all_files_idx = findall(all_paths == new_file)
                               if !isemtpy(all_files_idx)
+                                   println("Removing file $all_files_idx")
                                    push!(removed_files, all_files_idx)
                               end
                          end
