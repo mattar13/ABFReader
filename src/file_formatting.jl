@@ -312,8 +312,8 @@ format_bank_GNAT = [
 
 file_format = [
     ("_", :ND, :Percent, ~), 
-    ("_", :ND, :Percent, ~, ~), 
-    ("_", :ND, :Percent, ~, ~, ~)
+    ("_", :ND, :Percent, ~, :flag), 
+    ("_", :ND, :Percent, ~, :flag, ~)
     
 ]
 format_bank_RS = [

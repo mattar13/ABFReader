@@ -97,7 +97,6 @@ function update_RS_datasheet(root, calibration_file; verbose = false)
                for (idx, path) in enumerate(all_files.Path)
                     if path ∉ all_paths
                          push!(removed_files, idx)
-                         delete!(all_files, idx)
                     end
                end
 
@@ -111,6 +110,14 @@ function update_RS_datasheet(root, calibration_file; verbose = false)
                     for new_file in added_files
                          nt = formatted_split(new_file, format_bank_RS)
                          println(nt)
+                         if nt.flag == "remove"
+                              #this is actually a file we should remove from the analysis
+                              all_files_idx = findall(all_paths == new_file)
+                              if !isemtpy(all_files_idx)
+                                   push!(removed_files, all_files_idx)
+                              end
+                         end
+
                          if nt.Genotype == 141
                               genotype = "R141C"
                          elseif nt.Genotype == 1
@@ -162,6 +169,10 @@ function update_RS_datasheet(root, calibration_file; verbose = false)
                     end
                elseif !isempty(removed_files)
                     #This is a catch for if files are removed but none are added
+                    for idx in removed_files
+                         delete!(all_files, idx)
+                    end
+
                     if verbose
                          println("Files have been removed $removed_files")
                     end
