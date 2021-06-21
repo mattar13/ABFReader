@@ -99,10 +99,10 @@ function update_RS_datasheet(root, calibration_file; verbose = false)
                          push!(removed_files, idx)
                     end
                end
-
                if verbose
                     println(" Completed")
                end
+
                if !isempty(added_files)
                     if verbose
                          println(" Files have been added $added_files")
@@ -110,13 +110,14 @@ function update_RS_datasheet(root, calibration_file; verbose = false)
                     for new_file in added_files
                          nt = formatted_split(new_file, format_bank_RS)
                          println(nt)
-                         if nt.flag == "remove"
-                              
-                              #this is actually a file we should remove from the analysis
-                              all_files_idx = findall(all_paths == new_file)
-                              if !isemtpy(all_files_idx)
-                                   println("Removing file $all_files_idx")
-                                   push!(removed_files, all_files_idx)
+                         if haskey(nt, :flag)
+                              if nt.flag == "Remove"
+                                   #this is actually a file we should remove from the analysis
+                                   all_files_idx = findall(all_files.Paths == new_file)
+                                   if !isemtpy(all_files_idx)
+                                        println("Removing file $all_files_idx")
+                                        push!(removed_files, all_files_idx)
+                                   end
                               end
                          end
 
@@ -152,24 +153,10 @@ function update_RS_datasheet(root, calibration_file; verbose = false)
                                    ) 
                               )
                          
-                         all_files= all_files |> 
-                              @orderby(_.Year) |> @thenby(_.Month) |> @thenby(_.Date)|>
-                              @thenby(_.Animal)|> @thenby(_.Genotype) |> @thenby(_.Condition) |> 
-                              @thenby(_.Wavelength) |> @thenby(_.Photons)|> 
-                              DataFrame
-                         println("Data analysis modified")
-                         #remove old analysis
-                         rm("$(root)\\data_analysis.xlsx")
-                         #write new analysis
-                         XLSX.writetable("$(root)\\data_analysis.xlsx", 
-                              All_Files = (
-                                   collect(DataFrames.eachcol(all_files)), 
-                                   DataFrames.names(all_files)
-                              )
-                         )
-                         println("File modified")
                     end
-               elseif !isempty(removed_files)
+               end
+
+               if !isempty(removed_files)
                     #This is a catch for if files are removed but none are added
                     for idx in removed_files
                          delete!(all_files, idx)
@@ -178,12 +165,18 @@ function update_RS_datasheet(root, calibration_file; verbose = false)
                     if verbose
                          println("Files have been removed $removed_files")
                     end
+               end
+
+               if !isempty(added_files) || !isempty(removed_files)
+                    if verbose
+                         println("Data Analysis has been modified")
+                         println("File rewritten")
+                    end
                     all_files= all_files |> 
                          @orderby(_.Year) |> @thenby(_.Month) |> @thenby(_.Date)|>
                          @thenby(_.Animal)|> @thenby(_.Genotype) |> @thenby(_.Condition) |> 
                          @thenby(_.Wavelength) |> @thenby(_.Photons)|> 
                          DataFrame
-                    println("Data analysis modified")
                     #remove old analysis
                     rm("$(root)\\data_analysis.xlsx")
                     #write new analysis
@@ -194,6 +187,7 @@ function update_RS_datasheet(root, calibration_file; verbose = false)
                          )
                     )
                end
+
                return all_files
           end
      catch error

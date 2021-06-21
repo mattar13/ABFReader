@@ -198,10 +198,7 @@ begin
 
 		if size(AB_data) != size(ABG_data)
 			#we want to drop the extra channel
-			match_ch= findall(
-				AB_data.chNames.==ABG_data.chNames
-				)
-
+			match_ch= findall(AB_data.chNames.==ABG_data.chNames)
 			if size(ABG_data,3) > size(AB_data,3) 
 				drop!(ABG_data, drop_idx = match_ch[1])
 			else
@@ -264,9 +261,9 @@ begin
 	#TBD (Month = ?, Date = ?, Animal = ?) #P11 R141C
 	
 	#(Month = 5, Data = 21,  Animal = 1) #P11 RS1KO
-	q_11RS1KOa = q_A |> @filter(_.Month==5 && _.Date==21 && _.Animal == 2)|>DataFrame
-	q_11RS1KOb = q_B |> @filter(_.Month==5 && _.Date==21 && _.Animal == 2)|>DataFrame
-	q_11RS1KOg = q_G |> @filter(_.Month==5 && _.Date==21 && _.Animal == 2)|>DataFrame
+	q_11RS1KOa = q_A |> @filter(_.Month==5 && _.Date==21 && _.Animal == 1)|>DataFrame
+	q_11RS1KOb = q_B |> @filter(_.Month==5 && _.Date==21 && _.Animal == 1)|>DataFrame
+	q_11RS1KOg = q_G |> @filter(_.Month==5 && _.Date==21 && _.Animal == 1)|>DataFrame
 	
 	#Extract A wave data
 	data_WT11a = extract_abf(String.(q_11WTa.Path)) |> filter_data
@@ -586,8 +583,8 @@ savefig(fig_P13, "$(root)\\fig4_P13_subtraction.png")
 # ╔═╡ d9e5c629-6f8d-4dad-8386-ff4d5302913a
 begin
 	#P30 WT (2019_10_04)
-	q_WT30a = q_A|>@filter(_.Month == 10 && _.Date == 4 && _.Animal == 2)|>DataFrame 
-	q_WT30b = q_B|>@filter(_.Month == 10 && _.Date == 4 && _.Animal == 2)|>DataFrame 
+	q_WT30a = q_A|>@filter(_.Month == 10 && _.Date == 14 && _.Animal == 1)|>DataFrame 
+	q_WT30b = q_B|>@filter(_.Month == 10 && _.Date == 14 && _.Animal == 1)|>DataFrame 
 	q_WT30g = nothing
 	#P30 R141C (2020_05_18_n3)
 	q_R141C30a = q_A|>@filter(_.Month==5 && _.Date==18 && _.Animal==3)|>DataFrame 
@@ -599,10 +596,14 @@ begin
 	q_RS1KO30g = q_G|>@filter(_.Month==5 && _.Date==27 && _.Animal==1)|>DataFrame 
 	
 	#Extract A wave data
-	data_WT30a = filter_data(extract_abf(String.(q_WT30a.Path)), t_post = 10.0)
+	data_WT30a = filter_data(extract_abf(String.(q_WT30a.Path)), 
+		t_pre = 1.0, t_post = 2.0
+	)
+	truncate_data!(data_WT30a, t_pre = 0.0, t_post = 2.0)
+	
 	drop!(data_WT30a, drop_idx = 1)
-	data_RS1KO30a = filter_data(extract_abf(String.(q_RS1KO30a.Path)), t_post = 10.0)
-	data_R141C30a = filter_data(extract_abf(String.(q_R141C30a.Path)), t_post = 10.0)
+	data_RS1KO30a = filter_data(extract_abf(String.(q_RS1KO30a.Path)), t_post = 2.0)
+	data_R141C30a = filter_data(extract_abf(String.(q_R141C30a.Path)), t_post = 2.0)
 	drop!(data_R141C30a, drop_idx = 1)
 	
 	#Extract B wave data
@@ -700,17 +701,17 @@ savefig(fig_P30_raw, "$(root)\\fig5_P30_raw.png")
 # ╔═╡ bace4d09-5bf0-41b4-ae85-87ed100e487c
 begin	
 	fig_WT30a = plot(data_WT30a, c= colors[1], 
-		ylims=(-400, 10), xlims=(-0.2, 2.0), ylabels="Photoreceptor \n Response (μV)"
+		ylims=(-600, 10), xlims=(-0.2, 2.0), ylabels="Photoreceptor \n Response (μV)"
 	)
 	plot!([0, 1], [NaN, NaN], label = "WT", c = colors[1])
 	plot!([0, 1], [NaN, NaN], label = "RS1KO", c = colors[2])
 	plot!([0, 1], [NaN, NaN], label = "R141C", c = colors[3], legend = :bottomright)
 	
 	fig_RS1KO30a = plot(data_RS1KO30a, c = colors[2], 
-		ylims=(-400, 10), xlims = (-0.2, 2.0), ylabels = ""
+		ylims=(-600, 10), xlims = (-0.2, 2.0), ylabels = ""
 	)	
 	fig_R141C30a = plot(data_R141C30a, c = colors[3], 
-		ylims=(-400, 10), xlims = (-0.2, 2.0), ylabels = ""
+		ylims=(-600, 10), xlims = (-0.2, 2.0), ylabels = ""
 	)
 	
 	
@@ -793,9 +794,9 @@ begin
 				end
 				
 				#This prints every response
-				#@df q_section plot!(plt_fig_A[idx], 
-				#	:Photons, :Response, 
-				#	st = :scatter, c = colors[idx_g], xaxis = :log, label = "")
+				@df q_section plot!(plt_fig_A[idx], 
+					:Photons, :Response, 
+					st = :scatter, c = colors[idx_g], xaxis = :log, label = "")
 				fit_sect = NeuroPhys.curve_fit(model, 
 					q_section.Photons, q_section.Response,
 					[ih_a[idx], 4.0, 50.0], 
@@ -860,9 +861,9 @@ begin
 
 				
 				#This prints every response
-				#@df q_section plot!(plt_fig_B[idx], 
-				#	:Photons, :Response, 
-				#	st = :scatter, c = colors[idx_g], xaxis = :log, label = "")
+				@df q_section plot!(plt_fig_B[idx], 
+					:Photons, :Response, 
+					st = :scatter, c = colors[idx_g], xaxis = :log, label = "")
 				fit_sect = NeuroPhys.curve_fit(model, 
 					q_section.Photons, q_section.Response,
 					[ih_b[idx], 4.0, 50.0], 
@@ -929,9 +930,9 @@ begin
 				DataFrame
 			#now we can walk through each file of q_i
 			if !isempty(q_section)
-				#@df q_section plot!(plt_fig_G[idx], 
-				#	:Photons, :Response, 
-				#	st = :scatter, c = colors[idx_g], xaxis = :log, label = "")
+				@df q_section plot!(plt_fig_G[idx], 
+					:Photons, :Response, 
+					st = :scatter, c = colors[idx_g], xaxis = :log, label = "")
 				fit_sect = NeuroPhys.curve_fit(model, 
 					q_section.Photons, q_section.Response,
 					[ih_g[idx], 4.0, 50.0], 
@@ -1119,7 +1120,7 @@ begin
 			)
 			
 			plot!(fig_sens[idx, 2], x -> model(x, fit_sens.param), fit_range, 
-				c = colors[idx_g], label = "", 
+				c = colors[idx_g], label = "", lw = 2.0,
 				yaxis = :log,
 				ylims = ylims, xlims = xlims,
 				xlabel = "Photoreceptor Response(μV)", 
@@ -1170,7 +1171,7 @@ begin
 			)
 			
 			plot!(fig_sens[idx, 3], x -> model(x, fit_sens.param), fit_range, 
-				c = colors[idx_g], label = "", 
+				c = colors[idx_g], label = "", lw = 2.0,
 				ylims = ylims, xlims = xlims,
 				xlabel = "Bipolar Response(μV)", 
 				ylabel = "Glial Response(μV)"
@@ -1210,10 +1211,12 @@ md"
 begin
 	#Pick a certain experiment to analyze
 	q_group_A = q_A |> 
-		@filter(_.Genotype == "WT" && _.Age == 30) |>
-		@filter(_.Response <= 350) |>	
+		@filter(_.Genotype == "RS1KO" && _.Age == 11) |>
+		@filter(_.Condition == "LAP4_BaCl" || _.Condition == "BaCl_LAP4")|>
+		#@filter(_.Photons > 1e2)|>	
+	#@filter(_.Response <= 175) |>	
 		DataFrame
-	
+	#println(size(q_group_A))
 	fit_test_A = NeuroPhys.curve_fit(model, 
 		q_group_A.Photons, q_group_A.Response,
 		[100.0, 4.0, 50.0], 
@@ -1235,26 +1238,60 @@ begin
 		st = :scatter, xaxis = :log, c = colors[3]
 	)
 	
-	exp_A = q_group_A[argmax(q_group_A.Response), :Path]
-	data_i = extract_abf(exp_A, average_sweeps = true) |> filter_data
-	p2 = plot(data_i)
+	exp_all = q_group_A[:, :Path]
+	data_all = extract_abf(String.(exp_all)) |> filter_data
+	p2 = plot(data_all, c = :black)
+	exp_target = q_group_A[argmax(q_group_A.Response), :Path]
+	data_tar = extract_abf(String.(exp_target)) |> filter_data
+	plot!(p2, data_tar, c = :red)
 	plot(p2, p1)
 end
 
 # ╔═╡ 51cd1ecc-9597-403a-b349-50a3207f5ac4
-exp_A
+exp_target
+
+# ╔═╡ 0de3655d-a0cd-4aea-903b-16867c3260d9
+begin
+	files_to_check = q_group_A.Path
+	#purge files that are not found
+	for (idx, f) in enumerate(files_to_check)
+		print("File $idx of $(length(files_to_check))... ")
+		try 
+			extract_abf(f)
+			println("found.")
+		catch
+			println("missing.")
+				
+			#now we need to remove the file
+			#all_file_idx = all_files |> @filter(_.Path == f) |> DataFrame
+			#
+			all_file_idx = findall(all_files.Path .== f)
+			if !isempty(all_file_idx)
+				println("File removed")
+				delete!(all_files, all_file_idx[1])
+			end
+			q_A_idx = findall(q_A.Path .== f)
+			if !isempty(q_A_idx)
+				delete!(q_A, q_A_idx[1])
+			end
+		end
+	end
+end		
 
 # ╔═╡ dc2609d5-9402-49ad-ad1f-45492482bd8a
 md"
 ### B-wave
 "
 
+# ╔═╡ da5a068f-98b3-4da0-877b-605f2491fcb4
+all_files
+
 # ╔═╡ eb8b2693-10ff-42dc-a330-8523674934b7
 begin
 	#Analyze the B-wave responses
 	q_group_B = q_B |> 
-		@filter(_.Genotype == "WT" && _.Age == 30) |> 
-		@filter(_.Response < 2000) |>
+		@filter(_.Genotype == "WT" && _.Age == 11) |> 
+		@filter(_.Photons < 1e2) |>
 		DataFrame
 	fit_test_B = NeuroPhys.curve_fit(model, 
 		q_group_B.Photons, q_group_B.Response,
@@ -1271,25 +1308,17 @@ begin
 	plot!(p2B, x -> model(x, fit_test_B.param), fit_points_B, c = colors[1])
 	
 	exp_B = q_group_B[argmax(q_group_B.Response), [:A_Path, :AB_Path]]
-	A_data_i = extract_abf(exp_B.A_Path, average_sweeps = true)
-	baseline_cancel!(A_data_i, mode = :slope); 
-	truncate_data!(A_data_i, t_pre = 1.0, t_post = 1.5);
-	filter_A_data_i = lowpass_filter(A_data_i);
+	A_data_i = extract_abf(exp_B.A_Path, average_sweeps = true) |> filter_data
 
-	AB_data_i = extract_abf(exp_B.AB_Path, average_sweeps = true)
-	baseline_cancel!(AB_data_i, mode = :slope); 
-	truncate_data!(AB_data_i, t_pre = 1.0, t_post = 1.5);
-	filter_AB_data_i = lowpass_filter(AB_data_i); 
-	match_ch= findall(
-		filter_A_data_i.chNames.==filter_AB_data_i.chNames
-		)
+	AB_data_i = extract_abf(exp_B.AB_Path, average_sweeps = true) |> filter_data
+	match_ch= findall(A_data_i.chNames.==AB_data_i.chNames)
 	
-	if size(filter_AB_data_i,3) > size(filter_A_data_i,3) 
-		filter_AB_data_i.data_array=filter_AB_data_i[:, :, match_ch]
+	if size(AB_data_i,3) > size(A_data_i,3) 
+		AB_data_i.data_array=AB_data_i[:, :, match_ch]
 	else
-		filter_A_data_i.data_array=filter_A_data_i[:, :, match_ch]
+		A_data_i.data_array=A_data_i[:, :, match_ch]
 	end
-	B_data_i = filter_AB_data_i - filter_A_data_i
+	B_data_i = AB_data_i - A_data_i
 	p1B = plot(B_data_i)
 	plot(p1B, p2B)
 end
@@ -1300,7 +1329,10 @@ exp_B
 # ╔═╡ 0688a31a-8967-43a0-bcf2-c541f356df11
 begin
 	#Pick a certain experiment to analyze
-	q_group_G = q_G |> @filter(_.Genotype == "WT" && _.Age == 11) |> DataFrame
+	q_group_G = q_G |> 
+		@filter(_.Genotype == "RS1KO" && _.Age == 11) |> 
+		@filter(_.Photons > 100) |>
+		DataFrame
 	fit_test_G = NeuroPhys.curve_fit(model, 
 		q_group_G.Photons, q_group_G.Response,
 		[20.0, 3.0, 200.0], 
@@ -1314,24 +1346,29 @@ begin
 
 	plot!(p2G, x -> model(x, fit_test_G.param), fit_points_G, c = colors[1])
 	
-	exp_G = q_group_G[argmax(q_group_G.Response), [:AB_Path, :ABG_Path]]
-	AB_data_ii = extract_abf(exp_G.AB_Path, average_sweeps = true)
-	baseline_cancel!(AB_data_ii, mode = :slope); 
-	truncate_data!(AB_data_ii, t_pre = 1.0, t_post = 1.5);
-	filter_AB_data_ii = lowpass_filter(AB_data_ii);
+	exp_G = q_group_G[argmin(q_group_G.Response), [:AB_Path, :ABG_Path]]
+	AB_data_ii = extract_abf(exp_G.AB_Path, average_sweeps = true)|>filter_data
 
-	ABG_data_ii = extract_abf(exp_G.ABG_Path, average_sweeps = true)
-	baseline_cancel!(ABG_data_ii, mode = :slope); 
-	truncate_data!(ABG_data_ii, t_pre = 1.0, t_post = 1.5);
-	filter_ABG_data_ii = lowpass_filter(ABG_data_ii); 
+	ABG_data_ii = extract_abf(exp_G.ABG_Path, average_sweeps = true)|>filter_data
 	
-	G_data_ii = filter_ABG_data_ii - filter_AB_data_ii
+	println(size(AB_data_ii))
+	println(size(ABG_data_ii))
+	
+	if size(ABG_data_ii,3) != size(AB_data_ii,3) 
+		if size(ABG_data_ii,3) > size(AB_data_ii,3) 
+			drop!(ABG_data_ii, drop_idx = match_ch[1])
+		else
+			drop!(AB_data_ii, drop_idx = match_ch[1])
+		end
+	end
+	
+	G_data_ii = ABG_data_ii - AB_data_ii
 	p1G = plot(G_data_ii)
 	plot(p1G, p2G)
 end
 
 # ╔═╡ 315a368c-a288-4638-a1fa-c9101fce2a9a
-exp_G
+exp_G.ABG_Path
 
 # ╔═╡ Cell order:
 # ╠═893a3ae0-3a3e-4605-b063-cbbb95689291
@@ -1342,7 +1379,7 @@ exp_G
 # ╠═ca371b23-48ea-42af-a639-1d10711784c0
 # ╠═7fb2fcdc-445d-4429-830f-5eb929539d9e
 # ╠═bd5889f5-12d3-4739-90de-094e2a6f414f
-# ╠═c6b58084-4de0-4978-9d5d-bbc5a2c3dc18
+# ╟─c6b58084-4de0-4978-9d5d-bbc5a2c3dc18
 # ╟─3781dc5f-e9e0-4a60-adb9-a422741d375d
 # ╟─a3319e29-9d96-4529-a035-39ff2d4f1cd8
 # ╟─695cc1d2-0244-4609-970a-2df676263e99
@@ -1352,7 +1389,7 @@ exp_G
 # ╟─732cc6cc-d6bb-4632-8357-c108a1e79a62
 # ╠═b30e73b4-fbba-4ed8-9021-051b51f10d3a
 # ╟─13b294c3-d100-4cf5-981d-a98a463afa6f
-# ╟─c9f6bb32-7115-4fd0-a26c-eb834f2ef973
+# ╠═c9f6bb32-7115-4fd0-a26c-eb834f2ef973
 # ╟─48476e31-7593-43f1-be5c-b951af96bb16
 # ╠═32a18c83-23ff-4e94-8bc7-287a03aa2077
 # ╟─3bbcf31c-2e79-44fc-b896-2d88636ab0c6
@@ -1362,10 +1399,10 @@ exp_G
 # ╠═76e5ae36-52d6-4a36-8de9-93567785fbd5
 # ╟─30eded5c-acba-43e2-b4cc-fd0e7a8d3b90
 # ╠═860deebb-fb7e-44a2-be0a-d97ac2f68fdf
-# ╠═d9e5c629-6f8d-4dad-8386-ff4d5302913a
+# ╟─d9e5c629-6f8d-4dad-8386-ff4d5302913a
 # ╟─46221bae-3b05-4a2e-a9af-7ead4d24e6dc
 # ╠═0a91c31b-c780-4205-a412-fbb59799a310
-# ╟─bace4d09-5bf0-41b4-ae85-87ed100e487c
+# ╠═bace4d09-5bf0-41b4-ae85-87ed100e487c
 # ╠═9048174d-1426-441d-918f-66c146431b82
 # ╟─c8cccfc3-7fe6-4de3-a54f-43ccc511ac00
 # ╠═39152bf6-3ae3-4bc2-a062-0d96b9e4c1d3
@@ -1381,10 +1418,12 @@ exp_G
 # ╟─870eb605-923a-4c78-8646-4ab90d714d71
 # ╠═5194bd10-4c1e-4260-b429-61aafa543015
 # ╟─9c5d9f09-927d-46f5-9100-fbec77a675c4
-# ╟─cbd04c8d-cbe4-4b97-ba6c-057136582a1e
+# ╠═cbd04c8d-cbe4-4b97-ba6c-057136582a1e
 # ╠═51cd1ecc-9597-403a-b349-50a3207f5ac4
+# ╠═0de3655d-a0cd-4aea-903b-16867c3260d9
 # ╟─dc2609d5-9402-49ad-ad1f-45492482bd8a
 # ╠═8c557a2f-397c-42eb-a03f-4b29880b7b0f
-# ╟─eb8b2693-10ff-42dc-a330-8523674934b7
+# ╠═da5a068f-98b3-4da0-877b-605f2491fcb4
+# ╠═eb8b2693-10ff-42dc-a330-8523674934b7
 # ╠═0688a31a-8967-43a0-bcf2-c541f356df11
 # ╠═315a368c-a288-4638-a1fa-c9101fce2a9a
