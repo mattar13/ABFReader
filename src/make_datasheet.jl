@@ -3,7 +3,6 @@
 function update_RS_datasheet(root, calibration_file; verbose = false)
      try #This only works if every directory is in the correct place
           all_paths = root |> parse_abf
-          println(length(all_paths))
           #First we check if the root file exists
           if !isfile("$(root)\\data_analysis.xlsx")
                #The file does not exist, so make the dataframe
