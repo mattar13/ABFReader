@@ -128,8 +128,7 @@ function formatted_split(string::String, format::Tuple;
                 #Nested formats
                 inside_split = formatted_split(nt_val, nt_key)
                 #println(inside_split)
-                if !isnothing(inside_split)
-                    #If the nested format returns a misc arg, add it to misc
+                if !isnothing(inside_split) && !isa(inside_split, Symbol)
                     for in_key in keys(inside_split)
                         push!(nt_keys, in_key)
                         push!(nt_vals, inside_split[in_key])
@@ -205,11 +204,10 @@ function contains_words(x::String; words = ["AVERAGE", "CONCATENATE"], result = 
     end
 end
 
-function choose_filename(x::String)
+function choose_words(x::String, has_words = ["AVERAGE"], lacks_words = ["CONCATENATE"])
     #We want to skip files containing concatenate but pass files containing average only
-    println("Is reactive?")
-    t1 = contains_words(x; words = ["CONCATENATE"], result = :fail)
-	t2 = contains_words(x; words = ["AVERAGE"], result = :pass)
+    t1 = contains_words(x; words = lacks_words, result = :fail)
+	t2 = contains_words(x; words = has_words, result = :pass)
     #println(t1)
     #println(t2)
     if !isnothing(t1) 
@@ -285,37 +283,29 @@ end
 
 
 ########################### These are some common formats I use
-exp_opt = [
-    ("_", :Month, :Date, :Year, check_geno, check_age, :Animal),
-    ("_", :Month, :Date, :Year, ~),
-    ("_", :Animal, check_age, check_geno)
-]
 
-nd_opt = [
-    ("_", :ND, :Percent, :Stim_time),
-    ("_", :ND, :Percent, :Stim_time, :ID),
-    ("_", :ND, :Percent, :Stim_time, ~, ~, :ID)
-]
-
-
-file_opt = [
-    (".", nd_opt, ~),
-    (".", choose_filename, ~),
-]
-
-format_bank_GNAT = [
-    ("\\", :Drive, ~, :Method, :Project, :Experimenter, exp_opt, check_pc, check_drugs, check_color, nd_opt, file_opt),
-    ("\\", :Drive, ~, :Method, :Project, :Experimenter, exp_opt, check_drugs, check_pc, check_color, nd_opt, file_opt),
-    ("\\", :Drive, ~, :Method, :Project, :Experimenter, exp_opt, check_drugs, check_color, nd_opt, file_opt),
-    ("\\", :Drive, ~, :Method, :Project, :Experimenter, exp_opt, exp_opt, check_drugs, check_color, file_opt)
-]
 
 file_format = [
-    ("_", :ND, :Percent, :what), 
-    ("_", :ND, :Percent, ~, :number), 
-    ("_", :ND, :Percent, ~, ~, (".", :flag, :ext))
-    
+    ("_", :ND, :Percent, ~), 
+    ("_", :ND, :Percent, ~, ~), 
+    ("_", :ND, :Percent, ~, ~, (".", :flag, :ext)),
+    ("_", :ND, :Percent, ~, ~, ~, ~)
 ]
+
+format_bank_PAUL = [
+    ("\\", ~, ~, ~, :Project, 
+          ("_", :Year, :Month, :Date, :Genotype, :Age, :Animal), 
+          NeuroPhys.check_drugs, NeuroPhys.check_pc, NeuroPhys.check_color, 
+          NeuroPhys.file_format
+     ),
+     ("\\", ~, ~, ~, :Project, 
+          ("_", :Year, :Month, :Date, :Genotype, :Age, :Animal), 
+          NeuroPhys.check_drugs, NeuroPhys.check_pc, NeuroPhys.check_color, 
+          NeuroPhys.file_format, 
+          (".", NeuroPhys.choose_words, ~)
+     ),
+]
+
 format_bank_RS = [
     ("\\", :Drive, ~, :Method, :Project, 
             ("_", :Year, :Month, :Date, ~, ~), 
@@ -329,30 +319,17 @@ format_bank_RS = [
             condition_check, check_color, file_format 
     ),	
 ]
-"""
-This extracts info from each filename.
-ND -> Intensity -> Stimulus time
-"""
-function filename_extractor(filename::String)
-    intensity_info = split(filename, "_")
-    if length(intensity_info) == 2
-        println("This file has not yet been renamed")
-        return nothing
-    elseif length(intensity_info) == 3 || length(intensity_info) == 4
-        nd = intensity_info[1] |> number_extractor
-        intensity = intensity_info[2] |> number_extractor
-        #Soemtimes we get an error where there is extra stuff after the stimulus time
-        t_stim = (intensity_info[3] |> number_extractor)[1]
-        return nd, intensity, t_stim
-    else 
-        nd = intensity_info[1] |> number_extractor
-        intensity = intensity_info[2] |> number_extractor
-        #In some files, I have it set up so 1, 2, and 4 are done sequentially. In this case, 0 corresponds to 1
-        tstim_mode = intensity_info[end] |> number_extractor 
-        subset = intensity_info[3:end-1] .|> number_extractor
-        t_stim = subset[tstim_mode+1]
-        return nd, intensity, t_stim
-    end
-end
 
-filename_extractor(filename::SubString{String}) = filename_extractor(filename |> String)
+format_bank_GNAT = [
+    ("\\", ~, ~, ~, :Project, 
+          ("_", :Year, :Month, :Date, ~), 
+          ("_", :Animal, :Age, :Genotype), 
+          check_drugs, check_color, 
+          file_format)
+]
+
+format_bank = [
+    format_bank_RS,  #These are the formats for the Retinoschisis files
+    format_bank_GNAT, #Gnat files
+    format_bank_PAUL #Pauls files
+]
