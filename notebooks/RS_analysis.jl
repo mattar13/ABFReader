@@ -32,7 +32,6 @@ end
 # ╔═╡ 7fb2fcdc-445d-4429-830f-5eb929539d9e
 begin
 	root = "E:\\Data\\ERG\\Retinoschisis\\"
-	#experiment = joinpath(root, "2021_05_24_ERG_RS\\Mouse2_P13_RS1KO\\")
 	calibration_file = "E:\\Data\\Calibrations\\photon_lookup.xlsx"
 end
 
@@ -47,7 +46,7 @@ end;
 # ╔═╡ c6b58084-4de0-4978-9d5d-bbc5a2c3dc18
 begin	
 	df_names = Symbol.(DataFrames.names(all_files))
-	wt1 = "E:\\Data\\ERG\\Gnat\\Paul\\"
+	wt1 = "E:\\Data\\ERG\\Paul\\"
 	wt_paths = wt1 |> parse_abf
 	for (idx, path) in enumerate(wt_paths)
 		println(path)
