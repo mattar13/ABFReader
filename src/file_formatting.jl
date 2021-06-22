@@ -232,7 +232,7 @@ function check_age(x::String)
     end
 end
 
-function check_geno(x; possible = ["DR", "WT", "KO", "HT", "UN"]) 
+function check_geno(x; possible = ["DR", "WT", "GNAT-KO", "GNAT-HT", "UN"]) 
     #if x == "DR" #This is a weird error Paul made in his filenames
     #    return (:Genotype, "WT")
     if x ∈ possible
@@ -323,7 +323,7 @@ format_bank_RS = [
 format_bank_GNAT = [
     ("\\", ~, ~, ~, :Project, 
           ("_", :Year, :Month, :Date, ~), 
-          ("_", :Animal, :Age, :Genotype), 
+          ("_", :Animal, check_age, :Genotype), 
           check_drugs, check_color, 
           file_format)
 ]
