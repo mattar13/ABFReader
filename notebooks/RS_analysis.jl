@@ -4,20 +4,23 @@
 using Markdown
 using InteractiveUtils
 
-# ╔═╡ 893a3ae0-3a3e-4605-b063-cbbb95689291
-using Revise
+# ╔═╡ 60eb055d-2772-49af-af4b-12c2f8a9a98c
+begin
+	using Revise
+	using NeuroPhys
+end
 
 # ╔═╡ 619511b0-b900-11eb-3b71-ef04627229a3
 using PlutoUI, Colors
-
-# ╔═╡ 60eb055d-2772-49af-af4b-12c2f8a9a98c
-using NeuroPhys
 
 # ╔═╡ 1896d7c6-1685-481e-84cd-50c4583f14de
 using DataFrames, Query, XLSX, StatsPlots
 
 # ╔═╡ 0d3ec243-b988-4b7f-a038-63375d96ffe8
 using Distributions, StatsBase
+
+# ╔═╡ 893a3ae0-3a3e-4605-b063-cbbb95689291
+
 
 # ╔═╡ ca371b23-48ea-42af-a639-1d10711784c0
 #define a single function for filtering

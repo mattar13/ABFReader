@@ -1,6 +1,6 @@
 module NeuroPhys
 
-is_working() = print("Yes is working!") 
+is_working() = println("And you can revise!") 
 #Imports
 using PyCall
 using Plots

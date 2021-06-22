@@ -3,8 +3,16 @@ using NeuroPhys
 using DataFrames, XLSX, Query, Statistics, StatsBase
 
 #%%
-root = "E:\\Data\\ERG\\Retinoschisis\\"
-calibration_file = "E:\\Data\\Calibrations\\photon_lookup.xlsx"
-all_paths = root |> parse_abf #define the paths in the outer
-#%%
-all_files = update_RS_datasheet(root, calibration_file)
+root1 = "E:\\Data\\ERG\\Gnat\\"
+paul_files = root1 |> parse_abf
+
+#%% lets make the dataframe fit for a single file
+
+
+failed_files = String[]
+for (idx, file) in enumerate(paul_files)
+     nt = formatted_split(file, NeuroPhys.format_bank)
+     if !isnothing(nt)
+          println(nt)
+     end
+end
