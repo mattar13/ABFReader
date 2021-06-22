@@ -239,7 +239,7 @@ model(x, p) = map(I -> IR(I, p[1], p[2]) * p[3], x)
 ages = [11, 13, 30]
 
 # ╔═╡ 732cc6cc-d6bb-4632-8357-c108a1e79a62
-genotypes = ["WT", "R141C", "RS1KO"]
+genotypes = ["WT", "RS1KO", "R141C"]
 
 # ╔═╡ b30e73b4-fbba-4ed8-9021-051b51f10d3a
 colors = [:Black, :Purple, :Orange]
@@ -272,6 +272,7 @@ begin
 	#Extract B wave data
 	data_WT11A = extract_abf(String.(q_11WTb.A_Path))|> filter_data
 	data_WT11AB = extract_abf(String.(q_11WTb.AB_Path)) |> filter_data
+	#drop!(data_WT11AB, drop_idx = 1)
 	data_WT11B = data_WT11AB - data_WT11A
 	
 	data_RS1KO11A = extract_abf(String.(q_11RS1KOb.A_Path)) |> filter_data
@@ -283,14 +284,19 @@ begin
 	#Extract G component data
 	data_WT11ab = extract_abf(String.(q_11WTg.AB_Path)) |> filter_data
 	data_WT11abg = extract_abf(String.(q_11WTg.ABG_Path)) |> filter_data
+	println(size(data_WT11ab))
+	println(size(data_WT11abg))
 	data_WT11g = data_WT11abg - data_WT11ab
 	
 	data_RS1KO11ab = extract_abf(String.(q_11RS1KOg.AB_Path)) |> filter_data
 	data_RS1KO11abg = extract_abf(String.(q_11RS1KOg.ABG_Path)) |> filter_data
 	data_RS1KO11g = data_RS1KO11abg - data_RS1KO11ab
 	drop!(data_RS1KO11g, drop_idx = 1)
-	drop!(data_RS1KO11abg, drop_idx = 1)
+	#drop!(data_RS1KO11abg, drop_idx = 1)
 end;
+
+# ╔═╡ a7bac665-9adb-42e7-ae04-3c623a81169c
+q_11RS1KOg.Photons
 
 # ╔═╡ 48476e31-7593-43f1-be5c-b951af96bb16
 begin
@@ -349,7 +355,7 @@ begin
 end
 
 # ╔═╡ 32a18c83-23ff-4e94-8bc7-287a03aa2077
-savefig(fig_P11_raw, "$(root)\\fig1_P11_raw.png")
+savefig(fig_P11_raw, "E:\\Projects\\2021_Retinoschisis\\fig1_P11_raw.png")
 
 # ╔═╡ 3bbcf31c-2e79-44fc-b896-2d88636ab0c6
 begin	
@@ -360,8 +366,7 @@ begin
 	plot!([0, 1], [NaN, NaN], label = "RS1KO", c = colors[2])
 	plot!([0, 1], [NaN, NaN], label = "R141C", c = colors[3], legend = :bottomright)
 	fig_RS1KO11a = plot(data_RS1KO11a, c = colors[2],
-		ylims = (-50, 10), xlims = (-0.2, 1.0), ylabels = "colors[2]"
-	)
+	ylims = (-50, 10), xlims = (-0.2, 1.0), ylabels = "")
 	fig_R141C11a = plot(c = colors[3],
 		ylims = (-50, 10), xlims = (-0.2, 1.0), ylabel = ""
 	)
@@ -406,7 +411,7 @@ begin
 end
 
 # ╔═╡ 05131383-6617-426b-84c3-0f53dd0abc7b
-savefig(fig_P11, "$(root)\\fig2_P11_subtraction.png")
+savefig(fig_P11, "E:\\Projects\\2021_Retinoschisis\\fig2_P11_subtraction.png")
 
 # ╔═╡ 0176b257-0073-4417-aef3-6b68f719b04a
 begin	
@@ -464,44 +469,44 @@ end
 begin
 	#Jordan wants responses from the raw data traces as well\
 	fig_WT13abg = plot(data_WT13abg, c = colors[1],
-		ylims = (-250, 10), xlims = (-0.2, 1.0), ylabels = "No Drugs \n Response (μV)"
+		ylims = (-250, 10), xlims = (-0.2, 2.0), ylabels = "No Drugs \n Response (μV)"
 	)
 	plot!([0, 1], [NaN, NaN], label = "WT", c = colors[1])
 	plot!([0, 1], [NaN, NaN], label = "RS1KO", c = colors[2])
 	plot!([0, 1], [NaN, NaN], label = "R141C", c = colors[3], legend = :bottomright)
 	fig_RS1KO13abg = plot(data_RS1KO13abg, c = colors[2],
-		ylims = (-250, 10), xlims = (-0.2, 1.0), ylabels = ""
+		ylims = (-250, 10), xlims = (-0.2, 2.0), ylabels = ""
 	)
 	fig_R141C13abg = plot(c = colors[3],
-		ylims = (-250, 10), xlims = (-0.2, 1.0), ylabel = ""
+		ylims = (-250, 10), xlims = (-0.2, 2.0), ylabel = ""
 	)
 	
 	
 	fig_WT13ab = plot(data_WT13AB, c = colors[1], 
-		ylims=(-200, 200), xlims=(-0.2, 1.0), ylabels = "BaCl₂ added \n Response (μV)"
+		ylims=(-200, 200), xlims=(-0.2, 2.0), ylabels = "BaCl₂ added \n Response (μV)"
 	)
 	plot!([0, 1], [NaN, NaN], label = "WT", c = colors[1])
 	plot!([0, 1], [NaN, NaN], label = "RS1KO", c = colors[2])
 	plot!([0, 1], [NaN, NaN], label = "R141C", c = colors[3], legend = :bottomright)
 	fig_RS1KO13ab = plot(data_RS1KO13AB, c = colors[2], 
-		ylims = (-200, 200), xlims = (-0.2, 1.0), ylabels = ""
+		ylims = (-200, 200), xlims = (-0.2, 2.0), ylabels = ""
 	)
 	fig_R141C13ab = plot(data_R141C13AB, c = colors[3],
-		ylims = (-200, 200), xlims = (-0.2, 1.0), ylabels = ""
+		ylims = (-200, 200), xlims = (-0.2, 2.0), ylabels = ""
 	)
 	
 	fig_WT13a_raw = plot(data_WT13a, c = colors[1], 
-		ylims = (-200, 10), xlims = (-0.2, 1.0), ylabels = "L-AP4 added \n Response (μV)"
+		ylims = (-200, 10), xlims = (-0.2, 2.0), ylabels = "L-AP4 added \n Response (μV)"
 	)
 	plot!([0, 1], [NaN, NaN], label = "WT", c = colors[1])
 	plot!([0, 1], [NaN, NaN], label = "RS1KO", c = colors[2])
 	plot!([0, 1], [NaN, NaN], label = "R141C", c = colors[3], legend = :bottomright)
 	
 	fig_RS1KO13a_raw = plot(data_RS1KO13a, c = colors[2], 
-		ylims = (-200, 10), xlims = (-0.2, 1.0), ylabels = ""
+		ylims = (-200, 10), xlims = (-0.2, 2.0), ylabels = ""
 	)
 	fig_R141C13a_raw = plot(data_R141C13a,c = colors[3],
-		ylims = (-200, 10), xlims = (-0.2, 1.0), ylabels = ""
+		ylims = (-200, 10), xlims = (-0.2, 2.0), ylabels = ""
 	)
 	
 	title_card_13_raw = plot(
@@ -517,7 +522,7 @@ begin
 end
 
 # ╔═╡ 76e5ae36-52d6-4a36-8de9-93567785fbd5
-savefig(fig_P13_raw, "$(root)\\fig3_P13_Raw.png")
+savefig(fig_P13_raw, "E:\\Projects\\2021_Retinoschisis\\fig3_P13_Raw.png")
 
 # ╔═╡ 30eded5c-acba-43e2-b4cc-fd0e7a8d3b90
 begin
@@ -578,7 +583,7 @@ begin
 end
 
 # ╔═╡ 860deebb-fb7e-44a2-be0a-d97ac2f68fdf
-savefig(fig_P13, "$(root)\\fig4_P13_subtraction.png")
+savefig(fig_P13, "E:\\Projects\\2021_Retinoschisis\\fig4_P13_subtraction.png")
 
 # ╔═╡ d9e5c629-6f8d-4dad-8386-ff4d5302913a
 begin
@@ -657,30 +662,30 @@ begin
 	
 	
 	fig_WT30ab = plot(data_WT30AB, c = colors[1], 
-		ylims=(-400,1500), xlims=(-0.2, 2.0), ylabels="BaCl₂ added \n Response (μV)"
+		ylims=(-1000,2000), xlims=(-0.2, 2.0), ylabels="BaCl₂ added \n Response (μV)"
 	)
 	plot!([0, 1], [NaN, NaN], label = "WT", c = colors[1])
 	plot!([0, 1], [NaN, NaN], label = "RS1KO", c = colors[2])
 	plot!([0, 1], [NaN, NaN], label = "R141C", c = colors[3], legend = :topright)
 	fig_RS1KO30ab = plot(data_RS1KO30AB, c = colors[2], 
-		ylims=(-400,1500), xlims = (-0.2, 2.0), ylabels = ""
+		ylims=(-1000,2000),  xlims = (-0.2, 2.0), ylabels = ""
 	)
 	fig_R141C30ab = plot(data_R141C30AB, c = colors[3],
-		ylims=(-400,1500), xlims = (-0.2, 2.0), ylabels = ""
+		ylims=(-1000,2000),  xlims = (-0.2, 2.0), ylabels = ""
 	)
 	
 	fig_WT30a_raw = plot(data_WT30a, c = colors[1], 
-		ylims = (-600, 10), xlims = (-0.2, 2.0), ylabels = "L-AP4 added \n Response (μV)"
+		ylims = (-750, 10), xlims = (-0.2, 2.0), ylabels = "L-AP4 added \n Response (μV)"
 	)
 	plot!([0, 1], [NaN, NaN], label = "WT", c = colors[1])
 	plot!([0, 1], [NaN, NaN], label = "RS1KO", c = colors[2])
 	plot!([0, 1], [NaN, NaN], label = "R141C", c = colors[3], legend = :bottomright)
 	
 	fig_RS1KO30a_raw = plot(data_RS1KO30a, c = colors[2], 
-		ylims = (-600, 10), xlims = (-0.2, 2.0), ylabels = ""
+		ylims = (-750, 10), xlims = (-0.2, 2.0), ylabels = ""
 	)
 	fig_R141C30a_raw = plot(data_R141C30a,c = colors[3],
-		ylims = (-600, 10), xlims = (-0.2, 2.0), ylabels = ""
+		ylims = (-750, 10), xlims = (-0.2, 2.0), ylabels = ""
 	)
 	
 	title_card_30_raw = plot(
@@ -696,22 +701,22 @@ begin
 end
 
 # ╔═╡ 0a91c31b-c780-4205-a412-fbb59799a310
-savefig(fig_P30_raw, "$(root)\\fig5_P30_raw.png")
+savefig(fig_P30_raw, "E:\\Projects\\2021_Retinoschisis\\fig5_P30_raw.png")
 
 # ╔═╡ bace4d09-5bf0-41b4-ae85-87ed100e487c
 begin	
 	fig_WT30a = plot(data_WT30a, c= colors[1], 
-		ylims=(-600, 10), xlims=(-0.2, 2.0), ylabels="Photoreceptor \n Response (μV)"
+		ylims=(-750, 10), xlims=(-0.2, 2.0), ylabels="Photoreceptor \n Response (μV)"
 	)
 	plot!([0, 1], [NaN, NaN], label = "WT", c = colors[1])
 	plot!([0, 1], [NaN, NaN], label = "RS1KO", c = colors[2])
 	plot!([0, 1], [NaN, NaN], label = "R141C", c = colors[3], legend = :bottomright)
 	
 	fig_RS1KO30a = plot(data_RS1KO30a, c = colors[2], 
-		ylims=(-600, 10), xlims = (-0.2, 2.0), ylabels = ""
+		ylims=(-750, 10), xlims = (-0.2, 2.0), ylabels = ""
 	)	
 	fig_R141C30a = plot(data_R141C30a, c = colors[3], 
-		ylims=(-600, 10), xlims = (-0.2, 2.0), ylabels = ""
+		ylims=(-750, 10), xlims = (-0.2, 2.0), ylabels = ""
 	)
 	
 	
@@ -763,6 +768,9 @@ savefig(fig_P30, "$(root)\\fig6_P30_subtraction.png")
 md"
 ## Developing IR curves
 "
+
+# ╔═╡ 74d0ff9c-4d51-4bb4-83da-eb16f229f6b6
+all_files.Photons |> minimum
 
 # ╔═╡ 39152bf6-3ae3-4bc2-a062-0d96b9e4c1d3
 #Photoreceptors
@@ -988,7 +996,7 @@ begin
 end
 
 # ╔═╡ b9d27f4e-16f9-43f6-9432-47f79e0112d3
-savefig(fig_IR_curves, "$(root)\\fig7_IR_curves.png")
+savefig(fig_IR_curves, "E:\\Projects\\2021_Retinoschisis\\fig7_IR_curves.png")
 
 # ╔═╡ f8579632-2a82-4a65-8d08-d9cc99c035f9
 md"
@@ -1046,12 +1054,12 @@ begin
 		
 		if !isempty(q_SENab)
 			if p == 11
-				p0 = [10.0, 4.0, 100.0]
+				p0 = [6.0, 4.0, 100.0]
 				fit_range = LinRange(1.0, 100, 10000)
 				ylims = (1.0, 100.0)
 				xlims = (1.0, 30.0)
 			elseif p == 13
-				p0 = [100.0, 4.0, 3000.0]
+				p0 = [50.0, 4.0, 3000.0]
 				fit_range = LinRange(1.0, 3000, 10000)
 				ylims = (1.0, 10000.0)
 				xlims = (1.0, 300.0)
@@ -1199,7 +1207,7 @@ begin
 end
 
 # ╔═╡ 5194bd10-4c1e-4260-b429-61aafa543015
-savefig(fig_sens, "$(root)\\fig8_Sensitivity_curves.png")
+savefig(fig_sens, "E:\\Projects\\2021_Retinoschisis\\fig8_Sensitivity_curves.png")
 
 # ╔═╡ 9c5d9f09-927d-46f5-9100-fbec77a675c4
 md"
@@ -1213,8 +1221,8 @@ begin
 	q_group_A = q_A |> 
 		@filter(_.Genotype == "RS1KO" && _.Age == 11) |>
 		@filter(_.Condition == "LAP4_BaCl" || _.Condition == "BaCl_LAP4")|>
-		#@filter(_.Photons > 1e2)|>	
-	#@filter(_.Response <= 175) |>	
+		#@filter(_.Photons > 10^2.5)|>	
+		#@filter(_.Response <= 175) |>	
 		DataFrame
 	#println(size(q_group_A))
 	fit_test_A = NeuroPhys.curve_fit(model, 
@@ -1290,8 +1298,8 @@ all_files
 begin
 	#Analyze the B-wave responses
 	q_group_B = q_B |> 
-		@filter(_.Genotype == "WT" && _.Age == 11) |> 
-		@filter(_.Photons < 1e2) |>
+		@filter(_.Genotype == "RS1KO" && _.Age == 13) |> 
+		@filter(_.Photons > 1e2) |>
 		DataFrame
 	fit_test_B = NeuroPhys.curve_fit(model, 
 		q_group_B.Photons, q_group_B.Response,
@@ -1307,10 +1315,9 @@ begin
 
 	plot!(p2B, x -> model(x, fit_test_B.param), fit_points_B, c = colors[1])
 	
-	exp_B = q_group_B[argmax(q_group_B.Response), [:A_Path, :AB_Path]]
-	A_data_i = extract_abf(exp_B.A_Path, average_sweeps = true) |> filter_data
-
-	AB_data_i = extract_abf(exp_B.AB_Path, average_sweeps = true) |> filter_data
+	exp_B = q_group_B[argmin(q_group_B.Response), [:A_Path, :AB_Path]]
+	A_data_i = extract_abf(exp_B.A_Path) |> filter_data
+	AB_data_i = extract_abf(exp_B.AB_Path) |> filter_data
 	match_ch= findall(A_data_i.chNames.==AB_data_i.chNames)
 	
 	if size(AB_data_i,3) > size(A_data_i,3) 
@@ -1325,6 +1332,9 @@ end
 
 # ╔═╡ 8c557a2f-397c-42eb-a03f-4b29880b7b0f
 exp_B
+
+# ╔═╡ d722ed96-9118-4fda-95d9-bf4df96d946e
+exp_B.AB_Path
 
 # ╔═╡ 0688a31a-8967-43a0-bcf2-c541f356df11
 begin
@@ -1381,37 +1391,39 @@ exp_G.ABG_Path
 # ╠═bd5889f5-12d3-4739-90de-094e2a6f414f
 # ╟─c6b58084-4de0-4978-9d5d-bbc5a2c3dc18
 # ╟─3781dc5f-e9e0-4a60-adb9-a422741d375d
-# ╟─a3319e29-9d96-4529-a035-39ff2d4f1cd8
+# ╠═a3319e29-9d96-4529-a035-39ff2d4f1cd8
 # ╟─695cc1d2-0244-4609-970a-2df676263e99
 # ╟─659e9a5f-d383-4e89-be73-d008d1bcb122
 # ╟─9b9dbf63-d148-476f-9de0-c854b360597a
 # ╟─d1aecd57-021f-4873-ae42-2896bcdb0a56
-# ╟─732cc6cc-d6bb-4632-8357-c108a1e79a62
+# ╠═732cc6cc-d6bb-4632-8357-c108a1e79a62
 # ╠═b30e73b4-fbba-4ed8-9021-051b51f10d3a
 # ╟─13b294c3-d100-4cf5-981d-a98a463afa6f
-# ╠═c9f6bb32-7115-4fd0-a26c-eb834f2ef973
+# ╟─c9f6bb32-7115-4fd0-a26c-eb834f2ef973
+# ╠═a7bac665-9adb-42e7-ae04-3c623a81169c
 # ╟─48476e31-7593-43f1-be5c-b951af96bb16
 # ╠═32a18c83-23ff-4e94-8bc7-287a03aa2077
 # ╟─3bbcf31c-2e79-44fc-b896-2d88636ab0c6
 # ╠═05131383-6617-426b-84c3-0f53dd0abc7b
 # ╟─0176b257-0073-4417-aef3-6b68f719b04a
-# ╟─6dbc07d4-b486-471e-a8cf-015de88de094
+# ╠═6dbc07d4-b486-471e-a8cf-015de88de094
 # ╠═76e5ae36-52d6-4a36-8de9-93567785fbd5
 # ╟─30eded5c-acba-43e2-b4cc-fd0e7a8d3b90
 # ╠═860deebb-fb7e-44a2-be0a-d97ac2f68fdf
 # ╟─d9e5c629-6f8d-4dad-8386-ff4d5302913a
-# ╟─46221bae-3b05-4a2e-a9af-7ead4d24e6dc
+# ╠═46221bae-3b05-4a2e-a9af-7ead4d24e6dc
 # ╠═0a91c31b-c780-4205-a412-fbb59799a310
-# ╠═bace4d09-5bf0-41b4-ae85-87ed100e487c
+# ╟─bace4d09-5bf0-41b4-ae85-87ed100e487c
 # ╠═9048174d-1426-441d-918f-66c146431b82
-# ╟─c8cccfc3-7fe6-4de3-a54f-43ccc511ac00
+# ╠═c8cccfc3-7fe6-4de3-a54f-43ccc511ac00
+# ╠═74d0ff9c-4d51-4bb4-83da-eb16f229f6b6
 # ╠═39152bf6-3ae3-4bc2-a062-0d96b9e4c1d3
 # ╟─41f26efb-af51-4ebf-9150-196c30c84409
 # ╠═381bbec1-8c4a-4f72-93a5-8bbffd79877b
 # ╟─f83bdb47-d35b-4122-99bc-228c940b9b17
 # ╠═41843f02-6fca-4367-bbfd-a1a03039429a
 # ╟─c06e930f-852c-493f-9a94-5b52c64cd613
-# ╟─cfc6cc06-3771-42b1-9eb1-c135bdad33e1
+# ╠═cfc6cc06-3771-42b1-9eb1-c135bdad33e1
 # ╠═b9d27f4e-16f9-43f6-9432-47f79e0112d3
 # ╟─f8579632-2a82-4a65-8d08-d9cc99c035f9
 # ╟─4083369d-cb6f-4d3b-8d14-4c12637ecebf
@@ -1425,5 +1437,6 @@ exp_G.ABG_Path
 # ╠═8c557a2f-397c-42eb-a03f-4b29880b7b0f
 # ╠═da5a068f-98b3-4da0-877b-605f2491fcb4
 # ╠═eb8b2693-10ff-42dc-a330-8523674934b7
-# ╠═0688a31a-8967-43a0-bcf2-c541f356df11
+# ╠═d722ed96-9118-4fda-95d9-bf4df96d946e
+# ╟─0688a31a-8967-43a0-bcf2-c541f356df11
 # ╠═315a368c-a288-4638-a1fa-c9101fce2a9a
