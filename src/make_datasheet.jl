@@ -1,8 +1,8 @@
 #everything in here is alot of code that does not necessarily need to be run every time 
 #using Query
-function update_RS_datasheet(root, calibration_file; verbose = false)
+
+function update_RS_datasheet(all_paths::Array{String}, calibration_file; verbose = false)
      try #This only works if every directory is in the correct place
-          all_paths = root |> parse_abf
           #First we check if the root file exists
           if !isfile("$(root)\\data_analysis.xlsx")
                #The file does not exist, so make the dataframe
@@ -231,3 +231,5 @@ function update_RS_datasheet(root, calibration_file; verbose = false)
           end     
      end
 end
+
+update_RS_datasheet(root::String, calibration_file; kwargs...) = update_RS_datasheet(root |> parse_abf, calibration_file; kwargs...)
