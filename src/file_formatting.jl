@@ -232,9 +232,10 @@ function check_age(x::String)
     end
 end
 
-function check_geno(x; possible = ["DR", "WT", "GNAT-KO", "GNAT-HT", "UN"]) 
-    #if x == "DR" #This is a weird error Paul made in his filenames
-    #    return (:Genotype, "WT")
+function check_geno(x; 
+        possible = ["DR", "WT", "GNAT-KO", "GNAT-HT", "UN", "RS1KO", "R141C"]
+    ) 
+    #Don't seperate the numbers
     if x ∈ possible
         return (:Genotype, x)
     else
@@ -286,6 +287,7 @@ end
 
 
 file_format = [
+    ("_", :ND, :Percent), 
     ("_", :ND, :Percent, ~), 
     ("_", :ND, :Percent, ~, ~), 
     ("_", :ND, :Percent, ~, ~, (".", :flag, :ext)),
@@ -294,7 +296,7 @@ file_format = [
 
 format_bank_PAUL = [
     ("\\", ~, ~, ~, :Project, 
-          ("_", :Year, :Month, :Date, :Genotype, :Age, :Animal), 
+          ("_", :Year, :Month, :Date, check_geno, :Age, :Animal), 
           NeuroPhys.check_drugs, NeuroPhys.check_pc, NeuroPhys.check_color, 
           NeuroPhys.file_format
      ),
@@ -304,18 +306,25 @@ format_bank_PAUL = [
           NeuroPhys.file_format, 
           (".", NeuroPhys.choose_words, ~)
      ),
+
+    ("\\", ~, ~, ~, :Project, 
+          ("_", :Year, :Month, :Date, :Genotype, :Age, :Animal), 
+          NeuroPhys.check_pc, NeuroPhys.check_drugs, NeuroPhys.check_color, 
+          NeuroPhys.file_format, 
+          (".", NeuroPhys.choose_words, ~)
+     ),
 ]
 
 format_bank_RS = [
     ("\\", :Drive, ~, :Method, :Project, 
             ("_", :Year, :Month, :Date, ~, ~), 
-            ("_", :Animal, check_age, :Genotype), 
+            ("_", :Animal, check_age, check_geno), 
             condition_check, :Photoreceptor, check_color, file_format
     ),
     
     ("\\", :Drive, ~, :Method, :Project, 
             ("_", :Year, :Month, :Date, ~, ~), 
-            ("_", :Animal, check_age, :Genotype), 
+            ("_", :Animal, check_age, check_geno), 
             condition_check, check_color, file_format 
     ),	
 ]
@@ -323,7 +332,7 @@ format_bank_RS = [
 format_bank_GNAT = [
     ("\\", ~, ~, ~, :Project, 
           ("_", :Year, :Month, :Date, ~), 
-          ("_", :Animal, check_age, :Genotype), 
+          ("_", :Animal, check_age, check_geno), 
           check_drugs, check_color, 
           file_format)
 ]
