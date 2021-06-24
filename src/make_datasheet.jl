@@ -19,44 +19,43 @@ function update_RS_datasheet(
                     :ND => 0, :Percent => 1, :Stim_time => 1.0, :Photons => 0.0
                     #:Min => [0.0], :Mean => [0.0], :Max => [0.0]
                )
+               data_fields = Symbol.(DataFrames.names(all_files))
+               delete_after = Int64[]
                for (idx, path) in enumerate(all_paths)
                     if verbose
                          print("Analyzing path number $idx of $(length(all_paths))")
                          println(path)
                     end
+                    #This works for pauls files and mine
                     nt = formatted_split(path, format_bank_RS)
-                    all_files[idx, :Year] = nt.Year
-                    all_files[idx, :Month] = nt.Month
-                    all_files[idx, :Date] = nt.Date
-                    all_files[idx, :Animal] = nt.Animal
-                    all_files[idx, :Age] = nt.Age
-                    all_files[idx, :Condition] = nt.Condition
-                    all_files[idx, :Wavelength] = nt.Wavelength
-                    if nt.Genotype == 141
-                         all_files[idx, :Genotype] = "R141C"
-                    elseif nt.Genotype == 1
-                         all_files[idx, :Genotype] = "RS1KO"
+                    println(nt)
+                    if !isnothing(nt)
+                         for field in data_fields
+                              if haskey(nt, field)
+                                   all_files[idx, field] = nt[field]
+                              end
+                         end
+
+                         if haskey(nt, :Photoreceptor)
+                              all_files[idx, :Photoreceptor] = nt.Photoreceptor
+                         end
+
+                         stim_protocol = extract_stimulus(path)
+                         tstops = stim_protocol.timestamps
+                         stim_time = round((tstops[2]-tstops[1])*1000)
+                         all_files[idx, :Stim_time] = stim_time
+                         #Now we want to apply photons using the photon lookup
+                         photon = photon_lookup(
+                              nt.Wavelength, nt.ND, nt.Percent, stim_time, calibration_file
+                         )
+                         if !isnothing(photon)
+                              all_files[idx, :Photons] = photon
+                         end
                     else
-                         all_files[idx, :Genotype] = nt.Genotype
+                         #for now just remove the file from the dataframe
+                         push!(delete_after, idx)
                     end
-
-                    if haskey(nt, :Photoreceptor)
-                         all_files[idx, :Photoreceptor] = nt.Photoreceptor
-                    end
-                    all_files[idx, :ND] = nt.ND
-                    all_files[idx, :Percent] = nt.Percent
-
-                    stim_protocol = extract_stimulus(path)
-                    tstops = stim_protocol.timestamps
-                    stim_time = round((tstops[2]-tstops[1])*1000)
-                    all_files[idx, :Stim_time] = stim_time
-                    #Now we want to apply photons using the photon lookup
-                    photon = photon_lookup(
-                         nt.Wavelength, nt.ND, nt.Percent, stim_time, calibration_file
-                    )
-                    if !isnothing(photon)
-                         all_files[idx, :Photons] = photon
-                    end
+                    println(length(delete_after))
                end
                #Sort the file by Year -> Month -> Date -> Animal Number
                all_files = all_files |> 
@@ -124,13 +123,6 @@ function update_RS_datasheet(
                                         push!(removed_files, all_files_idx)
                                    end
                               else
-                                   if nt.Genotype == 141
-                                        genotype = "R141C"
-                                   elseif nt.Genotype == 1
-                                        genotype = "RS1KO"
-                                   else
-                                        genotype = nt.Genotype
-                                   end
                                    if haskey(nt, :Photoreceptor)
                                         photoreceptor = nt.Photoreceptor
                                    else
