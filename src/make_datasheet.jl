@@ -1,10 +1,14 @@
 #everything in here is alot of code that does not necessarily need to be run every time 
 #using Query
 
-function update_RS_datasheet(all_paths::Array{String}, calibration_file; verbose = false)
+function update_RS_datasheet(
+     all_paths::Array{String}, 
+     calibration_file::String,
+     data_file::String; 
+     verbose = false)
      try #This only works if every directory is in the correct place
           #First we check if the root file exists
-          if !isfile("$(root)\\data_analysis.xlsx")
+          if !isfile(data_file)
                #The file does not exist, so make the dataframe
                all_files = DataFrame(
                     :Path => all_paths, 
@@ -65,7 +69,7 @@ function update_RS_datasheet(all_paths::Array{String}, calibration_file; verbose
                if verbose
                     print("Dataframe created, saving...")
                end
-               XLSX.writetable("$(root)\\data_analysis.xlsx", 
+               XLSX.writetable(data_file, 
                          All_Files = (
                               collect(DataFrames.eachcol(all_files)), 
                               DataFrames.names(all_files)
@@ -82,7 +86,7 @@ function update_RS_datasheet(all_paths::Array{String}, calibration_file; verbose
                end
                
                all_files = DataFrame(
-                    XLSX.readtable("$(root)\\data_analysis.xlsx", "All_Files")...
+                    XLSX.readtable(data_file, "All_Files")...
                )
 
                added_files = []
@@ -212,9 +216,9 @@ function update_RS_datasheet(all_paths::Array{String}, calibration_file; verbose
                          @thenby(_.Wavelength) |> @thenby(_.Photons)|> 
                          DataFrame
                     #remove old analysis
-                    rm("$(root)\\data_analysis.xlsx")
+                    rm(data_file)
                     #write new analysis
-                    XLSX.writetable("$(root)\\data_analysis.xlsx", 
+                    XLSX.writetable(data_file, 
                          All_Files = (
                               collect(DataFrames.eachcol(all_files)), 
                               DataFrames.names(all_files)

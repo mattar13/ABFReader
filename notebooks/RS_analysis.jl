@@ -35,16 +35,23 @@ end
 # ╔═╡ 7fb2fcdc-445d-4429-830f-5eb929539d9e
 begin
 	root = "E:\\Data\\ERG\\Retinoschisis\\"
+	all_paths = root |> parse_abf #define the paths in the outer
 	calibration_file = "E:\\Data\\Calibrations\\photon_lookup.xlsx"
+	data_file = "E:\\Projects\\2021_Retinoschisis\\data_analysis.xlsx"
 end
 
 # ╔═╡ bd5889f5-12d3-4739-90de-094e2a6f414f
 begin
 	#This is a long script which simply makes a dataframe
-	all_paths = root |> parse_abf #define the paths in the outer
-	all_files = update_RS_datasheet(root, calibration_file, verbose = true)
+	
+	all_files = update_RS_datasheet(
+		all_paths, calibration_file, data_file, 
+		verbose = true)
 	#backup = deepcopy(all_files)
 end;
+
+# ╔═╡ 5acf20ea-2da9-4667-917a-9e22893632a2
+all_files
 
 # ╔═╡ c6b58084-4de0-4978-9d5d-bbc5a2c3dc18
 begin	
@@ -1391,6 +1398,7 @@ exp_G.ABG_Path
 # ╠═ca371b23-48ea-42af-a639-1d10711784c0
 # ╠═7fb2fcdc-445d-4429-830f-5eb929539d9e
 # ╠═bd5889f5-12d3-4739-90de-094e2a6f414f
+# ╠═5acf20ea-2da9-4667-917a-9e22893632a2
 # ╟─c6b58084-4de0-4978-9d5d-bbc5a2c3dc18
 # ╟─3781dc5f-e9e0-4a60-adb9-a422741d375d
 # ╠═a3319e29-9d96-4529-a035-39ff2d4f1cd8
@@ -1428,7 +1436,7 @@ exp_G.ABG_Path
 # ╠═cfc6cc06-3771-42b1-9eb1-c135bdad33e1
 # ╠═b9d27f4e-16f9-43f6-9432-47f79e0112d3
 # ╟─f8579632-2a82-4a65-8d08-d9cc99c035f9
-# ╟─4083369d-cb6f-4d3b-8d14-4c12637ecebf
+# ╠═4083369d-cb6f-4d3b-8d14-4c12637ecebf
 # ╟─870eb605-923a-4c78-8646-4ab90d714d71
 # ╠═5194bd10-4c1e-4260-b429-61aafa543015
 # ╟─9c5d9f09-927d-46f5-9100-fbec77a675c4
