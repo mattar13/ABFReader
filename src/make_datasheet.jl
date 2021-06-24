@@ -55,7 +55,9 @@ function update_RS_datasheet(
                          #for now just remove the file from the dataframe
                          push!(delete_after, idx)
                     end
-                    println(length(delete_after))
+                    if !isempty(delete_after)
+                         println("Delete extra files")
+                    end                    
                end
                #Sort the file by Year -> Month -> Date -> Animal Number
                all_files = all_files |> 
@@ -90,7 +92,9 @@ function update_RS_datasheet(
 
                added_files = []
                for path in all_paths
-                    if path ∉ all_files.Path
+                    secondary_nt = splitpath(path)[end][1:end-4] |> number_seperator
+                    nt2 = formatted_split(splitpath(path)[end], file_format)
+                    if path ∉ all_files.Path && secondary_nt[2] == ["Average"] || !isnothing(nt2)
                          push!(added_files, path)
                     end
                end
@@ -114,15 +118,50 @@ function update_RS_datasheet(
                          if verbose
                               println(nt)
                          end
-                         if haskey(nt, :flag)
-                              if nt.flag == "remove"
-                                   #this is actually a file we should remove from the analysis
-                                   all_files_idx = findall(all_files.Path == new_file)
-                                   if !isempty(all_files_idx)
-                                        println("Removing file $all_files_idx")
-                                        push!(removed_files, all_files_idx)
+                         if !isnothing(nt)
+                              if haskey(nt, :flag) &&
+                                   if nt.flag == "remove"
+                                        #this is actually a file we should remove from the analysis
+                                        all_files_idx = findall(all_files.Path == new_file)
+                                        if !isempty(all_files_idx)
+                                             println("Removing file $all_files_idx")
+                                             push!(removed_files, all_files_idx)
+                                        end
+                                   else
+                                        if haskey(nt, :Photoreceptor)
+                                             photoreceptor = nt.Photoreceptor
+                                        else
+                                             photoreceptor = "Rods"
+                                        end
+                                        stim_protocol = extract_stimulus(new_file)
+                                        tstops = stim_protocol.timestamps
+                                        stim_time = round((tstops[2]-tstops[1])*1000)
+                                        photon = photon_lookup(
+                                             nt.Wavelength, nt.ND, nt.Percent, stim_time, calibration_file
+                                        )
+                                        if isnothing(photon)
+                                             photon = 0.0
+                                        end
+                                        
+                                        push!(all_files, (
+                                                       new_file, 
+                                                       nt.Year, nt.Month, nt.Date, 
+                                                       nt.Animal, nt.Age, nt.Genotype, nt.Condition, nt.Wavelength,
+                                                       photoreceptor, 
+                                                       nt.ND, nt.Percent, stim_time, 
+                                                       photon
+                                                  ) 
+                                             )
+                                        
                                    end
                               else
+                                   if nt.Genotype == 141
+                                        genotype = "R141C"
+                                   elseif nt.Genotype == 1
+                                        genotype = "RS1KO"
+                                   else
+                                        genotype = nt.Genotype
+                                   end
                                    if haskey(nt, :Photoreceptor)
                                         photoreceptor = nt.Photoreceptor
                                    else
@@ -149,39 +188,6 @@ function update_RS_datasheet(
                                         )
                                    
                               end
-                         else
-                              if nt.Genotype == 141
-                                   genotype = "R141C"
-                              elseif nt.Genotype == 1
-                                   genotype = "RS1KO"
-                              else
-                                   genotype = nt.Genotype
-                              end
-                              if haskey(nt, :Photoreceptor)
-                                   photoreceptor = nt.Photoreceptor
-                              else
-                                   photoreceptor = "Rods"
-                              end
-                              stim_protocol = extract_stimulus(new_file)
-                              tstops = stim_protocol.timestamps
-                              stim_time = round((tstops[2]-tstops[1])*1000)
-                              photon = photon_lookup(
-                                   nt.Wavelength, nt.ND, nt.Percent, stim_time, calibration_file
-                              )
-                              if isnothing(photon)
-                                   photon = 0.0
-                              end
-                              
-                              push!(all_files, (
-                                             new_file, 
-                                             nt.Year, nt.Month, nt.Date, 
-                                             nt.Animal, nt.Age, genotype, nt.Condition, nt.Wavelength,
-                                             photoreceptor, 
-                                             nt.ND, nt.Percent, stim_time, 
-                                             photon
-                                        ) 
-                                   )
-                              
                          end
                     end
                end
