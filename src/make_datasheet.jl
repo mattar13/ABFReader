@@ -27,7 +27,7 @@ function update_RS_datasheet(
                          println(path)
                     end
                     #This works for pauls files and mine
-                    nt = formatted_split(path, format_bank_RS)
+                    nt = formatted_split(path, format_bank)
                     println(nt)
                     if !isnothing(nt)
                          for field in data_fields
