@@ -61,7 +61,10 @@ function saturated_response(data::Experiment{T};
 	            y_data = data.data_array[swp,first_idx:end,ch]
                 mean = sum(y_data)/length(y_data)
 	            deviation = z*std(y_data)
-	            last_idx = findall(y_data .> mean)[1]
+	            last_idx = findall(y_data .> mean)
+                if isnothing(last_idx)
+                    last_idx = length(y_data)
+                end
                 x_data = x_data[1:last_idx] 
 	            y_data = y_data[1:last_idx]
                 d1 = diff(y_data)
