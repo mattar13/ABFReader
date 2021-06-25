@@ -97,8 +97,6 @@ function update_RS_datasheet(
                          secondary_nt = splitpath(path)[end][1:end-4] |> number_seperator
                          nt2 = formatted_split(splitpath(path)[end], file_format)
                          if secondary_nt[2] == ["Average"] || !isnothing(nt2)
-                              println(secondary_nt)
-                              println(nt2)
                               #these files need to be added
                               push!(added_files, path)
                          end
@@ -117,7 +115,7 @@ function update_RS_datasheet(
 
                if !isempty(added_files)
                     if verbose
-                         println(" Files have been added $added_files")
+                         println("$(length(added_files)) Files have been added ")
                     end
                     for new_file in added_files
                          nt = formatted_split(new_file, format_bank)
@@ -180,7 +178,7 @@ function update_RS_datasheet(
                                    push!(all_files, (
                                                   new_file, 
                                                   nt.Year, nt.Month, nt.Date, 
-                                                  nt.Animal, nt.Age, genotype, nt.Condition, nt.Wavelength,
+                                                  nt.Animal, nt.Age, nt.Genotype, nt.Condition, nt.Wavelength,
                                                   photoreceptor, 
                                                   nt.ND, nt.Percent, stim_time, 
                                                   photon
