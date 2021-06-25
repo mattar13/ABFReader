@@ -62,7 +62,7 @@ function saturated_response(data::Experiment{T};
                 mean = sum(y_data)/length(y_data)
 	            deviation = z*std(y_data)
 	            last_idx = findall(y_data .> mean)
-                if isnothing(last_idx)
+                if isempty(last_idx)
                     last_idx = length(y_data)
                 else
                     last_idx = last_idx[1]
