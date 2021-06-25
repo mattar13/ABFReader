@@ -34,8 +34,11 @@ end
 
 # ╔═╡ 7fb2fcdc-445d-4429-830f-5eb929539d9e
 begin
-	root = "E:\\Data\\ERG\\Retinoschisis\\"
-	all_paths = root |> parse_abf #define the paths in the outer
+	rs_root = "E:\\Data\\ERG\\Retinoschisis\\"
+	wt_root = "E:\\Data\\ERG\\Paul\\"
+	wt_paths = wt_root |> parse_abf
+	rs_paths = rs_root |> parse_abf
+	all_paths = vcat(wt_paths, rs_paths)
 	calibration_file = "E:\\Data\\Calibrations\\photon_lookup.xlsx"
 	data_file = "E:\\Projects\\2021_Retinoschisis\\data_analysis.xlsx"
 end
@@ -46,41 +49,22 @@ begin
 	
 	all_files = update_RS_datasheet(
 		all_paths, calibration_file, data_file, 
-		verbose = true)
-	#backup = deepcopy(all_files)
+		verbose = false
+	)
 end;
+
+# ╔═╡ e316abb9-25f3-4b38-a433-72079fa14f9f
+begin
+	#we want to reduce the age component so all ages over 30 are set to 30
+	for (idx, row) in enumerate(eachrow(all_files))
+		if row.Age > 30
+			all_files[idx, :Age] = 30
+		end
+	end
+end
 
 # ╔═╡ 5acf20ea-2da9-4667-917a-9e22893632a2
 all_files
-
-# ╔═╡ c6b58084-4de0-4978-9d5d-bbc5a2c3dc18
-begin	
-	df_names = Symbol.(DataFrames.names(all_files))
-	wt1 = "E:\\Data\\ERG\\Paul\\"
-	wt_paths = wt1 |> parse_abf
-	for (idx, path) in enumerate(wt_paths)
-		println(path)
-		println("File $idx of $(length(wt_paths)) analyzed")
-		nti = formatted_split(path, format_bank_GNAT)
-		#println(choose_filename(splitpath(path)[end]))
-		if !isnothing(nti) && haskey(nti, :Genotype) && haskey(nti, :Photoreceptor) 
-			contains = map(entry -> haskey(nti, entry), df_names)
-			println(nti)
-			photons = photon_lookup(
-				nti.Wavelength, nti.ND, nti.Percent, nti.Stim_time, 
-				calibration_file
-			)
-			if !isnothing(photons)
-				println(photons)
-				data_row = (
-					path, map(key -> nti[key], df_names[contains])..., photons
-				)
-				push!(all_files, data_row)
-			end
-		end
-	end
-	all_files
-end
 
 # ╔═╡ 3781dc5f-e9e0-4a60-adb9-a422741d375d
 begin
@@ -137,6 +121,7 @@ begin
 		#we want to extract the response for each trace here
 		data = extract_abf(exp.Path, average_sweeps = true) |> filter_data
 		#Extract the response 
+		println(size(data))
 		sat_resp = abs.(saturated_response(data))
 		if size(sat_resp, 3) > 1
 			q_A[idx, :Response] = sat_resp[1]
@@ -293,8 +278,6 @@ begin
 	#Extract G component data
 	data_WT11ab = extract_abf(String.(q_11WTg.AB_Path)) |> filter_data
 	data_WT11abg = extract_abf(String.(q_11WTg.ABG_Path)) |> filter_data
-	println(size(data_WT11ab))
-	println(size(data_WT11abg))
 	data_WT11g = data_WT11abg - data_WT11ab
 	
 	data_RS1KO11ab = extract_abf(String.(q_11RS1KOg.AB_Path)) |> filter_data
@@ -303,9 +286,6 @@ begin
 	drop!(data_RS1KO11g, drop_idx = 1)
 	#drop!(data_RS1KO11abg, drop_idx = 1)
 end;
-
-# ╔═╡ a7bac665-9adb-42e7-ae04-3c623a81169c
-q_11RS1KOg.Photons
 
 # ╔═╡ 48476e31-7593-43f1-be5c-b951af96bb16
 begin
@@ -771,15 +751,12 @@ begin
 end
 
 # ╔═╡ 9048174d-1426-441d-918f-66c146431b82
-savefig(fig_P30, "$(root)\\fig6_P30_subtraction.png")
+savefig(fig_P30, "E:\\Projects\\2021_Retinoschisis\\fig6_P30_subtraction.png")
 
 # ╔═╡ c8cccfc3-7fe6-4de3-a54f-43ccc511ac00
 md"
 ## Developing IR curves
 "
-
-# ╔═╡ 74d0ff9c-4d51-4bb4-83da-eb16f229f6b6
-all_files.Photons |> minimum
 
 # ╔═╡ 39152bf6-3ae3-4bc2-a062-0d96b9e4c1d3
 #Photoreceptors
@@ -796,9 +773,20 @@ begin
 	for (idx, p) in enumerate(ages)
 		for (idx_g, g) in enumerate(genotypes)
 			println("Analyzing data for age : $p genotype: $g")
-			q_section = q_A |> @filter(_.Age == p && _.Genotype == g) |> DataFrame
+			if p == 30
+				q_section = q_A |> 
+					@filter(_.Age >= p && _.Genotype == g) |> 
+					@filter(_.Photons != 0) |> 
+					DataFrame
+			else
+				q_section = q_A |> 
+					@filter(_.Age == p && _.Genotype == g) |> 
+					@filter(_.Photons != 0) |> 
+					DataFrame
+			end
+			println(q_section)
 			if !isempty(q_section)
-							#Lets extract average and SEM values for the photons
+				#Lets extract average and SEM values for the photons
 				avg_resp = []
 				sem_resp = []
 				q_photons = q_section|>@unique(_.Photons)|>DataFrame
@@ -868,15 +856,23 @@ begin
 	plt_fig_B = plot(layout = grid(length(ages),1))
 	for (idx, p) in enumerate(ages)
 		for (idx_g, g) in enumerate(genotypes)
-			println("Analyzing data for age : $p genotype: $g")
-			q_section = q_B |> 
-				@filter(_.Age == p && _.Genotype == g) |> 
-				@filter(_.Response < 2000) |>
-				DataFrame
+			println("Analyzing data for age : $p genotype: $g")			
+			if p == 30
+				q_section = q_B |> 
+					@filter(_.Age >= p && _.Genotype == g) |> 
+					@filter(_.Response < 2000) |>
+					@filter(_.Photons != 0.0) |> 
+					DataFrame
+			else
+				q_section = q_B |> 
+					@filter(_.Age == p && _.Genotype == g) |> 
+					@filter(_.Response < 2000) |>
+					@filter(_.Photons != 0.0) |> 
+					DataFrame
+			end
+			println(q_section)
 			#now we can walk through each file of q_i
 			if !isempty(q_section)
-
-				
 				#This prints every response
 				@df q_section plot!(plt_fig_B[idx], 
 					:Photons, :Response, 
@@ -1015,8 +1011,8 @@ md"
 # ╔═╡ 4083369d-cb6f-4d3b-8d14-4c12637ecebf
 begin
 	q_BxA = q_B |> @join(q_A, 
-			{_.Photons, _.Genotype, _.Age}, 
-			{_.Photons, _.Genotype, _.Age},
+			{_.Photons, _.Year, _.Month, _.Date, _.Animal,}, 
+			{_.Photons, _.Year, _.Month, _.Date, _.Animal,},
 			{_.A_Path, __.Path, _.Genotype, _.Age, _.Photons, 
 			A_Response = __.Response, 
 			B_Response = _.Response, 
@@ -1026,8 +1022,8 @@ begin
 		@unique(_.B_Response)|> @unique(_.A_Response)|>
 		DataFrame
 	q_GxA = q_G |> @join(q_A, 
-			{_.Photons, _.Genotype, _.Age}, 
-			{_.Photons, _.Genotype, _.Age},
+			{_.Photons, _.Year, _.Month, _.Date, _.Animal}, 
+			{_.Photons, _.Year, _.Month, _.Date, _.Animal},
 			{_.ABG_Path, _.Genotype, _.Age, _.Photons, 
 			A_Response = __.Response, 
 			G_Response = _.Response,
@@ -1037,8 +1033,8 @@ begin
 		@unique(_.G_Response)|> @unique(_.A_Response)|>
 		DataFrame
 	q_BxG = q_B |> @join(q_G, 
-			{_.Photons, _.Genotype, _.Age}, 
-			{_.Photons, _.Genotype, _.Age},
+			{_.Photons, _.Year, _.Month, _.Date, _.Animal}, 
+			{_.Photons, _.Year, _.Month, _.Date, _.Animal},
 			{_.A_Path, _.Genotype, _.Age, _.Photons, 
 			G_Response = __.Response, 
 			B_Response = _.Response,
@@ -1398,35 +1394,33 @@ exp_G.ABG_Path
 # ╠═ca371b23-48ea-42af-a639-1d10711784c0
 # ╠═7fb2fcdc-445d-4429-830f-5eb929539d9e
 # ╠═bd5889f5-12d3-4739-90de-094e2a6f414f
+# ╠═e316abb9-25f3-4b38-a433-72079fa14f9f
 # ╠═5acf20ea-2da9-4667-917a-9e22893632a2
-# ╠═c6b58084-4de0-4978-9d5d-bbc5a2c3dc18
-# ╟─3781dc5f-e9e0-4a60-adb9-a422741d375d
-# ╠═a3319e29-9d96-4529-a035-39ff2d4f1cd8
+# ╠═3781dc5f-e9e0-4a60-adb9-a422741d375d
+# ╟─a3319e29-9d96-4529-a035-39ff2d4f1cd8
 # ╟─695cc1d2-0244-4609-970a-2df676263e99
 # ╟─659e9a5f-d383-4e89-be73-d008d1bcb122
-# ╟─9b9dbf63-d148-476f-9de0-c854b360597a
+# ╠═9b9dbf63-d148-476f-9de0-c854b360597a
 # ╟─d1aecd57-021f-4873-ae42-2896bcdb0a56
 # ╠═732cc6cc-d6bb-4632-8357-c108a1e79a62
 # ╠═b30e73b4-fbba-4ed8-9021-051b51f10d3a
 # ╟─13b294c3-d100-4cf5-981d-a98a463afa6f
 # ╟─c9f6bb32-7115-4fd0-a26c-eb834f2ef973
-# ╠═a7bac665-9adb-42e7-ae04-3c623a81169c
 # ╟─48476e31-7593-43f1-be5c-b951af96bb16
 # ╠═32a18c83-23ff-4e94-8bc7-287a03aa2077
 # ╟─3bbcf31c-2e79-44fc-b896-2d88636ab0c6
 # ╠═05131383-6617-426b-84c3-0f53dd0abc7b
 # ╟─0176b257-0073-4417-aef3-6b68f719b04a
-# ╠═6dbc07d4-b486-471e-a8cf-015de88de094
+# ╟─6dbc07d4-b486-471e-a8cf-015de88de094
 # ╠═76e5ae36-52d6-4a36-8de9-93567785fbd5
 # ╟─30eded5c-acba-43e2-b4cc-fd0e7a8d3b90
 # ╠═860deebb-fb7e-44a2-be0a-d97ac2f68fdf
 # ╟─d9e5c629-6f8d-4dad-8386-ff4d5302913a
-# ╠═46221bae-3b05-4a2e-a9af-7ead4d24e6dc
+# ╟─46221bae-3b05-4a2e-a9af-7ead4d24e6dc
 # ╠═0a91c31b-c780-4205-a412-fbb59799a310
 # ╟─bace4d09-5bf0-41b4-ae85-87ed100e487c
 # ╠═9048174d-1426-441d-918f-66c146431b82
-# ╠═c8cccfc3-7fe6-4de3-a54f-43ccc511ac00
-# ╠═74d0ff9c-4d51-4bb4-83da-eb16f229f6b6
+# ╟─c8cccfc3-7fe6-4de3-a54f-43ccc511ac00
 # ╠═39152bf6-3ae3-4bc2-a062-0d96b9e4c1d3
 # ╟─41f26efb-af51-4ebf-9150-196c30c84409
 # ╠═381bbec1-8c4a-4f72-93a5-8bbffd79877b
@@ -1436,8 +1430,8 @@ exp_G.ABG_Path
 # ╠═cfc6cc06-3771-42b1-9eb1-c135bdad33e1
 # ╠═b9d27f4e-16f9-43f6-9432-47f79e0112d3
 # ╟─f8579632-2a82-4a65-8d08-d9cc99c035f9
-# ╠═4083369d-cb6f-4d3b-8d14-4c12637ecebf
-# ╟─870eb605-923a-4c78-8646-4ab90d714d71
+# ╟─4083369d-cb6f-4d3b-8d14-4c12637ecebf
+# ╠═870eb605-923a-4c78-8646-4ab90d714d71
 # ╠═5194bd10-4c1e-4260-b429-61aafa543015
 # ╟─9c5d9f09-927d-46f5-9100-fbec77a675c4
 # ╠═cbd04c8d-cbe4-4b97-ba6c-057136582a1e
