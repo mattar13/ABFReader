@@ -93,10 +93,15 @@ function update_RS_datasheet(
 
                added_files = []
                for path in all_paths
-                    secondary_nt = splitpath(path)[end][1:end-4] |> number_seperator
-                    nt2 = formatted_split(splitpath(path)[end], file_format)
-                    if path ∉ all_files.Path && secondary_nt[2] == ["Average"] || !isnothing(nt2)
-                         push!(added_files, path)
+                    if path ∉ all_files.Path 
+                         secondary_nt = splitpath(path)[end][1:end-4] |> number_seperator
+                         nt2 = formatted_split(splitpath(path)[end], file_format)
+                         if secondary_nt[2] == ["Average"] || !isnothing(nt2)
+                              println(secondary_nt)
+                              println(nt2)
+                              #these files need to be added
+                              push!(added_files, path)
+                         end
                     end
                end
 
@@ -115,12 +120,13 @@ function update_RS_datasheet(
                          println(" Files have been added $added_files")
                     end
                     for new_file in added_files
-                         nt = formatted_split(new_file, format_bank_RS)
+                         nt = formatted_split(new_file, format_bank)
                          if verbose
+                              println(new_file)
                               println(nt)
                          end
                          if !isnothing(nt)
-                              if haskey(nt, :flag) &&
+                              if haskey(nt, :flag)
                                    if nt.flag == "remove"
                                         #this is actually a file we should remove from the analysis
                                         all_files_idx = findall(all_files.Path == new_file)
@@ -156,13 +162,6 @@ function update_RS_datasheet(
                                         
                                    end
                               else
-                                   if nt.Genotype == 141
-                                        genotype = "R141C"
-                                   elseif nt.Genotype == 1
-                                        genotype = "RS1KO"
-                                   else
-                                        genotype = nt.Genotype
-                                   end
                                    if haskey(nt, :Photoreceptor)
                                         photoreceptor = nt.Photoreceptor
                                    else
@@ -195,7 +194,8 @@ function update_RS_datasheet(
 
                if !isempty(removed_files)
                     #This is a catch for if files are removed but none are added
-                    delete!(all_files, removed_files)
+                    println(removed_files)
+                    #delete!(all_files, removed_files)
 
                     if verbose
                          println("Files have been removed $removed_files")
@@ -207,7 +207,7 @@ function update_RS_datasheet(
                          println("Data Analysis has been modified")
                          println("File rewritten")
                     end
-                    all_files= all_files |> 
+                    all_files = all_files |> 
                          @orderby(_.Year) |> @thenby(_.Month) |> @thenby(_.Date)|>
                          @thenby(_.Animal)|> @thenby(_.Genotype) |> @thenby(_.Condition) |> 
                          @thenby(_.Wavelength) |> @thenby(_.Photons)|> 
