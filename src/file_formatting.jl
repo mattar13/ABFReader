@@ -219,7 +219,7 @@ function choose_words(x::String, has_words = ["AVERAGE"], lacks_words = ["CONCAT
 end
 
 function check_age(x::String)
-    if x == "Adult"
+    if x == "Adult" || number_seperator(x)[1][1] >= 30
         return (:Age, 30)
     else
         x = number_seperator(x)[1][1]
