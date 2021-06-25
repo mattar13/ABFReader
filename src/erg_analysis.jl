@@ -64,6 +64,8 @@ function saturated_response(data::Experiment{T};
 	            last_idx = findall(y_data .> mean)
                 if isnothing(last_idx)
                     last_idx = length(y_data)
+                else
+                    last_idx = last_idx[1]
                 end
                 x_data = x_data[1:last_idx] 
 	            y_data = y_data[1:last_idx]
