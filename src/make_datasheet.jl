@@ -55,10 +55,11 @@ function update_RS_datasheet(
                          #for now just remove the file from the dataframe
                          push!(delete_after, idx)
                     end
-                    if !isempty(delete_after)
-                         println("Delete extra files")
-                    end                    
                end
+               if !isempty(delete_after)
+                    println("Delete extra files")
+                    delete!(all_files, delete_after)
+               end                    
                #Sort the file by Year -> Month -> Date -> Animal Number
                all_files = all_files |> 
                     @orderby(_.Year) |> @thenby(_.Month) |> @thenby(_.Date)|>
@@ -194,9 +195,7 @@ function update_RS_datasheet(
 
                if !isempty(removed_files)
                     #This is a catch for if files are removed but none are added
-                    for idx in removed_files
-                         delete!(all_files, idx)
-                    end
+                    delete!(all_files, removed_files)
 
                     if verbose
                          println("Files have been removed $removed_files")
