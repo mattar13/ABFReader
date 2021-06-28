@@ -29,7 +29,7 @@ function update_RS_datasheet(
                     :Response => 0.0, :ResponseTime => 0.0, 
                )
 
-               data_fields = Symbol.(DataFrames.names(all_files))
+               data_fields = 
                delete_after = Int64[]
                for (idx, path) in enumerate(all_paths)
                     if verbose
@@ -40,10 +40,15 @@ function update_RS_datasheet(
                     nt = formatted_split(path, format_bank)
                     println(nt)
                     if !isnothing(nt)
-                         for field in data_fields
+                         for field in Symbol.(DataFrames.names(all_files))
                               if haskey(nt, field)
-                                   all_files[idx, field] = nt[field]
-                                   data_analysis[idx, field] = nt[field]
+                                   all_files[idx, field] = nt[field] 
+                              end
+                         end
+                         
+                         for field in Symbol.(DataFrames.names(data_analysis))
+                              if haskey(nt, field)
+                                   data_analysis[idx, field] = nt[field]       
                               end
                          end
 
@@ -53,10 +58,11 @@ function update_RS_datasheet(
                          all_files[idx, :Stim_time] = stim_time
                          #Now we want to apply photons using the photon lookup
                          photon = photon_lookup(
-                              nt.Wavelength, nt.ND, nt.Percent, stim_time, calibration_file
+                              nt.Wavelength, nt.ND, nt.Percent, 1.0, calibration_file
                          )
                          if !isnothing(photon)
-                              all_files[idx, :Photons] = photon
+                              all_files[idx, :Photons] = photon*stim_time
+                              data_analysis[idx, :Photons] = photon*stim_time
                          end
                     else
                          #for now just remove the file from the dataframe
@@ -167,7 +173,7 @@ function update_RS_datasheet(
                                         tstops = stim_protocol.timestamps
                                         stim_time = round((tstops[2]-tstops[1])*1000)
                                         photon = photon_lookup(
-                                             nt.Wavelength, nt.ND, nt.Percent, stim_time, calibration_file
+                                             nt.Wavelength, nt.ND, nt.Percent, 1.0, calibration_file
                                         )
                                         if isnothing(photon)
                                              photon = 0.0
@@ -179,7 +185,7 @@ function update_RS_datasheet(
                                                        nt.Animal, nt.Age, nt.Genotype, nt.Condition, nt.Wavelength,
                                                        photoreceptor, 
                                                        nt.ND, nt.Percent, stim_time, 
-                                                       photon
+                                                       photon*stim_time
                                                   ) 
                                              )
                                         
