@@ -17,8 +17,18 @@ function update_RS_datasheet(
                     :Condition => "Nothing", :Wavelength => 525, 
                     :Photoreceptor => "Rods", 
                     :ND => 0, :Percent => 1, :Stim_time => 1.0, :Photons => 0.0
-                    #:Min => [0.0], :Mean => [0.0], :Max => [0.0]
                )
+
+               #We need to also make a file for data analysis
+               data_analysis = DataFrame(
+                    :Path => all_paths, 
+                    :Year => 0, :Month => 0, :Date => 0,
+                    :Animal => 0, :Age => 9, :Genotype => "", 
+                    :Condition => "Nothing", :Wavelength => 525, 
+                    :Photoreceptor => "Rods", :Photons => 0.0, 
+                    :Response => 0.0, :ResponseTime => 0.0, 
+               )
+
                data_fields = Symbol.(DataFrames.names(all_files))
                delete_after = Int64[]
                for (idx, path) in enumerate(all_paths)
@@ -33,11 +43,8 @@ function update_RS_datasheet(
                          for field in data_fields
                               if haskey(nt, field)
                                    all_files[idx, field] = nt[field]
+                                   data_analysis[idx, field] = nt[field]
                               end
-                         end
-
-                         if haskey(nt, :Photoreceptor)
-                              all_files[idx, :Photoreceptor] = nt.Photoreceptor
                          end
 
                          stim_protocol = extract_stimulus(path)
@@ -59,6 +66,7 @@ function update_RS_datasheet(
                if !isempty(delete_after)
                     println("Delete extra files")
                     delete!(all_files, delete_after)
+                    delete!(data_analysis, delete_after)
                end                    
                #Sort the file by Year -> Month -> Date -> Animal Number
                all_files = all_files |> 
@@ -75,6 +83,10 @@ function update_RS_datasheet(
                          All_Files = (
                               collect(DataFrames.eachcol(all_files)), 
                               DataFrames.names(all_files)
+                         )
+                         Data_Analysis = (
+                              collect(DataFrames.eachcol(data_analysis)), 
+                              DataFrames.names(data_analysis)
                          )
                     )
                if verbose 
