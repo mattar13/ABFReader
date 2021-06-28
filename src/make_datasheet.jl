@@ -121,6 +121,7 @@ function update_RS_datasheet(
                          push!(removed_files, idx)
                     end
                end
+
                if verbose
                     println(" Completed")
                end
@@ -167,6 +168,15 @@ function update_RS_datasheet(
                                                        photoreceptor, 
                                                        nt.ND, nt.Percent, stim_time, 
                                                        photon
+                                                  ) 
+                                             )
+                                        
+                                        push!(all_files, (
+                                                       new_file, 
+                                                       nt.Year, nt.Month, nt.Date, 
+                                                       nt.Animal, nt.Age, nt.Genotype, nt.Condition, nt.Wavelength,
+                                                       photoreceptor, photon, 
+                                                       0.0, 0.0
                                                   ) 
                                              )
                                         
@@ -226,11 +236,15 @@ function update_RS_datasheet(
                     rm(data_file)
                     #write new analysis
                     XLSX.writetable(data_file, 
-                         All_Files = (
-                              collect(DataFrames.eachcol(all_files)), 
-                              DataFrames.names(all_files)
+                              All_Files = (
+                                   collect(DataFrames.eachcol(all_files)), 
+                                   DataFrames.names(all_files)
+                              ),
+                              Data_Analysis = (
+                                   collect(DataFrames.eachcol(data_analysis)), 
+                                   DataFrames.names(data_analysis)
+                              )
                          )
-                    )
                end
 
                return all_files
