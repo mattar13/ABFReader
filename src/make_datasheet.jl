@@ -54,7 +54,6 @@ function update_RS_datasheet(
                if !isempty(delete_after)
                     println("Delete extra files")
                     delete!(all_files, delete_after)
-                    delete!(data_analysis, delete_after)
                end                    
                #Sort the file by Year -> Month -> Date -> Animal Number
                all_files = all_files |> 
@@ -80,7 +79,7 @@ function update_RS_datasheet(
                     println(" Completed")
                end
                
-               return all_files, data_analysis
+               return all_files
           else
                #The file exists, we need to check for changes now
                if verbose 
