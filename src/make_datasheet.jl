@@ -19,17 +19,6 @@ function update_RS_datasheet(
                     :ND => 0, :Percent => 1, :Stim_time => 1.0, :Photons => 0.0
                )
 
-               #We need to also make a file for data analysis
-               data_analysis = DataFrame(
-                    :Path => all_paths, 
-                    :Year => 0, :Month => 0, :Date => 0,
-                    :Animal => 0, :Age => 9, :Genotype => "", 
-                    :Condition => "Nothing", :Wavelength => 525, 
-                    :Photoreceptor => "Rods", :Photons => 0.0, 
-                    :Response => 0.0, :ResponseTime => 0.0, 
-               )
-
-               data_fields = 
                delete_after = Int64[]
                for (idx, path) in enumerate(all_paths)
                     if verbose
@@ -45,12 +34,6 @@ function update_RS_datasheet(
                                    all_files[idx, field] = nt[field] 
                               end
                          end
-                         
-                         for field in Symbol.(DataFrames.names(data_analysis))
-                              if haskey(nt, field)
-                                   data_analysis[idx, field] = nt[field]       
-                              end
-                         end
 
                          stim_protocol = extract_stimulus(path)
                          tstops = stim_protocol.timestamps
@@ -62,7 +45,6 @@ function update_RS_datasheet(
                          )
                          if !isnothing(photon)
                               all_files[idx, :Photons] = photon*stim_time
-                              data_analysis[idx, :Photons] = photon*stim_time
                          end
                     else
                          #for now just remove the file from the dataframe
@@ -80,11 +62,6 @@ function update_RS_datasheet(
                     @thenby(_.Animal)|> @thenby(_.Genotype) |> @thenby(_.Condition) |> 
                     @thenby(_.Wavelength) |> @thenby(_.Photons)|> 
                     DataFrame
-               data_analysis = data_analysis |> 
-                    @orderby(_.Year) |> @thenby(_.Month) |> @thenby(_.Date)|>
-                    @thenby(_.Animal)|> @thenby(_.Genotype) |> @thenby(_.Condition) |> 
-                    @thenby(_.Wavelength) |> @thenby(_.Photons)|> 
-                    DataFrame
                #save the file as a excel file
                
                if verbose
@@ -96,10 +73,6 @@ function update_RS_datasheet(
                               collect(DataFrames.eachcol(all_files)), 
                               DataFrames.names(all_files)
                          ),
-                         Data_Analysis = (
-                              collect(DataFrames.eachcol(data_analysis)), 
-                              DataFrames.names(data_analysis)
-                         )
                     )
                
                
@@ -116,9 +89,6 @@ function update_RS_datasheet(
                
                all_files = DataFrame(
                     XLSX.readtable(data_file, "All_Files")...
-               )
-               data_analysis = DataFrame(
-                    XLSX.readtable(data_file, "Data_Analysis")...
                )
 
                added_files = []
@@ -189,14 +159,6 @@ function update_RS_datasheet(
                                                   ) 
                                              )
                                         
-                                        push!(all_files, (
-                                                       new_file, 
-                                                       nt.Year, nt.Month, nt.Date, 
-                                                       nt.Animal, nt.Age, nt.Genotype, nt.Condition, nt.Wavelength,
-                                                       photoreceptor, photon, 
-                                                       0.0, 0.0
-                                                  ) 
-                                             )
                                         
                                    end
                               else
@@ -234,7 +196,6 @@ function update_RS_datasheet(
                     #This is a catch for if files are removed but none are added
                     #println(removed_files)
                     delete!(all_files, removed_files)
-                    delete!(data_analysis, removed_files)
 
                     if verbose
                          println("Files have been removed $removed_files")
@@ -259,14 +220,10 @@ function update_RS_datasheet(
                                    collect(DataFrames.eachcol(all_files)), 
                                    DataFrames.names(all_files)
                               ),
-                              Data_Analysis = (
-                                   collect(DataFrames.eachcol(data_analysis)), 
-                                   DataFrames.names(data_analysis)
-                              )
                          )
                end
 
-               return all_files, data_analysis
+               return all_files
           end
      catch error
           println(error)
