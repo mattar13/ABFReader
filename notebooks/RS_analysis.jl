@@ -19,9 +19,6 @@ using DataFrames, Query, XLSX, StatsPlots
 # ╔═╡ 0d3ec243-b988-4b7f-a038-63375d96ffe8
 using Distributions, StatsBase
 
-# ╔═╡ 893a3ae0-3a3e-4605-b063-cbbb95689291
-
-
 # ╔═╡ ca371b23-48ea-42af-a639-1d10711784c0
 #define a single function for filtering
 function filter_data(data; t_pre = 1.0, t_post = 2.0) 
@@ -40,6 +37,7 @@ begin
 	rs_paths = rs_root |> parse_abf
 	all_paths = vcat(wt_paths, rs_paths)
 	calibration_file = "E:\\Data\\Calibrations\\photon_lookup.xlsx"
+	param_file = "E:\\Projects\\2021_Retinoschisis\\parameters.xlsx"
 	data_file = "E:\\Projects\\2021_Retinoschisis\\data_analysis.xlsx"
 end
 
@@ -51,39 +49,41 @@ begin
 		all_paths, calibration_file, data_file, 
 		verbose = false
 	)
-end;
-
-# ╔═╡ e316abb9-25f3-4b38-a433-72079fa14f9f
-begin
-	#we want to reduce the age component so all ages over 30 are set to 30
+	
+	#For some reason ages can be over 30
 	for (idx, row) in enumerate(eachrow(all_files))
 		if row.Age > 30
-			all_files[idx, :Age] = 30
+			println(idx)
 		end
 	end
+	all_files
 end
-
-# ╔═╡ 5acf20ea-2da9-4667-917a-9e22893632a2
-all_files
 
 # ╔═╡ 3781dc5f-e9e0-4a60-adb9-a422741d375d
 begin
 	q_A = all_files |> 
 		@filter(_.Condition == "BaCl_LAP4" || _.Condition == "LAP4_BaCl") |>
 		@filter(_.Photoreceptor == "Rods" && _.Wavelength == 525) |>
+		#remove all photons under 10000
+		@filter(_.Photons < 10000) |> 
 		@map({_.Path, 
 			_.Year, _.Month, _.Date, _.Animal, 
 			_.Age, _.Genotype, _.Condition, _.Photons, 
+			Channel = "Vm_prime",
 			Response = 0.0
 			}) |>
 		DataFrame
 	q_AB = all_files |> 
 		@filter(_.Condition == "BaCl") |>
 		@filter(_.Photoreceptor == "Rods" && _.Wavelength == 525) |>
+		#remove all photons under 10000	
+		@filter(_.Photons < 10000) |> 
 		DataFrame
 	q_ABG = all_files |> 
 		@filter(_.Condition == "NoDrugs") |>
 		@filter(_.Photoreceptor == "Rods" && _.Wavelength == 525) |>
+		#remove all photons under 10000	
+		@filter(_.Photons < 10000) |> 
 		DataFrame
 	#Now derive new queries based on these
 		#extract all the places where the photon intensities match
@@ -95,6 +95,7 @@ begin
 				A_condition = _.Condition, AB_condition = __.Condition,
 				__.Year, __.Month, __.Date, __.Animal, 
 				__.Age, __.Genotype, __.Condition, __.Photons, 
+				Channel = "Vm_prime",
 				Response = 0.0
 			}
 		) |> 
@@ -106,7 +107,8 @@ begin
 			AB_Path = _.Path, ABG_Path = __.Path, 
 			AB_Condition = _.Condition, ABG_Condition = __.Condition, 
 			__.Year, __.Month, __.Date, __.Animal, 
-			__.Age, __.Genotype, __.Condition, __.Photons, 
+			__.Age, __.Genotype, __.Condition, __.Photons,
+			Channel = "Vm_prime",
 			Response = 0.0
 		}
 	) |> 
@@ -125,9 +127,11 @@ begin
 		sat_resp = abs.(saturated_response(data))
 		if size(sat_resp, 3) > 1
 			q_A[idx, :Response] = sat_resp[1]
+			q_A[idx, :Channel] = data.chNames[1]
 			for add_i in 2:size(sat_resp,3)
 				added_row = deepcopy(q_A[idx, :])
 				added_row.Response = sat_resp[add_i]
+				added_row.Channel = data.chNames[add_i]
 				push!(q_A, added_row)
 			end
 		else
@@ -167,14 +171,17 @@ begin
 			resp = abs.(maximum(B_data, dims = 2))
 		end
 		if size(resp, 3) > 1
-			q_B[idx, :Response] = resp[1] 
+			q_B[idx, :Response] = resp[1]
+			q_B[idx, :Channel] = B_data.chNames[1]
 			for add_i in 2:size(resp,3)
 				added_row = deepcopy(q_B[idx, :])
 				added_row.Response = resp[add_i]
+				added_row.Channel = B_data.chNames[add_i]
 				push!(q_B, added_row)
 			end
 		else
 			q_B[idx, :Response] = resp[1]
+			q_B[idx, :Channel] = B_data.chNames[1]
 		end
 	end
 	q_B
@@ -213,13 +220,16 @@ begin
 
 		if size(resp, 3) > 1
 			q_G[idx, :Response] = resp[1] 
+			q_G[idx, :Channel] = G_data.chNames[1]
 			for add_i in 2:size(resp,3)
 				added_row = deepcopy(q_G[idx, :])
 				added_row.Response = resp[add_i]
+				added_row.Channel = G_data.chNames[add_i]
 				push!(q_G, added_row)
 			end
 		else
 			q_G[idx, :Response] = resp[1]
+			q_G[idx, :Channel] = G_data.chNames[1]
 		end
 	end
 	q_G
@@ -235,8 +245,14 @@ ages = [11, 13, 30]
 # ╔═╡ 732cc6cc-d6bb-4632-8357-c108a1e79a62
 genotypes = ["WT", "RS1KO", "R141C"]
 
+# ╔═╡ beeacce0-0b91-4540-bf8c-91fb328ed51b
+components = ["Photoreceptor", "Bipolar", "Glial"]
+
 # ╔═╡ b30e73b4-fbba-4ed8-9021-051b51f10d3a
 colors = [:Black, :Purple, :Orange]
+
+# ╔═╡ 2d8c6f46-475a-4e57-9f69-b63edcd3b46d
+alignment = [:left, :bottom, :right]
 
 # ╔═╡ 13b294c3-d100-4cf5-981d-a98a463afa6f
 md"
@@ -291,25 +307,24 @@ end;
 begin
 	#Jordan wants responses from the raw data traces as well\
 	fig_WT11abg = plot(data_WT11abg, c = colors[1],
-		ylims = (-60, 10), xlims = (-0.2, 1.0), ylabels = "No Drugs \n Response (μV)"
+		ylims = (-60, 10), xlims = (-0.2, 1.0), 
+		ylabels = "No Drugs \n Response (μV)",
+		title = ["WT" "" ""]
 	)
-	plot!([0, 1], [NaN, NaN], label = "WT", c = colors[1])
-	plot!([0, 1], [NaN, NaN], label = "RS1KO", c = colors[2])
-	plot!([0, 1], [NaN, NaN], label = "R141C", c = colors[3], legend = :bottomright)
 	fig_RS1KO11abg = plot(data_RS1KO11abg, c = colors[2],
-		ylims = (-60, 10), xlims = (-0.2, 1.0), ylabels = ""
+		ylims = (-60, 10), xlims = (-0.2, 1.0), ylabels = "", 
+		title = ["RS1KO" "" ""]
 	)
 	fig_R141C11abg = plot(c = colors[3],
-		ylims = (-60, 10), xlims = (-0.2, 1.0), ylabel = ""
+		ylims = (-60, 10), xlims = (-0.2, 1.0), ylabels = "", 
+		title = ["R141C" "" ""]
 	)
 	
 	
 	fig_WT11ab = plot(data_WT11AB, c = colors[1], 
-		ylims = (-60, 10), xlims = (-0.2, 1.0), ylabels = "BaCl₂ added \n Response (μV)"
+		ylims = (-60, 10), xlims = (-0.2, 1.0), 
+		ylabels = "BaCl₂ added \n Response (μV)"
 	)
-	plot!([0, 1], [NaN, NaN], label = "WT", c = colors[1])
-	plot!([0, 1], [NaN, NaN], label = "RS1KO", c = colors[2])
-	plot!([0, 1], [NaN, NaN], label = "R141C", c = colors[3], legend = :bottomright)
 	fig_RS1KO11ab = plot(data_RS1KO11AB, c = colors[2], 
 		ylims = (-60, 10), xlims = (-0.2, 1.0), ylabels = ""
 	)
@@ -318,11 +333,9 @@ begin
 	)
 	
 	fig_WT11a_raw = plot(data_WT11a, c = colors[1], 
-		ylims = (-60, 10), xlims = (-0.2, 1.0), ylabels = "L-AP4 added \n Response (μV)"
+		ylims = (-60, 10), xlims = (-0.2, 1.0), 
+		ylabels = "L-AP4 added \n Response (μV)"
 	)
-	plot!([0, 1], [NaN, NaN], label = "WT", c = colors[1])
-	plot!([0, 1], [NaN, NaN], label = "RS1KO", c = colors[2])
-	plot!([0, 1], [NaN, NaN], label = "R141C", c = colors[3], legend = :bottomright)
 	
 	fig_RS1KO11a_raw = plot(data_RS1KO11a, c = colors[2], 
 		ylims = (-50, 10), xlims = (-0.2, 1.0), ylabels = ""
@@ -349,24 +362,25 @@ savefig(fig_P11_raw, "E:\\Projects\\2021_Retinoschisis\\fig1_P11_raw.png")
 # ╔═╡ 3bbcf31c-2e79-44fc-b896-2d88636ab0c6
 begin	
 	fig_WT11a = plot(data_WT11a, c = colors[1],
-		ylims = (-50, 10), xlims = (-0.2, 1.0), ylabels = "Photoreceptor \n Response (μV)"
+		ylims = (-50, 10), xlims = (-0.2, 1.0), 
+		ylabels = "Photoreceptor \n Response (μV)", 
+		title = ["WT" "" ""]
 	)
-	plot!([0, 1], [NaN, NaN], label = "WT", c = colors[1])
-	plot!([0, 1], [NaN, NaN], label = "RS1KO", c = colors[2])
-	plot!([0, 1], [NaN, NaN], label = "R141C", c = colors[3], legend = :bottomright)
+
 	fig_RS1KO11a = plot(data_RS1KO11a, c = colors[2],
-	ylims = (-50, 10), xlims = (-0.2, 1.0), ylabels = "")
+		ylims = (-50, 10), xlims = (-0.2, 1.0), ylabels = "", 
+		title = ["RS1KO" "" ""]
+	)
 	fig_R141C11a = plot(c = colors[3],
-		ylims = (-50, 10), xlims = (-0.2, 1.0), ylabel = ""
+		ylims = (-50, 10), xlims = (-0.2, 1.0), ylabel = "", 
+		title = ["R141C" "" ""]
 	)
 	
 	
 	fig_WT11b = plot(data_WT11B, c = colors[1], 
 		ylims = (-50, 10), xlims = (-0.2, 1.0), ylabels = "Bipolar \n Response (μV)"
 	)
-	plot!([0, 1], [NaN, NaN], label = "WT", c = colors[1])
-	plot!([0, 1], [NaN, NaN], label = "RS1KO", c = colors[2])
-	plot!([0, 1], [NaN, NaN], label = "R141C", c = colors[3], legend = :bottomright)
+
 	fig_RS1KO11b = plot(data_RS1KO11B, c = colors[2], 
 		ylims = (-50, 10), xlims = (-0.2, 1.0), ylabels = ""
 	)
@@ -377,9 +391,7 @@ begin
 	fig_WT11g = plot(data_WT11g, c = colors[1], 
 		ylims = (-30, 50), xlims = (-0.2, 1.0), ylabels = "Glial \n Response (μV)"
 	)
-	plot!([0, 1], [NaN, NaN], label = "WT", c = colors[1])
-	plot!([0, 1], [NaN, NaN], label = "RS1KO", c = colors[2])
-	plot!([0, 1], [NaN, NaN], label = "R141C", c = colors[3], legend = :topright)
+
 	fig_RS1KO11g = plot(data_RS1KO11g, c = colors[2], 
 		ylims = (-30, 50), xlims = (-0.2, 1.0), ylabels = ""
 	)
@@ -458,25 +470,26 @@ end
 begin
 	#Jordan wants responses from the raw data traces as well\
 	fig_WT13abg = plot(data_WT13abg, c = colors[1],
-		ylims = (-250, 10), xlims = (-0.2, 2.0), ylabels = "No Drugs \n Response (μV)"
+		ylims = (-250, 10), xlims = (-0.2, 2.0), 
+		ylabels = "No Drugs \n Response (μV)", 
+		title = ["WT" "" ""]
 	)
-	plot!([0, 1], [NaN, NaN], label = "WT", c = colors[1])
-	plot!([0, 1], [NaN, NaN], label = "RS1KO", c = colors[2])
-	plot!([0, 1], [NaN, NaN], label = "R141C", c = colors[3], legend = :bottomright)
 	fig_RS1KO13abg = plot(data_RS1KO13abg, c = colors[2],
-		ylims = (-250, 10), xlims = (-0.2, 2.0), ylabels = ""
+		ylims = (-250, 10), xlims = (-0.2, 2.0), ylabels = "", 
+		title = ["RS1KO" "" ""]
 	)
 	fig_R141C13abg = plot(c = colors[3],
-		ylims = (-250, 10), xlims = (-0.2, 2.0), ylabel = ""
+		ylims = (-250, 10), xlims = (-0.2, 2.0), 
+		ylabel = "", xlabel = "Time (Sec)", 
+		grid = false,
+		title = ["R141C" "" ""]
 	)
 	
 	
 	fig_WT13ab = plot(data_WT13AB, c = colors[1], 
-		ylims=(-200, 200), xlims=(-0.2, 2.0), ylabels = "BaCl₂ added \n Response (μV)"
+		ylims=(-200, 200), xlims=(-0.2, 2.0), 
+		ylabels = "BaCl₂ added \n Response (μV)"
 	)
-	plot!([0, 1], [NaN, NaN], label = "WT", c = colors[1])
-	plot!([0, 1], [NaN, NaN], label = "RS1KO", c = colors[2])
-	plot!([0, 1], [NaN, NaN], label = "R141C", c = colors[3], legend = :bottomright)
 	fig_RS1KO13ab = plot(data_RS1KO13AB, c = colors[2], 
 		ylims = (-200, 200), xlims = (-0.2, 2.0), ylabels = ""
 	)
@@ -485,11 +498,9 @@ begin
 	)
 	
 	fig_WT13a_raw = plot(data_WT13a, c = colors[1], 
-		ylims = (-200, 10), xlims = (-0.2, 2.0), ylabels = "L-AP4 added \n Response (μV)"
+		ylims = (-200, 10), xlims = (-0.2, 2.0), 
+		ylabels = "L-AP4 added \n Response (μV)"
 	)
-	plot!([0, 1], [NaN, NaN], label = "WT", c = colors[1])
-	plot!([0, 1], [NaN, NaN], label = "RS1KO", c = colors[2])
-	plot!([0, 1], [NaN, NaN], label = "R141C", c = colors[3], legend = :bottomright)
 	
 	fig_RS1KO13a_raw = plot(data_RS1KO13a, c = colors[2], 
 		ylims = (-200, 10), xlims = (-0.2, 2.0), ylabels = ""
@@ -516,45 +527,42 @@ savefig(fig_P13_raw, "E:\\Projects\\2021_Retinoschisis\\fig3_P13_Raw.png")
 # ╔═╡ 30eded5c-acba-43e2-b4cc-fd0e7a8d3b90
 begin
 	fig_WT13a = plot(data_WT13a, c= colors[1], 
-		ylims = (-175, 10), xlims = (-0.2, 2.0), ylabels = "Photoreceptor \n Response (μV)"
+		ylims = (-175, 10), xlims = (-0.2, 2.0), 
+		ylabels = "Photoreceptor \n Response (μV)", 
+		title = ["WT" "" ""]
 	)
-	plot!([0, 1], [NaN, NaN], label = "WT", c = colors[1])
-	plot!([0, 1], [NaN, NaN], label = "RS1KO", c = colors[2])
-	plot!([0, 1], [NaN, NaN], label = "R141C", c = colors[3], legend = :bottomright)
 	
 	fig_RS1KO13a = plot(data_RS1KO13a, c = colors[2], 
-		ylims = (-175, 10), xlims = (-0.2, 2.0), ylabels = ""
+		ylims = (-175, 10), xlims = (-0.2, 2.0), ylabels = "", 
+		title = ["RS1KO" "" ""]
 	)	
 	fig_R141C13a = plot(data_R141C13a, c = colors[3], 
-		ylims = (-175, 10), xlims = (-0.2, 2.0), ylabels = ""
+		ylims = (-175, 10), xlims = (-0.2, 2.0), ylabels = "", 
+		title = ["R141C" "" ""]
 	)
 	
 	
 	fig_WT13b = plot(data_WT13b, c= colors[1], 
-		ylims = (-20, 300), xlims = (-0.2, 2.0), ylabels = "Bipolar \n Response (μV)"
+		ylims = (-100, 300), xlims = (-0.2, 2.0), ylabels = "Bipolar \n Response (μV)"
 	)
-	plot!([0, 1], [NaN, NaN], label = "WT", c = colors[1])
-	plot!([0, 1], [NaN, NaN], label = "RS1KO", c = colors[2])
-	plot!([0, 1], [NaN, NaN], label = "R141C", c = colors[3], legend = :topright)
 	
 	fig_RS1KO13b = plot(data_RS1KO13b, c = colors[2], 
-		ylims = (-20, 300), xlims = (-0.2, 2.0), ylabels = ""
+		ylims = (-100, 300), xlims = (-0.2, 2.0), ylabels = ""
 	)	
 	fig_R141C13b = plot(data_R141C13b, c = colors[3], 
-		ylims = (-20, 300), xlims = (-0.2, 2.0), ylabels = ""
+		ylims = (-100, 300), xlims = (-0.2, 2.0), ylabels = ""
 	)
 	
 	fig_WT13g = plot(data_WT13g, c= colors[1], 
 		ylims = (-300, 20), xlims = (-0.2, 2.0), ylabels = "Glial \n Response (μV)"
 	)
-	plot!([0, 1], [NaN, NaN], label = "WT", c = colors[1])
-	plot!([0, 1], [NaN, NaN], label = "RS1KO", c = colors[2])
-	plot!([0, 1], [NaN, NaN], label = "R141C", c = colors[3], legend = :bottomright)
+
 	fig_RS1KO13g = plot(data_RS1KO13g, c = colors[2], 
 		ylims = (-300, 20), xlims = (-0.2, 2.0), ylabels = ""
 	)	
-	fig_R141C13g = plot(c = colors[3], 
-		ylims = (-300, 20), xlims = (-0.2, 2.0), ylabel = ""
+	fig_R141C13g = plot([0.0], [0.0], c = colors[3], 
+		ylims = (-300, 20), xlims = (-0.2, 2.0), label = "",
+		ylabel = "", xlabel = "Time (sec)", grid = false
 	)
 	
 	title_card_13 = plot(
@@ -635,27 +643,27 @@ end;
 
 # ╔═╡ 46221bae-3b05-4a2e-a9af-7ead4d24e6dc
 begin
-	#Jordan wants responses from the raw data traces as well\
 	fig_WT30abg = plot(c = colors[1],
-		ylims=(-300,100), xlims=(-0.2, 2.0), ylabels = "No Drugs \n Response (μV)"
+		ylims=(-300,100), xlims=(-0.2, 2.0), 
+		ylabel = "No Drugs \n Response (μV)", xlabel = "Time (sec)", grid = false,
+		title = ["WT" "" ""]
 	)
-	plot!([0, 1], [NaN, NaN], label = "WT", c = colors[1])
-	plot!([0, 1], [NaN, NaN], label = "RS1KO", c = colors[2])
-	plot!([0, 1], [NaN, NaN], label = "R141C", c = colors[3], legend = :bottomright)
+
 	fig_RS1KO30abg = plot(data_RS1KO30abg, c = colors[2],
-		ylims=(-300, 100), xlims=(-0.2,2.0), ylabels = ""
+		ylims=(-300, 100), xlims=(-0.2,2.0), ylabels = "", 
+		title = ["RS1KO" "" ""]
 	)
 	fig_R141C30abg = plot(data_R141C30abg,c = colors[3],
-		ylims=(-300, 100), xlims=(-0.2,2.0), ylabel = ""
+		ylims=(-300, 100), xlims=(-0.2,2.0), ylabel = "", 
+		title = ["R141C" "" ""]
 	)
 	
 	
 	fig_WT30ab = plot(data_WT30AB, c = colors[1], 
-		ylims=(-1000,2000), xlims=(-0.2, 2.0), ylabels="BaCl₂ added \n Response (μV)"
+		ylims=(-1000,2000), xlims=(-0.2, 2.0), 
+		ylabels="BaCl₂ added \n Response (μV)"
 	)
-	plot!([0, 1], [NaN, NaN], label = "WT", c = colors[1])
-	plot!([0, 1], [NaN, NaN], label = "RS1KO", c = colors[2])
-	plot!([0, 1], [NaN, NaN], label = "R141C", c = colors[3], legend = :topright)
+
 	fig_RS1KO30ab = plot(data_RS1KO30AB, c = colors[2], 
 		ylims=(-1000,2000),  xlims = (-0.2, 2.0), ylabels = ""
 	)
@@ -664,11 +672,10 @@ begin
 	)
 	
 	fig_WT30a_raw = plot(data_WT30a, c = colors[1], 
-		ylims = (-750, 10), xlims = (-0.2, 2.0), ylabels = "L-AP4 added \n Response (μV)"
+		ylims = (-750, 10), xlims = (-0.2, 2.0), 
+		ylabels = "L-AP4 added \n Response (μV)"
 	)
-	plot!([0, 1], [NaN, NaN], label = "WT", c = colors[1])
-	plot!([0, 1], [NaN, NaN], label = "RS1KO", c = colors[2])
-	plot!([0, 1], [NaN, NaN], label = "R141C", c = colors[3], legend = :bottomright)
+
 	
 	fig_RS1KO30a_raw = plot(data_RS1KO30a, c = colors[2], 
 		ylims = (-750, 10), xlims = (-0.2, 2.0), ylabels = ""
@@ -695,40 +702,39 @@ savefig(fig_P30_raw, "E:\\Projects\\2021_Retinoschisis\\fig5_P30_raw.png")
 # ╔═╡ bace4d09-5bf0-41b4-ae85-87ed100e487c
 begin	
 	fig_WT30a = plot(data_WT30a, c= colors[1], 
-		ylims=(-750, 10), xlims=(-0.2, 2.0), ylabels="Photoreceptor \n Response (μV)"
+		ylims=(-750, 10), xlims=(-0.2, 2.0), 
+		ylabels="Photoreceptor \n Response (μV)", 
+		title = ["WT" "" ""]
 	)
-	plot!([0, 1], [NaN, NaN], label = "WT", c = colors[1])
-	plot!([0, 1], [NaN, NaN], label = "RS1KO", c = colors[2])
-	plot!([0, 1], [NaN, NaN], label = "R141C", c = colors[3], legend = :bottomright)
 	
 	fig_RS1KO30a = plot(data_RS1KO30a, c = colors[2], 
-		ylims=(-750, 10), xlims = (-0.2, 2.0), ylabels = ""
+		ylims=(-750, 10), xlims = (-0.2, 2.0), ylabels = "",
+		title = ["RS1KO" "" ""]
 	)	
 	fig_R141C30a = plot(data_R141C30a, c = colors[3], 
-		ylims=(-750, 10), xlims = (-0.2, 2.0), ylabels = ""
+		ylims=(-750, 10), xlims = (-0.2, 2.0), ylabels = "",
+		title = ["R141C" "" ""]
 	)
 	
 	
 	fig_WT30b = plot(data_WT30b, c= colors[1], 
-		ylims=(-100, 2000), xlims=(-0.2, 2.0), ylabels = "Bipolar \n Response (μV)"
+		ylims=(-300, 2000), xlims=(-0.2, 2.0), 
+		ylabels = "Bipolar \n Response (μV)"
 	)
-	plot!([0, 1], [NaN, NaN], label = "WT", c = colors[1])
-	plot!([0, 1], [NaN, NaN], label = "RS1KO", c = colors[2])
-	plot!([0, 1], [NaN, NaN], label = "R141C", c = colors[3], legend = :topright)
 	
 	fig_RS1KO30b = plot(data_RS1KO30b, c = colors[2], 
-		ylims = (-100, 2000), xlims = (-0.2, 2.0), ylabels = ""
+		ylims = (-300, 2000), xlims = (-0.2, 2.0), ylabels = ""
 	)	
 	fig_R141C30b = plot(data_R141C30b, c = colors[3], 
-		ylims = (-50, 2000), xlims = (-0.2, 2.0), ylabels = ""
+		ylims = (-300, 2000), xlims = (-0.2, 2.0), ylabels = ""
 	)
 	
 	fig_WT30g = plot( c= colors[1], 
-		ylims=(-300, 100), xlims=(-0.2, 2.0), ylabels = "Glial \n Response (μV)"
+		ylims=(-300, 100), xlims=(-0.2, 2.0), 
+		xlabel = "Time (sec)", grid = false,
+		ylabel = "Glial \n Response (μV)"
 	)
-	plot!([0, 1], [NaN, NaN], label = "WT", c = colors[1])
-	plot!([0, 1], [NaN, NaN], label = "RS1KO", c = colors[2])
-	plot!([0, 1], [NaN, NaN], label = "R141C", c = colors[3], legend = :bottomright)
+
 	fig_RS1KO30g = plot(data_RS1KO30g, c = colors[2], 
 		ylims=(-300, 100), xlims=(-0.2, 2.0), ylabels = ""
 	)	
@@ -737,7 +743,7 @@ begin
 	)
 	
 	title_card_30 = plot(
-			title = "Fig3: P30 Subtracted Responses", titlefontsize = 15,
+			title = "Fig6: P30 Subtracted Responses", titlefontsize = 15,
 			grid = false, showaxis = false, ticks = false)
 	
 	fig_P30 = plot(
@@ -758,6 +764,9 @@ md"
 ## Developing IR curves
 "
 
+# ╔═╡ 045f9d4b-342b-48dc-88bc-b15c795cdc29
+IR_params = DataFrame(XLSX.readtable(param_file, "IR")...)
+
 # ╔═╡ 39152bf6-3ae3-4bc2-a062-0d96b9e4c1d3
 #Photoreceptors
 
@@ -765,14 +774,22 @@ md"
 begin 
 	ylims_a = [
 		(0.0, 60.0),
-		(0.0, 200.0), 
-		(0.0, 1000.0)
+		(0.0, 600.0), 
+		(0.0, 2000.0)
 	]
-	ih_a = [20.0, 40.0, 400.0]
+	offset_y_A = [[-2.0, -2.0, -2.0] [-12.0,-8.0,-8.0] [-35.0,-35.0,-35.0]]
+	ann_o_A = [[:right, :left, :bottom] [:top, :right, :left] [:right, :left, :top]]
 	plt_fig_A = plot(layout = grid(length(ages),1))
 	for (idx, p) in enumerate(ages)
 		for (idx_g, g) in enumerate(genotypes)
-			println("Analyzing data for age : $p genotype: $g")
+			#Extract the params from the datafile			
+			println("Analyzing Photoreceptor data for age : $p genotype: $g")
+			params = IR_params |> 
+				@filter(_.Age == p && _.Genotype == g) |> 
+				@filter(_.Component == "Photoreceptor") |> 
+				DataFrame
+			p0 = Float64[params.Ih[1], params.n[1], params.Rmax[1]]
+
 			if p == 30
 				q_section = q_A |> 
 					@filter(_.Age >= p && _.Genotype == g) |> 
@@ -784,7 +801,7 @@ begin
 					@filter(_.Photons != 0) |> 
 					DataFrame
 			end
-			println(q_section)
+			
 			if !isempty(q_section)
 				#Lets extract average and SEM values for the photons
 				avg_resp = []
@@ -802,12 +819,14 @@ begin
 				@df q_section plot!(plt_fig_A[idx], 
 					:Photons, :Response, 
 					st = :scatter, c = colors[idx_g], xaxis = :log, label = "")
+				#Grab the xticks from the plot
+				old_xticks = xticks(plt_fig_A[idx])
 				fit_sect = NeuroPhys.curve_fit(model, 
-					q_section.Photons, q_section.Response,
-					[ih_a[idx], 4.0, 50.0], 
-					lower = [0.01, 0.01, 0.0]
+					q_section.Photons, q_section.Response, p0, 
+					lower = [0.01, 0.01, 0.0], upper = [Inf, Inf, params.Rmax_max[1]]
 				)
-				fit_points = LinRange(0.2, 1e5, 1000000)
+				println(fit_sect.param)
+				fit_points = LinRange(0.2, 1e4, 1000000)
 				plot!(plt_fig_A[idx], x -> model(x, fit_sect.param), fit_points, 
 					c = colors[idx_g], 
 					label = "$g", legend = :topleft, 
@@ -826,18 +845,31 @@ begin
 					st = :scatter, marker = :+, label = "",
 					c = colors[idx_g], yerror = sem_resp
 				)
-				#Plot the iH
+				#Plot the iH	
 				plot!(plt_fig_A[idx], 
 					[fit_sect.param[1], fit_sect.param[1]], 
 					[0.0, model(fit_sect.param[1], fit_sect.param)],
 					c = colors[idx_g], linestyle = :dash,
-					label = "ih=1e$(round(log(fit_sect.param[1]), digits = 2))")
+					#xticks = new_xticks,
+					annotation = [
+						(
+							fit_sect.param[1], 
+							offset_y_A[idx_g, idx], 
+							text(
+								"$(round(fit_sect.param[1], digits = 2))", 
+								colors[idx_g], ann_o_A[idx_g, idx], 8
+							)
+						)
+						],
+					label = ""
+				)
 			else
 				println("Empty section")
 			end
 		end
 	end
-end;
+	#plt_fig_A
+end
 
 # ╔═╡ 381bbec1-8c4a-4f72-93a5-8bbffd79877b
 #Bipolar Cells
@@ -850,13 +882,19 @@ begin
 		(0.0, 2000.0)
 	]
 	#B_wave starting amplitudes
-	ih_b = [100.0, 40.0, 40.0]
-	rmax_b = [Inf, 600.0, Inf]
 	#isolate unique ages
+	offset_y_B = [[-2.0, -2.0, -2.0] [-18.0,-29.0,-18.0] [-50.0,-50.0,-50.0]]
+	ann_o_B = [[:left, :right, :bottom] [:right, :top, :left] [:right, :right, :left]]
 	plt_fig_B = plot(layout = grid(length(ages),1))
 	for (idx, p) in enumerate(ages)
 		for (idx_g, g) in enumerate(genotypes)
-			println("Analyzing data for age : $p genotype: $g")			
+			println("Analyzing Bipolar data for age : $p genotype: $g")	
+			params = IR_params |> 
+				@filter(_.Age == p && _.Genotype == g) |> 
+				@filter(_.Component == "Bipolar") |> 
+				DataFrame
+			p0 = Float64[params.Ih[1], params.n[1], params.Rmax[1]]
+			
 			if p == 30
 				q_section = q_B |> 
 					@filter(_.Age >= p && _.Genotype == g) |> 
@@ -870,7 +908,7 @@ begin
 					@filter(_.Photons != 0.0) |> 
 					DataFrame
 			end
-			println(q_section)
+
 			#now we can walk through each file of q_i
 			if !isempty(q_section)
 				#This prints every response
@@ -878,13 +916,14 @@ begin
 					:Photons, :Response, 
 					st = :scatter, c = colors[idx_g], xaxis = :log, label = "")
 				fit_sect = NeuroPhys.curve_fit(model, 
-					q_section.Photons, q_section.Response,
-					[ih_b[idx], 4.0, 50.0], 
-					lower = [0.01, 0.01, 0.0], upper = [Inf, Inf, rmax_b[idx]]
+					q_section.Photons, q_section.Response, p0, 
+					lower = [0.01, 0.01, 0.0], upper = [Inf, Inf, params.Rmax_max[1]]
 				)
-				fit_points = LinRange(0.2, 1e5, 1000000)
+				println(fit_sect.param)
+				
+				fit_points = LinRange(0.2, 1e4, 1000000)
 				plot!(plt_fig_B[idx], 
-					x -> model(x, fit_sect.param), LinRange(0.2, 1e5, 1000000), 
+					x -> model(x, fit_sect.param), fit_points, 
 					c = colors[idx_g], lw = 3.0,
 					label = "$g", legend = :topleft, 
 					xaxis = :log, 
@@ -915,11 +954,23 @@ begin
 					[fit_sect.param[1], fit_sect.param[1]], 
 					[0.0, model(fit_sect.param[1], fit_sect.param)],
 					c = colors[idx_g], linestyle = :dash,
-					label = "ih=1e$(round(log(fit_sect.param[1]), digits = 2))")
+					annotation = [
+						(
+							fit_sect.param[1], 
+							offset_y_B[idx_g, idx], 
+							text(
+								"$(round(fit_sect.param[1], digits = 2))", 
+								colors[idx_g], ann_o_B[idx_g, idx], 8
+							)
+						)
+						],
+					label = ""
+				)
 			end
 		end
 	end
-end;
+	#plt_fig_B
+end
 
 # ╔═╡ 41843f02-6fca-4367-bbfd-a1a03039429a
 #Glial Cells
@@ -931,13 +982,20 @@ begin
 		(0.0, 600.0), 
 		(0.0, 2000.0)
 	]
-	ih_g = [20.0, 40.0, 20.0]
-	rmax_g = [Inf, 600.0, Inf]
 	#isolate unique ages
+	offset_y_G =  [[-2.0, -2.0, -2.0] [-20.0,-20.0,-20.0] [-50.0,-50.0,-50.0]]
+	ann_o_G = [[:right, :left, :bottom] [:right, :left, :bottom] [:left, :right, :left]]
 	plt_fig_G = plot(layout = grid(length(ages),1))
 	for (idx, p) in enumerate(ages)
 		for (idx_g, g) in enumerate(genotypes)
-			println("Analyzing data for age : $p genotype: $g")
+			println("Analyzing Glial data for age : $p genotype: $g")
+			
+			params = IR_params |> 
+				@filter(_.Age == p && _.Genotype == g) |> 
+				@filter(_.Component == "Bipolar") |> 
+				DataFrame
+			p0 = Float64[params.Ih[1], params.n[1], params.Rmax[1]]
+			
 			q_section = q_G |> 
 				@filter(_.Age == p && _.Genotype == g) |> 
 				DataFrame
@@ -947,11 +1005,11 @@ begin
 					:Photons, :Response, 
 					st = :scatter, c = colors[idx_g], xaxis = :log, label = "")
 				fit_sect = NeuroPhys.curve_fit(model, 
-					q_section.Photons, q_section.Response,
-					[ih_g[idx], 4.0, 50.0], 
-					lower = [0.01, 0.01, 0.0], upper = [Inf, Inf, rmax_g[idx]]
+					q_section.Photons, q_section.Response,p0, 
+					lower = [0.01, 0.01, 0.0], upper = [Inf, Inf, params.Rmax_max[1]]
 				)
-				fit_points = LinRange(0.2, 1e5, 1000000)
+				println(fit_sect.param)
+				fit_points = LinRange(0.2, 1e4, 1000000)
 				plot!(plt_fig_G[idx], x -> model(x, fit_sect.param), fit_points, 
 					c = colors[idx_g], label = "$g", legend = :topleft, 
 					lw = 3.0,
@@ -981,14 +1039,26 @@ begin
 					c = colors[idx_g], yerror = sem_resp
 				)
 				plot!(plt_fig_G[idx], 
-					[fit_sect.param[1], fit_sect.param[1]], 
-					[0.0, model(fit_sect.param[1], fit_sect.param)],
-					c = colors[idx_g], linestyle = :dash,
-					label = "ih=1e$(round(log(fit_sect.param[1]), digits = 2))")
+						[fit_sect.param[1], fit_sect.param[1]], 
+						[0.0, model(fit_sect.param[1], fit_sect.param)],
+						c = colors[idx_g], linestyle = :dash,
+						annotation = [
+							(
+								fit_sect.param[1], 
+								offset_y_G[idx_g, idx], 
+								text(
+									"$(round(fit_sect.param[1], digits = 2))", 
+									colors[idx_g], ann_o_G[idx_g, idx], 8
+								)
+							)
+							],
+						label = ""
+					)
 			end
 		end
 	end
-end;
+	#plt_fig_G
+end
 
 # ╔═╡ cfc6cc06-3771-42b1-9eb1-c135bdad33e1
 begin
@@ -996,7 +1066,7 @@ begin
 		plt_fig_A, plt_fig_B, plt_fig_G, 
 		layout = (1,3), size = (1700,1000), dpi = 500, 
 		bottommargin = 5Plots.mm,
-		leftmargin = 5Plots.mm
+		leftmargin = 10Plots.mm
 	)
 end
 
@@ -1045,46 +1115,59 @@ begin
 		DataFrame
 end
 
-# ╔═╡ 870eb605-923a-4c78-8646-4ab90d714d71
+# ╔═╡ cf602b1a-5ffc-4e39-aa96-7ca296c77ca4
+SENS_params = DataFrame(XLSX.readtable(param_file, "Sensitivity")...)
+
+# ╔═╡ b0bd9be1-e23d-48dc-a97c-2b202b391443
+begin
+	offset_y_AB=[[2.0, 1.0, 2.0] [10.0,10.0,10.0] [10.0,50.0,10.0]]
+	ann_o_AB=[[:left, :right, :bottom] [:top, :right, :left] [:left, :left, :left]]
+	offset_y_AG=[[1.0, 1.0, 1.0] [1.0,1.0,1.0] [1.0,1.0,1.0]]
+	ann_o_AG=[[:right, :left, :bottom] [:right, :left, :bottom] [:left, :right, :left]]
+	offset_y_BG=[[1.0, 1.0, 1.0] [1.0,1.0,1.0] [1.0,1.0,1.0]]
+	ann_o_BG=[[:right, :left, :bottom] [:right, :left, :bottom] [:left, :left, :left]]
+end;
+
+# ╔═╡ ae397dbf-7729-4aeb-a6d1-8dd3e18bb3b2
 begin
 	#We can use the same model to fit the data
-	fig_sens = plot(layout = grid(length(ages),3), 
-		size = (1000, 1000), dpi = 500, grid = false
-	)
+	fig_sens_AB = plot(layout = grid(length(ages),1), grid = false)
 	for (idx, p) in enumerate(ages), (idx_g, g) in enumerate(genotypes)
 		println(p, g)
 		q_SENab = q_BxA |> @filter(_.Genotype == g && _.Age == p) |> DataFrame
-		q_SENga = q_GxA |> @filter(_.Genotype == g && _.Age == p) |> DataFrame
-		q_SENbg = q_BxG |> @filter(_.Genotype == g && _.Age == p) |> DataFrame
+		
+		#Lets extract the parameters
+		params = SENS_params |> 
+			@filter(_.Age == p&&_.Genotype==g&&_.Component == "Photoreceptor") |> 				DataFrame
+
 		
 		if !isempty(q_SENab)
 			if p == 11
-				p0 = [6.0, 4.0, 100.0]
 				fit_range = LinRange(1.0, 100, 10000)
 				ylims = (1.0, 100.0)
 				xlims = (1.0, 30.0)
 			elseif p == 13
-				p0 = [50.0, 4.0, 3000.0]
 				fit_range = LinRange(1.0, 3000, 10000)
 				ylims = (1.0, 10000.0)
 				xlims = (1.0, 300.0)
 			elseif p == 30
-				p0 = [100.0, 4.0, 3000.0]
 				fit_range = LinRange(1.0, 3000, 10000)
 				ylims = (1.0, 10000.0)
 				xlims = (1.0, 500.0)
 			end
-			
-			@df q_SENab plot!(fig_sens[idx, 1], :A_Response, :B_Response, 
-				st = :scatter, c = colors[idx_g], label = "$g",
+
+			@df q_SENab plot!(fig_sens_AB[idx], :A_Response, :B_Response, 
+				st = :scatter, c = colors[idx_g], label = "",
 			)
-			
-			fit_sens = curve_fit(model, q_SENab.A_Response, q_SENab.B_Response, p0,
-				lower = [0.01, 0.01, 0.01]
+			fit_sens = curve_fit(model, q_SENab.A_Response, q_SENab.B_Response, 
+				[params.Ih[1], params.n[1], params.Rmax[1]],
+				lower = [params.Ih_min[1], params.n_min[1], 0.0], 
+				upper = [params.Ih_max[1], Inf, params.Rmax_max[1]]
 			)
+			println(fit_sens.param)
 			
-			plot!(fig_sens[idx, 1], x -> model(x, fit_sens.param), fit_range, 
-				c = colors[idx_g], label = "", lw = 2.0,
+			plot!(fig_sens_AB[idx], x -> model(x, fit_sens.param), fit_range, 
+				c = colors[idx_g], label = "$g", lw = 2.0,
 				yaxis = :log, 
 				ylims = ylims, xlims = xlims, 
 				xlabel = "Photoreceptor Response(μV)", 
@@ -1092,123 +1175,173 @@ begin
 				title = p == 11 ? "Photoreceptor -> Bipolar" : ""
 			)
 			
-			if fit_sens.param[1] > 1000
-				#We need to display it in log units
-				ih = "10^$(round(log(fit_sens.param[1]), digits = 2)) μV"
-			else
-				ih = "$(round(fit_sens.param[1], digits = 2)) μV"
-			end
-			
-			plot!(fig_sens[idx,1], 
+			plot!(fig_sens_AB[idx], 
 				[fit_sens.param[1], fit_sens.param[1]], 
 				[1.0, model(fit_sens.param[1], fit_sens.param)],
 				c = colors[idx_g], linestyle = :dash,
-				label = "ih = $ih", 
+				annotation = (
+					fit_sens.param[1], 
+					offset_y_AB[idx_g, idx], 
+					text("$(round(fit_sens.param[1], digits = 2))", 
+						ann_o_AB[idx_g, idx], colors[idx_g], 8
+						),
+				),
+				label = "",
 				legend = :bottomright
 			)
 		end
+	end
+	#fig_sens_AB
+end
+
+# ╔═╡ a135a7a6-0dbf-45a6-9504-370cd9528a61
+begin
+	#We can use the same model to fit the data
+	fig_sens_AG = plot(layout = grid(length(ages),1), grid = false)
+	for (idx, p) in enumerate(ages), (idx_g, g) in enumerate(genotypes)
+		println(p, g)
+		q_SENga = q_GxA |> @filter(_.Genotype == g && _.Age == p) |> DataFrame
+
+
+		params = SENS_params |> 
+			@filter(_.Age == p && _.Genotype == g && _.Component == "Glial") |> 				DataFrame
+
 		if !isempty(q_SENga)
 			if p == 11
-				p0 = [10.0, 4.0, 1000.0]
 				fit_range = LinRange(1.0, 1000, 10000)
 				ylims = (1.0, 100.0)
 				xlims = (1.0, 40.0)
 			elseif p == 13
-				p0 = [100.0, 4.0, 1000.0]
 				fit_range = LinRange(1.0, 1000, 10000)
 				ylims = (1.0, 1000.0)
 				xlims = (1.0, 250.0)
 			elseif p == 30
-				p0 = [100.0, 4.0, 1000.0]
 				fit_range = LinRange(1.0, 3000, 10000)
 				ylims = (1.0, 1000.0)
 				xlims = (1.0, 200.0)
 			end
-			
-			@df q_SENga plot!(fig_sens[idx, 2], :A_Response, :G_Response, 
-				st = :scatter, c = colors[idx_g], label = "$g",
+
+			@df q_SENga plot!(fig_sens_AG[idx], :A_Response, :G_Response, 
+				st = :scatter, c = colors[idx_g], label = "",
 			)
-			fit_sens = curve_fit(model, q_SENga.A_Response, q_SENga.G_Response, p0,
-				lower = [0.01, 0.01, 0.01]
+			fit_sens = curve_fit(model, q_SENga.A_Response, q_SENga.G_Response, 
+				[params.Ih[1], params.n[1], params.Rmax[1]],
+				lower = [params.Ih_min[1], params.n_min[1], 0.0], 
+				upper = [params.Ih_max[1], Inf, params.Rmax_max[1]]
 			)
-			
-			plot!(fig_sens[idx, 2], x -> model(x, fit_sens.param), fit_range, 
-				c = colors[idx_g], label = "", lw = 2.0,
+
+			plot!(fig_sens_AG[idx], x -> model(x, fit_sens.param), fit_range, 
+				c = colors[idx_g], label = "$g", lw = 2.0,
 				yaxis = :log,
 				ylims = ylims, xlims = xlims,
 				xlabel = "Photoreceptor Response(μV)", 
 				ylabel = "Glial Response(μV)", 
 				title = p == 11 ? "Photoreceptor -> Glial" : ""
 			)
-			
-			if fit_sens.param[1] > 1000
-				#We need to display it in log units
-				ih = "10^$(round(log(fit_sens.param[1]), digits = 2)) μV"
-			else
-				ih = "$(round(fit_sens.param[1], digits = 2)) μV"
-			end
-			
-			plot!(fig_sens[idx,2], 
+
+			plot!(fig_sens_AG[idx], 
 				[fit_sens.param[1], fit_sens.param[1]], 
 				[1.0, model(fit_sens.param[1], fit_sens.param)],
 				c = colors[idx_g], linestyle = :dash,
-				label = "ih = $ih", 
+				annotation = (
+					fit_sens.param[1], 
+					offset_y_AG[idx_g, idx], 
+					text("$(round(fit_sens.param[1], digits = 2))", 
+						ann_o_AG[idx_g, idx], colors[idx_g], 8
+						),
+				),
+				label = "",
 				legend = :bottomright
 			)
-			
-		end
-		if !isempty(q_SENbg)
 
-			
+		end
+	end
+	#fig_sens_AG
+end
+
+# ╔═╡ 98d80e2a-5d1d-45b0-996b-02676b57dcbd
+begin
+	#We can use the same model to fit the data
+	fig_sens_BG = plot(layout = grid(length(ages),1), grid = false)
+	for (idx, p) in enumerate(ages), (idx_g, g) in enumerate(genotypes)
+		q_SENbg = q_BxG |> @filter(_.Genotype == g && _.Age == p) |> DataFrame
+		params = SENS_params |> 
+			@filter(_.Age == p && _.Genotype == g && _.Component == "Bipolar") |> 				DataFrame
+		if !isempty(q_SENbg)
 			if p == 11
-				p0 = [100.0, 4.0, 1000.0]
 				fit_range = LinRange(1.0, 1000, 10000)
 				ylims = (1.0, 100.0)
 				xlims = (1.0, 100.0)
 			elseif p == 13
-				p0 = [100.0, 4.0, 1000.0]
-				fit_range = LinRange(1.0, 1000, 10000)
-				ylims = (1.0, 300.0)
+				fit_range = LinRange(1.0, 300, 10000)
+				ylims = (1.0, 400.0)
 				xlims = (1.0, 300.0)
 			elseif p == 30
-				p0 = [100.0, 4.0, 1000.0]
-				fit_range = LinRange(1.0, 3000, 10000)
+				fit_range = LinRange(1.0, 300, 10000)
 				ylims = (1.0, 400.0)
-				xlims = (1.0, 400.0)
+				xlims = (1.0, 300.0)
 			end
-			@df q_SENbg plot!(fig_sens[idx, 3], :G_Response, :B_Response, 
+
+			@df q_SENbg plot!(fig_sens_BG[idx], :G_Response, :B_Response, 
 				st = :scatter, c = colors[idx_g], label = "$g",
 			)
-			fit_sens = curve_fit(model, q_SENbg.G_Response, q_SENbg.B_Response, p0,
-				lower = [0.01, 0.01, 0.01]
+			fit_sens = curve_fit(model, q_SENbg.G_Response, q_SENbg.B_Response, 
+				[params.Ih[1], params.n[1], params.Rmax[1]],
+				lower = [params.Ih_min[1], params.n_min[1], 0.0], 
+				upper = [params.Ih_max[1], Inf, params.Rmax_max[1]]
 			)
 			
-			plot!(fig_sens[idx, 3], x -> model(x, fit_sens.param), fit_range, 
+			plot!(fig_sens_BG[idx], x -> model(x, fit_sens.param), fit_range, 
 				c = colors[idx_g], label = "", lw = 2.0,
 				ylims = ylims, xlims = xlims,
 				xlabel = "Bipolar Response(μV)", 
 				ylabel = "Glial Response(μV)"
 			)
-			if fit_sens.param[1] > 1000
-				#We need to display it in log units
-				ih = "10^$(round(log(fit_sens.param[1]), digits = 2)) μV"
-			else
-				ih = "$(round(fit_sens.param[1], digits = 2)) μV"
-			end
 			
-			plot!(fig_sens[idx,3], 
+			plot!(fig_sens_BG[idx], 
 				[fit_sens.param[1], fit_sens.param[1]], 
 				[1.0, model(fit_sens.param[1], fit_sens.param)],
 				c = colors[idx_g], linestyle = :dash,
-				label = "ih = $ih", 
+				annotation = (
+					fit_sens.param[1], 
+					offset_y_BG[idx_g, idx], 
+					text("$(round(fit_sens.param[1], digits = 2))", 
+						ann_o_BG[idx_g, idx], colors[idx_g], 8
+						),
+				),
+				label = "",
 				title = p == 11 ? "Bipolar -> Glial" : ""
 			)
 			
 		end
 	end
-	fig_sens
-	#Wildtype data
-	#lets fit to an exponential function
+	fig_sens_BG
+end
+
+# ╔═╡ 9db3af68-13a4-48c8-b538-504da5b1f844
+begin
+	q_SEN = q_BxG |> @filter(_.Genotype == "RS1KO" && _.Age == 13) |> DataFrame
+	@df q_SEN plot(:B_Response, :G_Response, st = :scatter)
+	p0 = [20.0, 2.0, 200.0]
+	fit_range = LinRange(1.0, 400, 10000)
+	fit_sens = curve_fit(model, q_SEN.B_Response, q_SEN.G_Response, 
+		p0,
+		lower = [1.0, 0.0, 0.0], 
+		upper = [10000.0, Inf, 600.0]
+	)
+	println(fit_sens.param)
+	plot!(x -> model(x, fit_sens.param), fit_range)
+end
+
+# ╔═╡ 7e7d9dad-2f41-4257-991a-4834b16be76e
+begin
+	fig_sens = plot(
+			fig_sens_AB, 
+			fig_sens_AG, 
+			fig_sens_BG, 
+			layout = grid(1,3), size = (1000,1000), dpi = 500
+		
+		)
 end
 
 # ╔═╡ 5194bd10-4c1e-4260-b429-61aafa543015
@@ -1216,194 +1349,39 @@ savefig(fig_sens, "E:\\Projects\\2021_Retinoschisis\\fig8_Sensitivity_curves.png
 
 # ╔═╡ 9c5d9f09-927d-46f5-9100-fbec77a675c4
 md"
-## Investigating specific response
-### A-wave
+## Extracting records
 "
 
-# ╔═╡ cbd04c8d-cbe4-4b97-ba6c-057136582a1e
+# ╔═╡ b8315294-7a0d-490a-a556-70a6282757b2
 begin
-	#Pick a certain experiment to analyze
-	q_group_A = q_A |> 
-		@filter(_.Genotype == "RS1KO" && _.Age == 11) |>
-		@filter(_.Condition == "LAP4_BaCl" || _.Condition == "BaCl_LAP4")|>
-		#@filter(_.Photons > 10^2.5)|>	
-		#@filter(_.Response <= 175) |>	
-		DataFrame
-	#println(size(q_group_A))
-	fit_test_A = NeuroPhys.curve_fit(model, 
-		q_group_A.Photons, q_group_A.Response,
-		[100.0, 4.0, 50.0], 
-		lower = [0.01, 0.01, 0.0], upper = [Inf, Inf, Inf]
-	)	
-	fit_points_A = LinRange(0.2, 1e5, 1000000)
-	
-	
-	p1 = @df q_group_A plot(:Photons, :Response,
-		st = :scatter, xaxis = :log, c = colors[1]
-	)
-	plot!(p1, x -> model(x, fit_test_A.param), fit_points_A, c = colors[1])
-	
-	q_best = q_group_A |> 
-		@filter(_.Month == 10 && _.Date == 4 && _.Animal == 2) |> 
-		DataFrame
-	
-	@df q_best plot!(p1, :Photons, :Response,
-		st = :scatter, xaxis = :log, c = colors[3]
-	)
-	
-	exp_all = q_group_A[:, :Path]
-	data_all = extract_abf(String.(exp_all)) |> filter_data
-	p2 = plot(data_all, c = :black)
-	exp_target = q_group_A[argmax(q_group_A.Response), :Path]
-	data_tar = extract_abf(String.(exp_target)) |> filter_data
-	plot!(p2, data_tar, c = :red)
-	plot(p2, p1)
+q_A |> 
+	@unique({_.Year, _.Month, _.Date, _.Animal}) |> 
+	@filter(_.Genotype == "WT" && _.Age == 13)|>
+	DataFrame
+
+
+
 end
 
-# ╔═╡ 51cd1ecc-9597-403a-b349-50a3207f5ac4
-exp_target
-
-# ╔═╡ 0de3655d-a0cd-4aea-903b-16867c3260d9
-begin
-	files_to_check = q_group_A.Path
-	#purge files that are not found
-	for (idx, f) in enumerate(files_to_check)
-		print("File $idx of $(length(files_to_check))... ")
-		try 
-			extract_abf(f)
-			println("found.")
-		catch
-			println("missing.")
-				
-			#now we need to remove the file
-			#all_file_idx = all_files |> @filter(_.Path == f) |> DataFrame
-			#
-			all_file_idx = findall(all_files.Path .== f)
-			if !isempty(all_file_idx)
-				println("File removed")
-				delete!(all_files, all_file_idx[1])
-			end
-			q_A_idx = findall(q_A.Path .== f)
-			if !isempty(q_A_idx)
-				delete!(q_A, q_A_idx[1])
-			end
-		end
-	end
-end		
-
-# ╔═╡ dc2609d5-9402-49ad-ad1f-45492482bd8a
-md"
-### B-wave
-"
-
-# ╔═╡ da5a068f-98b3-4da0-877b-605f2491fcb4
-all_files
-
-# ╔═╡ eb8b2693-10ff-42dc-a330-8523674934b7
-begin
-	#Analyze the B-wave responses
-	q_group_B = q_B |> 
-		@filter(_.Genotype == "RS1KO" && _.Age == 13) |> 
-		@filter(_.Photons > 1e2) |>
-		DataFrame
-	fit_test_B = NeuroPhys.curve_fit(model, 
-		q_group_B.Photons, q_group_B.Response,
-		[40.0, 4.0, 50.0], 
-		lower = [10.0, 0.01, 0.0], upper = [Inf, Inf, Inf]
-	)
-	println(fit_test_B.param)
-	fit_points_B = LinRange(0.2, 1e5, 1000000)
-	
-	p2B = @df q_group_B plot(:Photons, :Response,
-		st = :scatter, xaxis = :log, c = colors[1]
-	)
-
-	plot!(p2B, x -> model(x, fit_test_B.param), fit_points_B, c = colors[1])
-	
-	exp_B = q_group_B[argmin(q_group_B.Response), [:A_Path, :AB_Path]]
-	A_data_i = extract_abf(exp_B.A_Path) |> filter_data
-	AB_data_i = extract_abf(exp_B.AB_Path) |> filter_data
-	match_ch= findall(A_data_i.chNames.==AB_data_i.chNames)
-	
-	if size(AB_data_i,3) > size(A_data_i,3) 
-		AB_data_i.data_array=AB_data_i[:, :, match_ch]
-	else
-		A_data_i.data_array=A_data_i[:, :, match_ch]
-	end
-	B_data_i = AB_data_i - A_data_i
-	p1B = plot(B_data_i)
-	plot(p1B, p2B)
-end
-
-# ╔═╡ 8c557a2f-397c-42eb-a03f-4b29880b7b0f
-exp_B
-
-# ╔═╡ d722ed96-9118-4fda-95d9-bf4df96d946e
-exp_B.AB_Path
-
-# ╔═╡ 0688a31a-8967-43a0-bcf2-c541f356df11
-begin
-	#Pick a certain experiment to analyze
-	q_group_G = q_G |> 
-		@filter(_.Genotype == "RS1KO" && _.Age == 11) |> 
-		@filter(_.Photons > 100) |>
-		DataFrame
-	fit_test_G = NeuroPhys.curve_fit(model, 
-		q_group_G.Photons, q_group_G.Response,
-		[20.0, 3.0, 200.0], 
-		lower = [0.001, 0.01, 100.0], upper = [Inf, Inf, Inf]
-	)	
-	fit_points_G = LinRange(0.2, 1e4, 1000000)
-	
-	p2G = @df q_group_G plot(:Photons, :Response,
-		st = :scatter, xaxis = :log, c = colors[1]
-	)
-
-	plot!(p2G, x -> model(x, fit_test_G.param), fit_points_G, c = colors[1])
-	
-	exp_G = q_group_G[argmin(q_group_G.Response), [:AB_Path, :ABG_Path]]
-	AB_data_ii = extract_abf(exp_G.AB_Path, average_sweeps = true)|>filter_data
-
-	ABG_data_ii = extract_abf(exp_G.ABG_Path, average_sweeps = true)|>filter_data
-	
-	println(size(AB_data_ii))
-	println(size(ABG_data_ii))
-	
-	if size(ABG_data_ii,3) != size(AB_data_ii,3) 
-		if size(ABG_data_ii,3) > size(AB_data_ii,3) 
-			drop!(ABG_data_ii, drop_idx = match_ch[1])
-		else
-			drop!(AB_data_ii, drop_idx = match_ch[1])
-		end
-	end
-	
-	G_data_ii = ABG_data_ii - AB_data_ii
-	p1G = plot(G_data_ii)
-	plot(p1G, p2G)
-end
-
-# ╔═╡ 315a368c-a288-4638-a1fa-c9101fce2a9a
-exp_G.ABG_Path
 
 # ╔═╡ Cell order:
-# ╠═893a3ae0-3a3e-4605-b063-cbbb95689291
 # ╠═619511b0-b900-11eb-3b71-ef04627229a3
 # ╠═60eb055d-2772-49af-af4b-12c2f8a9a98c
 # ╠═1896d7c6-1685-481e-84cd-50c4583f14de
 # ╠═0d3ec243-b988-4b7f-a038-63375d96ffe8
 # ╠═ca371b23-48ea-42af-a639-1d10711784c0
 # ╠═7fb2fcdc-445d-4429-830f-5eb929539d9e
-# ╠═bd5889f5-12d3-4739-90de-094e2a6f414f
-# ╠═e316abb9-25f3-4b38-a433-72079fa14f9f
-# ╠═5acf20ea-2da9-4667-917a-9e22893632a2
-# ╠═3781dc5f-e9e0-4a60-adb9-a422741d375d
+# ╟─bd5889f5-12d3-4739-90de-094e2a6f414f
+# ╟─3781dc5f-e9e0-4a60-adb9-a422741d375d
 # ╟─a3319e29-9d96-4529-a035-39ff2d4f1cd8
 # ╟─695cc1d2-0244-4609-970a-2df676263e99
 # ╟─659e9a5f-d383-4e89-be73-d008d1bcb122
-# ╠═9b9dbf63-d148-476f-9de0-c854b360597a
+# ╟─9b9dbf63-d148-476f-9de0-c854b360597a
 # ╟─d1aecd57-021f-4873-ae42-2896bcdb0a56
-# ╠═732cc6cc-d6bb-4632-8357-c108a1e79a62
+# ╟─732cc6cc-d6bb-4632-8357-c108a1e79a62
+# ╟─beeacce0-0b91-4540-bf8c-91fb328ed51b
 # ╠═b30e73b4-fbba-4ed8-9021-051b51f10d3a
+# ╠═2d8c6f46-475a-4e57-9f69-b63edcd3b46d
 # ╟─13b294c3-d100-4cf5-981d-a98a463afa6f
 # ╟─c9f6bb32-7115-4fd0-a26c-eb834f2ef973
 # ╟─48476e31-7593-43f1-be5c-b951af96bb16
@@ -1421,26 +1399,24 @@ exp_G.ABG_Path
 # ╟─bace4d09-5bf0-41b4-ae85-87ed100e487c
 # ╠═9048174d-1426-441d-918f-66c146431b82
 # ╟─c8cccfc3-7fe6-4de3-a54f-43ccc511ac00
+# ╠═045f9d4b-342b-48dc-88bc-b15c795cdc29
 # ╠═39152bf6-3ae3-4bc2-a062-0d96b9e4c1d3
 # ╟─41f26efb-af51-4ebf-9150-196c30c84409
 # ╠═381bbec1-8c4a-4f72-93a5-8bbffd79877b
 # ╟─f83bdb47-d35b-4122-99bc-228c940b9b17
 # ╠═41843f02-6fca-4367-bbfd-a1a03039429a
 # ╟─c06e930f-852c-493f-9a94-5b52c64cd613
-# ╠═cfc6cc06-3771-42b1-9eb1-c135bdad33e1
+# ╟─cfc6cc06-3771-42b1-9eb1-c135bdad33e1
 # ╠═b9d27f4e-16f9-43f6-9432-47f79e0112d3
 # ╟─f8579632-2a82-4a65-8d08-d9cc99c035f9
 # ╟─4083369d-cb6f-4d3b-8d14-4c12637ecebf
-# ╠═870eb605-923a-4c78-8646-4ab90d714d71
+# ╠═cf602b1a-5ffc-4e39-aa96-7ca296c77ca4
+# ╟─b0bd9be1-e23d-48dc-a97c-2b202b391443
+# ╟─ae397dbf-7729-4aeb-a6d1-8dd3e18bb3b2
+# ╟─a135a7a6-0dbf-45a6-9504-370cd9528a61
+# ╟─98d80e2a-5d1d-45b0-996b-02676b57dcbd
+# ╟─9db3af68-13a4-48c8-b538-504da5b1f844
+# ╟─7e7d9dad-2f41-4257-991a-4834b16be76e
 # ╠═5194bd10-4c1e-4260-b429-61aafa543015
-# ╟─9c5d9f09-927d-46f5-9100-fbec77a675c4
-# ╠═cbd04c8d-cbe4-4b97-ba6c-057136582a1e
-# ╠═51cd1ecc-9597-403a-b349-50a3207f5ac4
-# ╠═0de3655d-a0cd-4aea-903b-16867c3260d9
-# ╟─dc2609d5-9402-49ad-ad1f-45492482bd8a
-# ╠═8c557a2f-397c-42eb-a03f-4b29880b7b0f
-# ╠═da5a068f-98b3-4da0-877b-605f2491fcb4
-# ╠═eb8b2693-10ff-42dc-a330-8523674934b7
-# ╠═d722ed96-9118-4fda-95d9-bf4df96d946e
-# ╟─0688a31a-8967-43a0-bcf2-c541f356df11
-# ╠═315a368c-a288-4638-a1fa-c9101fce2a9a
+# ╠═9c5d9f09-927d-46f5-9100-fbec77a675c4
+# ╠═b8315294-7a0d-490a-a556-70a6282757b2

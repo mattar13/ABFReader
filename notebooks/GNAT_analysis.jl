@@ -36,10 +36,10 @@ begin
 	root2 = "E:\\Data\\ERG\\Paul\\"
 	pauls_paths = root2 |> parse_abf
 	#concatenate all files in a single array
-	all_paths = pauls_paths#vcat(gnat_files, pauls_files)
+	all_paths = vcat(gnat_paths, pauls_paths)
 	#specify the calibration and the location of the data output
 	calibration_file = "E:\\Data\\Calibrations\\photon_lookup.xlsx"
-	save_folder = "E:\\Projects\\2020_JGP_Gnat\\"
+	save_file = "E:\\Projects\\2020_JGP_Gnat\\data_analysis.xlsx"
 end
 
 # ╔═╡ 84fb07ae-092e-4885-a804-ca442a6d2aa2
@@ -47,51 +47,12 @@ md"
 ## Make the dataframe that will hold all of the files
 "
 
-# ╔═╡ 93b8c72d-0af5-46b4-a7ae-83371844f009
-begin
-	all_files = DataFrame(
-		:Path => all_paths, 
-		:Year => 0, :Month => 0, :Date => 0,
-		:Animal => 0, :Age => 9, :Genotype => "", 
-		:Condition => "Nothing", :Wavelength => 525, 
-		:Photoreceptor => "Rods", 
-		:ND => 0, :Percent => 1, :Stim_time => 1.0, :Photons => 0.0
-		#:Min => [0.0], :Mean => [0.0], :Max => [0.0]
+# ╔═╡ bf708d08-dc13-4bab-86b7-e417f613dbbf
+begin	
+	all_files = update_RS_datasheet(
+		all_paths, calibration_file, save_file, 
+		verbose = false
 	)
-	#Show all fields
-	data_fields = Symbol.(DataFrames.names(all_files))
-	delete_after = Int64[]
-	#lets walk through and add data to the all_files
-	for (idx, row) in enumerate(eachrow(all_files))
-		println("extracting data for file $idx of $(size(all_files, 1))")
-		println(row.Path)
-		nt = formatted_split(row.Path, format_bank)
-		if !isnothing(nt)
-			for field in data_fields
-				if haskey(nt, field)
-					all_files[idx, field] = nt[field]
-				end
-			end
-			if haskey(nt, :Photoreceptor)
-				 all_files[idx, :Photoreceptor] = nt.Photoreceptor
-			end
-			stim_protocol = extract_stimulus(row.Path)
-			tstops = stim_protocol.timestamps
-			stim_time = round((tstops[2]-tstops[1])*1000)
-			all_files[idx, :Stim_time] = stim_time
-			#now extract the stimulus time
-			photon = photon_lookup(
-				 nt.Wavelength, nt.ND, nt.Percent, stim_time, calibration_file
-			)
-			if !isnothing(photon)
-				 all_files[idx, :Photons] = photon
-			end
-		else
-			#for now just remove the file from the dataframe
-			push!(delete_after, idx)
-		end
-	end
-	#delete!(all_files, delete_after)
 end
 
 # ╔═╡ 4363930f-b4ed-43f4-84c1-5c486dcb9d8d
@@ -108,6 +69,6 @@ all_files
 # ╠═347daa1f-eb09-4c1e-a166-cd16723b0031
 # ╠═da044b8e-67ae-4ca8-9e39-a873716c124e
 # ╟─84fb07ae-092e-4885-a804-ca442a6d2aa2
-# ╠═93b8c72d-0af5-46b4-a7ae-83371844f009
+# ╟─bf708d08-dc13-4bab-86b7-e417f613dbbf
 # ╠═4363930f-b4ed-43f4-84c1-5c486dcb9d8d
 # ╠═8de35b3f-00fa-4e50-82cf-f2127079f6aa
