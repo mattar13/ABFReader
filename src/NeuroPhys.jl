@@ -10,7 +10,7 @@ using DSP, Wavelets, FFTW #Used for filtering
 using LsqFit #Used for fitting amplification and Intensity Response models
 using DataFrames, Query, XLSX #Used for saving data
 using Dates
-using Telegram
+using Telegram, Telegram.API
 
 #Functions that can help with file extraction
 include("file_formatting.jl")
