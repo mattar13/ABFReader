@@ -71,6 +71,6 @@ include("make_datasheet.jl")
 export update_RS_datasheet
 
 include("logging.jl")
-export notify
+export BotNotify
 
 end # module

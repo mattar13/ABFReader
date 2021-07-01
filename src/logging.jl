@@ -3,7 +3,12 @@ const env_location = "C:\\Users\\mtarc\\OneDrive\\Documents\\JuliaCode\\.env"
 dotenv(env_location) #First we can load the .env file
 
 #this variable will be added
-function notify(text::String) 
-     println(text)
-     sendMessage(text = text)
+function BotNotify(text::String; add_date = true)
+     if add_data 
+          println(text)
+          sendMessage(text = text)
+     else
+          println(text)
+          sendMessage(text = text) 
+     end
 end
