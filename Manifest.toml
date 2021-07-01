@@ -121,6 +121,11 @@ git-tree-sha1 = "299304989a5e6473d985212c28928899c74e9421"
 uuid = "8f4d0f93-b110-5947-807f-2305c1781a2d"
 version = "1.5.2"
 
+[[ConfigEnv]]
+git-tree-sha1 = "1891cfd27ae8256e4e69574c93dc0d6eb839903e"
+uuid = "01234589-554d-41b7-ae5c-7b6ee2db6796"
+version = "1.0.0"
+
 [[Configurations]]
 deps = ["Crayons", "ExproniconLite", "OrderedCollections", "TOML"]
 git-tree-sha1 = "b8486a417456d2fbbe2af13e24cef459c9f42429"
