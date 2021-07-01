@@ -70,4 +70,6 @@ export plot, plot!, vline!, hline!, savefig, histogram, grid, title!
 include("make_datasheet.jl")
 export update_RS_datasheet
 
+include("logging.jl")
+
 end # module
