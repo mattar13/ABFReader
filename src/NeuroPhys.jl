@@ -11,7 +11,6 @@ using LsqFit #Used for fitting amplification and Intensity Response models
 using DataFrames, Query, XLSX #Used for saving data
 using Dates
 using Telegram, Telegram.API, ConfigEnv
-
 #Functions that can help with file extraction
 include("file_formatting.jl")
 export formatted_split, format_bank
@@ -72,5 +71,4 @@ export update_RS_datasheet
 
 include("logging.jl")
 export dotenv, env_location, BotNotify
-
 end # module
