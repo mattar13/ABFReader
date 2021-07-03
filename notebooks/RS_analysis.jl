@@ -47,7 +47,7 @@ begin
 	
 	all_files = update_RS_datasheet(
 		all_paths, calibration_file, data_file, 
-		verbose = false
+		verbose = true
 	)
 	
 	#For some reason ages can be over 30
@@ -125,7 +125,7 @@ begin
 		#Extract the response 
 		println(size(data))
 		sat_resp = abs.(saturated_response(data))
-		if size(sat_resp, 3) > 1
+		if size(sat_resp, 2) > 1
 			q_A[idx, :Response] = sat_resp[1]
 			q_A[idx, :Channel] = data.chNames[1]
 			for add_i in 2:size(sat_resp,3)
@@ -136,6 +136,7 @@ begin
 			end
 		else
 			q_A[idx, :Response] = sat_resp[1]
+			q_A[idx, :Channel] = data.chNames[1]
 		end
 	end
 	q_A
@@ -170,7 +171,7 @@ begin
 		else
 			resp = abs.(maximum(B_data, dims = 2))
 		end
-		if size(resp, 3) > 1
+		if size(resp, 2) > 1
 			q_B[idx, :Response] = resp[1]
 			q_B[idx, :Channel] = B_data.chNames[1]
 			for add_i in 2:size(resp,3)
@@ -218,7 +219,7 @@ begin
 			resp = abs.(minimum(G_data, dims = 2))
 		end
 
-		if size(resp, 3) > 1
+		if size(resp, 2) > 1
 			q_G[idx, :Response] = resp[1] 
 			q_G[idx, :Channel] = G_data.chNames[1]
 			for add_i in 2:size(resp,3)
@@ -1083,7 +1084,8 @@ begin
 	q_BxA = q_B |> @join(q_A, 
 			{_.Photons, _.Year, _.Month, _.Date, _.Animal,}, 
 			{_.Photons, _.Year, _.Month, _.Date, _.Animal,},
-			{_.A_Path, __.Path, _.Genotype, _.Age, _.Photons, 
+			{_.A_Path, _.AB_Path, 
+			_.Genotype, _.Age, _.Photons, 
 			A_Response = __.Response, 
 			B_Response = _.Response, 
 			Div_Resp = _.Response/__.Response
@@ -1102,17 +1104,6 @@ begin
 		@orderby(_.Photons)|> @thenby(_.A_Response)|> 
 		@unique(_.G_Response)|> @unique(_.A_Response)|>
 		DataFrame
-	q_BxG = q_B |> @join(q_G, 
-			{_.Photons, _.Year, _.Month, _.Date, _.Animal}, 
-			{_.Photons, _.Year, _.Month, _.Date, _.Animal},
-			{_.A_Path, _.Genotype, _.Age, _.Photons, 
-			G_Response = __.Response, 
-			B_Response = _.Response,
-			Div_Resp = _.Response/__.Response
-		}) |> 
-		@orderby(_.Photons)|> @thenby(_.B_Response)|> 
-		@unique(_.G_Response)|> @unique(_.B_Response)|>
-		DataFrame
 end
 
 # ╔═╡ cf602b1a-5ffc-4e39-aa96-7ca296c77ca4
@@ -1120,18 +1111,38 @@ SENS_params = DataFrame(XLSX.readtable(param_file, "Sensitivity")...)
 
 # ╔═╡ b0bd9be1-e23d-48dc-a97c-2b202b391443
 begin
-	offset_y_AB=[[2.0, 1.0, 2.0] [10.0,10.0,10.0] [10.0,50.0,10.0]]
-	ann_o_AB=[[:left, :right, :bottom] [:top, :right, :left] [:left, :left, :left]]
-	offset_y_AG=[[1.0, 1.0, 1.0] [1.0,1.0,1.0] [1.0,1.0,1.0]]
-	ann_o_AG=[[:right, :left, :bottom] [:right, :left, :bottom] [:left, :right, :left]]
-	offset_y_BG=[[1.0, 1.0, 1.0] [1.0,1.0,1.0] [1.0,1.0,1.0]]
-	ann_o_BG=[[:right, :left, :bottom] [:right, :left, :bottom] [:left, :left, :left]]
+	offset_y_AB=[[1.5, 1.5, 2.0] [1.25,1.75,2.0] [1.5,1.5,1.5]]
+	ann_o_AB=[[:left, :right, :none] [:right, :right, :left] [:left, :right, :left]]
+	offset_y_AG=[[1.5, 1.5, 1.0] [1.5,1.5,1.5] [1.5,1.5,1.5]]
+	ann_o_AG=[[:left, :right, :none] [:right, :left, :bottom] [:left, :right, :left]]
 end;
+
+# ╔═╡ b24e8f5a-feef-471a-a2f2-28c655118518
+q_BxA[33, :AB_Path]
+
+# ╔═╡ 9ccf066b-fe51-454f-9562-c75798fc4f38
+begin
+	data = extract_abf(q_BxA[33, :A_Path]) |> filter_data
+	plot(data.t, -data.data_array[1,:,1])
+end
+
+# ╔═╡ edea2e13-edb3-4892-944b-854b95eb7745
+q_BxA[33, :A_Response]
+
+# ╔═╡ 86bf92c4-1c9c-4104-a2f1-efb41c86ec56
+q_BxA[33, :B_Response]
+
+# ╔═╡ 724e82a1-433e-4274-bf18-7618363005fd
+q_BxA[33, :Div_Resp]
+
+# ╔═╡ dabba351-f2c3-4bcf-94f4-902d1d6dff26
+q_BxA
 
 # ╔═╡ ae397dbf-7729-4aeb-a6d1-8dd3e18bb3b2
 begin
 	#We can use the same model to fit the data
-	fig_sens_AB = plot(layout = grid(length(ages),1), grid = false)
+	fig_STF_AB = plot(layout = grid(length(ages),1), grid = false)
+	fig_Ratio_AB = plot(layout = grid(length(ages),1), grid = false)
 	for (idx, p) in enumerate(ages), (idx_g, g) in enumerate(genotypes)
 		println(p, g)
 		q_SENab = q_BxA |> @filter(_.Genotype == g && _.Age == p) |> DataFrame
@@ -1145,18 +1156,21 @@ begin
 			if p == 11
 				fit_range = LinRange(1.0, 100, 10000)
 				ylims = (1.0, 100.0)
-				xlims = (1.0, 30.0)
+				xlims = (1.0, 100.0)
 			elseif p == 13
-				fit_range = LinRange(1.0, 3000, 10000)
-				ylims = (1.0, 10000.0)
-				xlims = (1.0, 300.0)
+				fit_range = LinRange(1.0, 1000, 10000)
+				ylims = (1.0, 1000.0)
+				xlims = (1.0, 1000.0)
 			elseif p == 30
-				fit_range = LinRange(1.0, 3000, 10000)
+				fit_range = LinRange(1.0, 10000, 10000)
 				ylims = (1.0, 10000.0)
-				xlims = (1.0, 500.0)
+				xlims = (1.0, 10000.0)
 			end
-
-			@df q_SENab plot!(fig_sens_AB[idx], :A_Response, :B_Response, 
+			@df q_SENab plot!(fig_Ratio_AB[idx], :Photons, :Div_Resp, 
+				st = :scatter, c = colors[idx_g], label = "", 
+				xaxis = :log
+			)
+			@df q_SENab plot!(fig_STF_AB[idx], :A_Response, :B_Response, 
 				st = :scatter, c = colors[idx_g], label = "",
 			)
 			fit_sens = curve_fit(model, q_SENab.A_Response, q_SENab.B_Response, 
@@ -1166,16 +1180,16 @@ begin
 			)
 			println(fit_sens.param)
 			
-			plot!(fig_sens_AB[idx], x -> model(x, fit_sens.param), fit_range, 
+			plot!(fig_STF_AB[idx], x -> model(x, fit_sens.param), fit_range, 
 				c = colors[idx_g], label = "$g", lw = 2.0,
-				yaxis = :log, 
+				yaxis = :log, xaxis = :log,
 				ylims = ylims, xlims = xlims, 
 				xlabel = "Photoreceptor Response(μV)", 
 				ylabel = "P$p \n Bipolar Response(μV)", 
 				title = p == 11 ? "Photoreceptor -> Bipolar" : ""
 			)
 			
-			plot!(fig_sens_AB[idx], 
+			plot!(fig_STF_AB[idx], 
 				[fit_sens.param[1], fit_sens.param[1]], 
 				[1.0, model(fit_sens.param[1], fit_sens.param)],
 				c = colors[idx_g], linestyle = :dash,
@@ -1191,13 +1205,13 @@ begin
 			)
 		end
 	end
-	#fig_sens_AB
+	fig_Ratio_AB
 end
 
 # ╔═╡ a135a7a6-0dbf-45a6-9504-370cd9528a61
 begin
 	#We can use the same model to fit the data
-	fig_sens_AG = plot(layout = grid(length(ages),1), grid = false)
+	fig_STF_AG = plot(layout = grid(length(ages),1), grid = false)
 	for (idx, p) in enumerate(ages), (idx_g, g) in enumerate(genotypes)
 		println(p, g)
 		q_SENga = q_GxA |> @filter(_.Genotype == g && _.Age == p) |> DataFrame
@@ -1208,20 +1222,20 @@ begin
 
 		if !isempty(q_SENga)
 			if p == 11
-				fit_range = LinRange(1.0, 1000, 10000)
+				fit_range = LinRange(1.0, 100, 10000)
 				ylims = (1.0, 100.0)
-				xlims = (1.0, 40.0)
+				xlims = (1.0, 100.0)
 			elseif p == 13
 				fit_range = LinRange(1.0, 1000, 10000)
 				ylims = (1.0, 1000.0)
-				xlims = (1.0, 250.0)
+				xlims = (1.0, 1000.0)
 			elseif p == 30
-				fit_range = LinRange(1.0, 3000, 10000)
-				ylims = (1.0, 1000.0)
-				xlims = (1.0, 200.0)
+				fit_range = LinRange(1.0, 10000, 10000)
+				ylims = (1.0, 10000.0)
+				xlims = (1.0, 10000.0)
 			end
 
-			@df q_SENga plot!(fig_sens_AG[idx], :A_Response, :G_Response, 
+			@df q_SENga plot!(fig_STF_AG[idx], :A_Response, :G_Response, 
 				st = :scatter, c = colors[idx_g], label = "",
 			)
 			fit_sens = curve_fit(model, q_SENga.A_Response, q_SENga.G_Response, 
@@ -1230,16 +1244,16 @@ begin
 				upper = [params.Ih_max[1], Inf, params.Rmax_max[1]]
 			)
 
-			plot!(fig_sens_AG[idx], x -> model(x, fit_sens.param), fit_range, 
+			plot!(fig_STF_AG[idx], x -> model(x, fit_sens.param), fit_range, 
 				c = colors[idx_g], label = "$g", lw = 2.0,
-				yaxis = :log,
+				yaxis = :log, xaxis = :log,
 				ylims = ylims, xlims = xlims,
 				xlabel = "Photoreceptor Response(μV)", 
 				ylabel = "Glial Response(μV)", 
 				title = p == 11 ? "Photoreceptor -> Glial" : ""
 			)
 
-			plot!(fig_sens_AG[idx], 
+			plot!(fig_STF_AG[idx], 
 				[fit_sens.param[1], fit_sens.param[1]], 
 				[1.0, model(fit_sens.param[1], fit_sens.param)],
 				c = colors[idx_g], linestyle = :dash,
@@ -1259,87 +1273,12 @@ begin
 	#fig_sens_AG
 end
 
-# ╔═╡ 98d80e2a-5d1d-45b0-996b-02676b57dcbd
-begin
-	#We can use the same model to fit the data
-	fig_sens_BG = plot(layout = grid(length(ages),1), grid = false)
-	for (idx, p) in enumerate(ages), (idx_g, g) in enumerate(genotypes)
-		q_SENbg = q_BxG |> @filter(_.Genotype == g && _.Age == p) |> DataFrame
-		params = SENS_params |> 
-			@filter(_.Age == p && _.Genotype == g && _.Component == "Bipolar") |> 				DataFrame
-		if !isempty(q_SENbg)
-			if p == 11
-				fit_range = LinRange(1.0, 1000, 10000)
-				ylims = (1.0, 100.0)
-				xlims = (1.0, 100.0)
-			elseif p == 13
-				fit_range = LinRange(1.0, 300, 10000)
-				ylims = (1.0, 400.0)
-				xlims = (1.0, 300.0)
-			elseif p == 30
-				fit_range = LinRange(1.0, 300, 10000)
-				ylims = (1.0, 400.0)
-				xlims = (1.0, 300.0)
-			end
-
-			@df q_SENbg plot!(fig_sens_BG[idx], :G_Response, :B_Response, 
-				st = :scatter, c = colors[idx_g], label = "$g",
-			)
-			fit_sens = curve_fit(model, q_SENbg.G_Response, q_SENbg.B_Response, 
-				[params.Ih[1], params.n[1], params.Rmax[1]],
-				lower = [params.Ih_min[1], params.n_min[1], 0.0], 
-				upper = [params.Ih_max[1], Inf, params.Rmax_max[1]]
-			)
-			
-			plot!(fig_sens_BG[idx], x -> model(x, fit_sens.param), fit_range, 
-				c = colors[idx_g], label = "", lw = 2.0,
-				ylims = ylims, xlims = xlims,
-				xlabel = "Bipolar Response(μV)", 
-				ylabel = "Glial Response(μV)"
-			)
-			
-			plot!(fig_sens_BG[idx], 
-				[fit_sens.param[1], fit_sens.param[1]], 
-				[1.0, model(fit_sens.param[1], fit_sens.param)],
-				c = colors[idx_g], linestyle = :dash,
-				annotation = (
-					fit_sens.param[1], 
-					offset_y_BG[idx_g, idx], 
-					text("$(round(fit_sens.param[1], digits = 2))", 
-						ann_o_BG[idx_g, idx], colors[idx_g], 8
-						),
-				),
-				label = "",
-				title = p == 11 ? "Bipolar -> Glial" : ""
-			)
-			
-		end
-	end
-	fig_sens_BG
-end
-
-# ╔═╡ 9db3af68-13a4-48c8-b538-504da5b1f844
-begin
-	q_SEN = q_BxG |> @filter(_.Genotype == "RS1KO" && _.Age == 13) |> DataFrame
-	@df q_SEN plot(:B_Response, :G_Response, st = :scatter)
-	p0 = [20.0, 2.0, 200.0]
-	fit_range = LinRange(1.0, 400, 10000)
-	fit_sens = curve_fit(model, q_SEN.B_Response, q_SEN.G_Response, 
-		p0,
-		lower = [1.0, 0.0, 0.0], 
-		upper = [10000.0, Inf, 600.0]
-	)
-	println(fit_sens.param)
-	plot!(x -> model(x, fit_sens.param), fit_range)
-end
-
 # ╔═╡ 7e7d9dad-2f41-4257-991a-4834b16be76e
 begin
 	fig_sens = plot(
-			fig_sens_AB, 
-			fig_sens_AG, 
-			fig_sens_BG, 
-			layout = grid(1,3), size = (1000,1000), dpi = 500
+			fig_STF_AB, 
+			fig_STF_AG, 
+			layout = grid(1,2), size = (1000,1000), dpi = 500
 		
 		)
 end
@@ -1362,7 +1301,6 @@ q_A |>
 
 
 end
-
 
 # ╔═╡ Cell order:
 # ╠═619511b0-b900-11eb-3b71-ef04627229a3
@@ -1411,11 +1349,15 @@ end
 # ╟─f8579632-2a82-4a65-8d08-d9cc99c035f9
 # ╟─4083369d-cb6f-4d3b-8d14-4c12637ecebf
 # ╠═cf602b1a-5ffc-4e39-aa96-7ca296c77ca4
-# ╟─b0bd9be1-e23d-48dc-a97c-2b202b391443
+# ╠═b0bd9be1-e23d-48dc-a97c-2b202b391443
+# ╠═b24e8f5a-feef-471a-a2f2-28c655118518
+# ╠═9ccf066b-fe51-454f-9562-c75798fc4f38
+# ╠═edea2e13-edb3-4892-944b-854b95eb7745
+# ╠═86bf92c4-1c9c-4104-a2f1-efb41c86ec56
+# ╠═724e82a1-433e-4274-bf18-7618363005fd
+# ╠═dabba351-f2c3-4bcf-94f4-902d1d6dff26
 # ╟─ae397dbf-7729-4aeb-a6d1-8dd3e18bb3b2
 # ╟─a135a7a6-0dbf-45a6-9504-370cd9528a61
-# ╟─98d80e2a-5d1d-45b0-996b-02676b57dcbd
-# ╟─9db3af68-13a4-48c8-b538-504da5b1f844
 # ╟─7e7d9dad-2f41-4257-991a-4834b16be76e
 # ╠═5194bd10-4c1e-4260-b429-61aafa543015
 # ╠═9c5d9f09-927d-46f5-9100-fbec77a675c4
