@@ -272,11 +272,11 @@ end
 The dominant time constant is calculated by fitting the normalized Rdim with the response recovery equation
 """
 function recovery_tau(data::Experiment{T}; τRec::T = 1.0) where T <: Real
-    fits = fill(Vector(), (size(data_test,1), size(data_test,2)))
-    gofs = zeros(size(data_test,1), size(data_test,2))
+    fits = fill(Vector(), (size(data,1), size(data,2)))
+    gofs = zeros(size(data,1), size(data,2))
     #This function uses the recovery model and takes t as a independent variable
     model(x,p) = map(t -> REC(t, -1.0, p[2]), x)
-    for swp in 1:size(data_test,1), ch in 1:size(data,3)
+    for swp in 1:size(data,1), ch in 1:size(data,3)
         # println(dim_idx[ch])
         xdata = data.t
         ydata = data[swp, :, ch] 
