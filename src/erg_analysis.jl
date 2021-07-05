@@ -272,43 +272,39 @@ end
 The dominant time constant is calculated by fitting the normalized Rdim with the response recovery equation
 """
 function recovery_tau(data::Experiment{T}; τRec::T = 1.0) where T <: Real
-    if size(data,3) != length(dim_idx)
-        throw(error("Size of dim indexes does not match channel size for data"))
-    else
-        fits = fill(Vector(), (size(data_test,1), size(data_test,2)))
-        gofs = zeros(size(data_test,1), size(data_test,2))
-        #This function uses the recovery model and takes t as a independent variable
-        model(x,p) = map(t -> REC(t, -1.0, p[2]), x)
-        for swp in 1:size(data_test,1), ch in 1:size(data,3)
-            # println(dim_idx[ch])
-            xdata = data.t
-            ydata = data[swp, :, ch] 
-            ydata ./= minimum(ydata) #Normalize the Rdim
-            #cutoff all points below -0.5 and above -1.0
-            begin_rng = findall(ydata .>= 1.0)[end]
-            xdata = xdata[begin_rng:end]
-            ydata = ydata[begin_rng:end]
+    fits = fill(Vector(), (size(data_test,1), size(data_test,2)))
+    gofs = zeros(size(data_test,1), size(data_test,2))
+    #This function uses the recovery model and takes t as a independent variable
+    model(x,p) = map(t -> REC(t, -1.0, p[2]), x)
+    for swp in 1:size(data_test,1), ch in 1:size(data,3)
+        # println(dim_idx[ch])
+        xdata = data.t
+        ydata = data[swp, :, ch] 
+        ydata ./= minimum(ydata) #Normalize the Rdim
+        #cutoff all points below -0.5 and above -1.0
+        begin_rng = findall(ydata .>= 1.0)[end]
+        xdata = xdata[begin_rng:end]
+        ydata = ydata[begin_rng:end]
 
-            cutoff = findall(ydata .< 0.5)              
-            if isempty(cutoff)
-                #println("Exception")
-                end_rng = length(ydata)
-            else
-                end_rng = cutoff[1]
-            end
-
-            xdata = xdata[1:end_rng] .- xdata[1]
-            ydata = -ydata[1:end_rng]
-            p0 = [ydata[1], τRec]
-            fit = curve_fit(model, xdata, ydata, p0)
-            #report the goodness of fit
-            SSE = sum(fit.resid.^2)
-            ȳ = sum(model(xdata, fit.param))/length(xdata)
-            SST = sum((ydata .- ȳ).^2)
-            GOF = 1- SSE/SST
-            fits[swp, ch] =  fit.param
-            gofs[swp, ch] = GOF
+        cutoff = findall(ydata .< 0.5)              
+        if isempty(cutoff)
+            #println("Exception")
+            end_rng = length(ydata)
+        else
+            end_rng = cutoff[1]
         end
+
+        xdata = xdata[1:end_rng] .- xdata[1]
+        ydata = -ydata[1:end_rng]
+        p0 = [ydata[1], τRec]
+        fit = curve_fit(model, xdata, ydata, p0)
+        #report the goodness of fit
+        SSE = sum(fit.resid.^2)
+        ȳ = sum(model(xdata, fit.param))/length(xdata)
+        SST = sum((ydata .- ȳ).^2)
+        GOF = 1- SSE/SST
+        fits[swp, ch] =  fit.param
+        gofs[swp, ch] = GOF
     end
     return fits, gofs
 end
