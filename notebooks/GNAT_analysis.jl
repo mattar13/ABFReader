@@ -69,7 +69,9 @@ begin
 			_.Year, _.Month, _.Date, _.Animal, _.Photoreceptor, _.Wavelength,
 			_.Age, _.Genotype, _.Condition, _.Photons, 
 			Channel = "Vm_prime",
-			Response = 0.0, Peak_Time = 0.0, Int_Time = 0.0
+			Response = 0.0, Peak_Time = 0.0, Int_Time = 0.0, 
+			Tau_Rec = 0.0, Tau_GOF = 0.0, 
+			Alpha = 0.0, Effective_Time = 0.0, Amp_GOF = 0.0
 			}) |>
 		DataFrame
 	q_AB = all_files |> 
@@ -88,7 +90,7 @@ begin
 				__.Year, __.Month, __.Date, __.Animal, 
 				__.Age, __.Genotype, __.Condition, __.Photons, 
 				Channel = "Vm_prime",
-				Response = 0.0, Peak_Time = 0.0, Int_Time = 0.0
+				Response = 0.0, Peak_Time = 0.0, Int_Time = 0.0, Tau_Rec = 0.0 
 			}
 		) |> 
 		DataFrame
@@ -102,52 +104,11 @@ begin
 			_.Photoreceptor, _.Wavelength,
 			__.Age, __.Genotype, __.Condition, __.Photons,
 			Channel = "Vm_prime",
-			Response = 0.0, Peak_Time = 0.0
+			Response = 0.0, Peak_Time = 0.0, Int_Time = 0.0, Tau_Rec = 0.0 
 		}
 	) |> 
 	DataFrame
 end;
-
-# ╔═╡ 9ae2b084-d748-4e27-9b29-3d3f0123194f
-begin
-	#Pepperburg analysis
-	data_test = extract_abf(all_files[end-20, :Path], average_sweeps = true)
-	data_test = data_test |> filter_data
-	plt_test = plot(layout = grid(size(data_test, 3), 1))
-	model2(x,p) = map(t -> REC(t, -1.0, p[2]), x)
-	τRec = 1.0
-	fits = fill(Vector(), (size(data_test,1), size(data_test,2)))
-	for swp in 1:size(data_test,1), ch in 1:size(data_test,3)
-		xdata = data_test.t
-		ydata = data_test.data_array[swp, :, ch]
-		println(ydata |> size)
-		ydata ./= minimum(ydata) #we need to normalize the data
-		begin_rng = argmax(ydata)
-		println(begin_rng)
-		xdata = xdata[begin_rng:end]
-		ydata = ydata[begin_rng:end]
-		
-		cutoff = findall(ydata .< 0.5)              
-		if isempty(cutoff)
-			enrng = length(ydata)
-		else
-			enrng = cutoff[1]
-		end
-		
-		xdata = xdata[1:enrng[1]] .- xdata[1]
-		ydata = -ydata[1:enrng[1]]
-		#println(ydata |> size)
-		p0 = [ydata[1], τRec]
-		fit = curve_fit(model2, xdata, ydata, p0)
-		plot!(plt_test[ch], xdata, ydata)
-		plot!(plt_test[ch], 
-				x -> model2(x, fit.param), 
-				LinRange(xdata[1], xdata[end], 100000)
-			)
-		fits[swp, ch] = fit.param
-	end
-	plt_test
-end
 
 # ╔═╡ 2789b656-b79e-4138-9fb7-7228d94dafe8
 md"
@@ -155,126 +116,6 @@ md"
 
 - Seperate the data into A-wave, B-wave, and if possible, G-component data
 "
-
-# ╔═╡ 4230725e-0e96-4f8b-82b5-3af01e50273a
-begin
-	#Can we directly add responses to the data sheet? 
-	for (idx, exp) in enumerate(eachrow(q_A))
-		println("Extracting A-wave for experiment $idx of $(size(q_A, 1))")
-		#we want to extract the response for each trace here
-		if exp.Photoreceptor == "Cones"
-			data = filter_data(
-				extract_abf(exp.Path, average_sweeps = true), t_post = 1.0
-			)
-		else
-			data = extract_abf(exp.Path, average_sweeps = true) |> filter_data
-		end
-		#Extract the response 
-		sat_resp = abs.(saturated_response(data))
-		#Extract the latency to response
-		over_stim = findall(data.t .> 0.0)
-		lowest_val = map(x -> x[2], argmin(data[:, over_stim, :], dims = 2))[1,1,:]
-		lowest_val .+= over_stim[1]-1
-		peak_time = data.t[lowest_val].*1000
-		#Extract the integrated time
-		tInt = (sum(data, dims = 2)*data.dt)[1,1,:]
-		if size(data, 3) > 1
-			q_A[idx, :Response] = sat_resp[1]
-			q_A[idx, :Peak_Time] = peak_time[1]
-			q_A[idx, :Int_Time] = tInt[1]
-			q_A[idx, :Channel] = data.chNames[1]
-			for add_i in 2:size(data,3)
-				added_row = deepcopy(q_A[idx, :])
-				added_row.Response = sat_resp[add_i]
-				added_row.Peak_Time = peak_time[add_i]
-				added_row.Int_Time = tInt[add_i]
-				added_row.Channel = data.chNames[add_i]
-				push!(q_A, added_row)
-			end
-		else
-			q_A[idx, :Response] = sat_resp[1]
-			q_A[idx, :Peak_Time] = peak_time[1]
-			q_A[idx, :Int_Time] = tInt[1]
-			q_A[idx, :Channel] = data.chNames[1]
-		end
-	end
-	BotNotify("{ERG GNAT}: Completed extraction of A-wave")
-	q_A
-end
-
-# ╔═╡ 61491972-d090-4b6d-af68-f708cb5dab5a
-begin
-	for (idx, exp) in enumerate(eachrow(q_B))
-		#we want to extract the response for each trace here
-		println("Extracting B-wave for experiment $idx of $(size(q_B, 1))")
-		if exp.Photoreceptor == "Cones"
-			
-			A_data = filter_data(
-				extract_abf(exp.A_Path, average_sweeps = true), t_post = 1.0
-			)
-			
-			AB_data = filter_data(
-				extract_abf(exp.AB_Path, average_sweeps = true), t_post = 1.0
-			)
-			
-		else
-			A_data = extract_abf(exp.A_Path, average_sweeps = true) |> filter_data
-			AB_data = extract_abf(exp.AB_Path, average_sweeps = true) |> filter_data
-		end
-		
-
-
-		if size(AB_data) != size(A_data)
-			#we want to drop the extra channel
-			match_ch= findall(A_data.chNames.==AB_data.chNames)
-			if size(AB_data,3) > size(A_data,3) 
-				drop!(AB_data, drop_idx = match_ch[1])
-			else
-				drop!(A_data, drop_idx = match_ch[1])
-			end
-			B_data = AB_data - A_data
-		else
-			#Now we can subtract the A response from the AB response
-			B_data = AB_data - A_data 
-		end
-
-		#Extract the response 
-		if exp.Age <= 11
-			resp = abs.(minimum(B_data, dims = 2))[1,1,:]
-		else
-			resp = abs.(maximum(B_data, dims = 2))[1,1,:]
-		end
-		over_stim = findall(B_data.t .> 0.0)
-		lowest_val = map(x -> x[2], argmax(B_data[:, over_stim, :], dims = 2))[1,1,:]
-		lowest_val .+= over_stim[1]-1
-		peak_time = B_data.t[lowest_val].*1000
-		
-		#Extract the integration time 
-		tInt = (sum(B_data, dims = 2)*B_data.dt)[1,1,:]
-		
-		if size(B_data, 3) > 1
-			q_B[idx, :Response] = resp[1]
-			q_B[idx, :Peak_Time] = peak_time[1]
-			q_B[idx, :Int_Time] = tInt[1]
-			q_B[idx, :Channel] = B_data.chNames[1]
-			for add_i in 2:size(B_data,3)
-				added_row = deepcopy(q_B[idx, :])
-				added_row.Response = resp[add_i]
-				added_row.Peak_Time = peak_time[add_i]
-				added_row.Int_Time = tInt[add_i]
-				added_row.Channel = B_data.chNames[add_i]
-				push!(q_B, added_row)
-			end
-		else
-			q_B[idx, :Response] = resp[1]
-			q_B[idx, :Peak_Time] = peak_time[1]
-			q_B[idx, :Int_Time] = tInt[1]
-			q_B[idx, :Channel] = B_data.chNames[1]
-		end
-	end
-	BotNotify("{ERG GNAT}: Completed extraction of B-wave")
-	q_B
-end
 
 # ╔═╡ 37c5a1c9-13b8-4db7-9dca-7790718b1706
 md"
@@ -289,7 +130,9 @@ begin
 		@thenby(_.Photoreceptor) |> @thenby(_.Wavelength) |>
 		@map({_.Year, _.Month, _.Date, _.Animal, _.Channel,
 			_.Genotype, _.Age, _.Wavelength, _.Photoreceptor,
-			rmax = 0.0, rdim = 0.0, time_to_peak = 0.0}) |>
+			rmax = 0.0, rdim = 0.0, time_to_peak = 0.0, 
+			integration_time = 0.0, recovery_tau = 0.0
+		}) |>
 		DataFrame
 	
 	for (idx, exp) in enumerate(eachrow(experiments_A))
@@ -306,20 +149,18 @@ begin
 		rdim_rng = [0.10, 0.40] .* maximum(q_data.Response)
 		in_range = map(x ->  rdim_rng[1] < x < rdim_rng[2], q_data.Response)
 		rdims = q_data.Response[in_range]
-		if isempty(rdims)
-			rdim = 0.0
-			tpeak = 0.0
-		else
+		if !isempty(rdims)
 			rdim = maximum(rdims)
 			rdim_idx = argmax(rdims)
-			println(q_data[rdim_idx, :Peak_Time])
 			tpeak = q_data[rdim_idx, :Peak_Time]
+			tint = q_data[rdim_idx, :Int_Time]
+			tau_rec = q_data[rdim_idx, :recovery_tau]
+			experiments_A[idx, :rmax] = rmax 
+			experiments_A[idx, :rdim] = rdim
+			experiments_A[idx, :time_to_peak] = tpeak
+			experiments_A[idx, :integration_time] = tint
+			experiments_A[idx, :recovery_tau] = tau_rec
 		end
-		
-		#If we wanted to plot individual traces, here is where we would do that
-		experiments_A[idx, :rmax] = rmax 
-		experiments_A[idx, :rdim] = rdim
-		experiments_A[idx, :time_to_peak] = tpeak
 	end
 	
 	experiments_B = q_B |> 
@@ -368,8 +209,136 @@ begin
 		DataFrame
 end;
 
-# ╔═╡ 28d411ab-ad55-4646-b1d7-541d7402e508
-experiments_B
+# ╔═╡ 4230725e-0e96-4f8b-82b5-3af01e50273a
+begin
+	#Can we directly add responses to the data sheet? 
+	for (idx, exp) in enumerate(eachrow(q_A))
+		println("Extracting A-wave for experiment $idx of $(size(q_A, 1))")
+		#we want to extract the response for each trace here
+		if exp.Photoreceptor == "Cones"
+			data = filter_data(
+				extract_abf(exp.Path, average_sweeps = true), t_post = 1.0
+			)
+		else
+			data = extract_abf(exp.Path, average_sweeps = true) |> filter_data
+		end
+		#Extract the response 
+		resp = abs.(saturated_response(data))
+		#Extract the latency to response
+		peak_time = time_to_peak(data)
+		#Extract the integrated time
+		tInt = NeuroPhys.integral(data)
+		#extract the Recovery time constant
+		tRec, tau_gofs = recovery_tau(data, resp) 
+		amp, amp_gofs = amplification(data, resp)
+		if size(data, 3) > 1
+			q_A[idx, :Response] = resp[1]
+			q_A[idx, :Peak_Time] = peak_time[1]
+			q_A[idx, :Int_Time] = tInt[1]
+			q_A[idx, :Tau_Rec] = tRec[1]*1000
+			q_A[idx, :Tau_GOF] = tau_gofs[1]
+			q_A[idx, :Alpha] = amp[1,1,1]
+			q_A[idx, :Effective_Time] = amp[2,1,1]
+			q_A[idx, :Amp_GOF] = amp_gofs[1]
+			q_A[idx, :Channel] = data.chNames[1]
+			for add_i in 2:size(data,3)
+				added_row = deepcopy(q_A[idx, :])
+				added_row.Response = resp[add_i]
+				added_row.Peak_Time = peak_time[add_i]
+				added_row.Int_Time = tInt[add_i]
+				added_row.Tau_Rec = tRec[add_i]*1000
+				added_row.Tau_GOF = tau_gofs[add_i]
+				added_row.Alpha = amp[1,1,add_i]
+				added_row.Effective_Time = amp[2,1,add_i]
+				added_row.Amp_GOF = amp_gofs[add_i]				
+				added_row.Channel = data.chNames[add_i]
+				push!(q_A, added_row)
+			end
+		else
+			q_A[idx, :Response] = resp[1]
+			q_A[idx, :Peak_Time] = peak_time[1]
+			q_A[idx, :Int_Time] = tInt[1]
+			q_A[idx, :Tau_Rec] = tRec[1]*1000
+			q_A[idx, :Tau_GOF] = tau_gofs[1]
+			q_A[idx, :Alpha] = amp[1,1,1]
+			q_A[idx, :Effective_Time] = amp[2,1,1]
+			q_A[idx, :Amp_GOF] = amp_gofs[1]
+			q_A[idx, :Channel] = data.chNames[1]
+		end
+	end
+	BotNotify("{ERG GNAT}: Completed extraction of A-wave")
+	q_A
+end
+
+# ╔═╡ 61491972-d090-4b6d-af68-f708cb5dab5a
+begin
+	for (idx, exp) in enumerate(eachrow(q_B)) #make sure to change this
+		#we want to extract the response for each trace here
+		println("Extracting B-wave for experiment $idx of $(size(q_B, 1))")
+		if exp.Photoreceptor == "Cones"
+			
+			A_data = filter_data(
+				extract_abf(exp.A_Path, average_sweeps = true), t_post = 1.0
+			)
+			
+			AB_data = filter_data(
+				extract_abf(exp.AB_Path, average_sweeps = true), t_post = 1.0
+			)
+			
+		else
+			A_data = extract_abf(exp.A_Path, average_sweeps = true) |> filter_data
+			AB_data = extract_abf(exp.AB_Path, average_sweeps = true) |> filter_data
+		end
+		
+
+
+		if size(AB_data) != size(A_data)
+			#we want to drop the extra channel
+			match_ch= findall(A_data.chNames.==AB_data.chNames)
+			if size(AB_data,3) > size(A_data,3) 
+				drop!(AB_data, drop_idx = match_ch[1])
+			else
+				drop!(A_data, drop_idx = match_ch[1])
+			end
+			B_data = AB_data - A_data
+		else
+			#Now we can subtract the A response from the AB response
+			B_data = AB_data - A_data 
+		end
+
+		#Extract the response 
+		if exp.Age <= 11
+			resp = abs.(minimum(B_data, dims = 2))[1,1,:]
+		else
+			resp = abs.(maximum(B_data, dims = 2))[1,1,:]
+		end
+		peak_time = time_to_peak(B_data)
+		#Extract the integrated time
+		tInt = NeuroPhys.integral(B_data)
+		
+		if size(B_data, 3) > 1
+			q_B[idx, :Response] = resp[1]
+			q_B[idx, :Peak_Time] = peak_time[1]
+			q_B[idx, :Int_Time] = tInt[1]
+			q_B[idx, :Channel] = B_data.chNames[1]
+			for add_i in 2:size(B_data,3)
+				added_row = deepcopy(q_B[idx, :])
+				added_row.Response = resp[add_i]
+				added_row.Peak_Time = peak_time[add_i]
+				added_row.Int_Time = tInt[add_i]
+				added_row.Channel = B_data.chNames[add_i]
+				push!(q_B, added_row)
+			end
+		else
+			q_B[idx, :Response] = resp[1]
+			q_B[idx, :Peak_Time] = peak_time[1]
+			q_B[idx, :Int_Time] = tInt[1]
+			q_B[idx, :Channel] = B_data.chNames[1]
+		end
+	end
+	BotNotify("{ERG GNAT}: Completed extraction of B-wave")
+	q_B
+end
 
 # ╔═╡ 333fd8a8-52f2-4306-9a68-e828b930472a
 md"
@@ -435,10 +404,10 @@ begin
 	end
 end;
 
-# ╔═╡ ad8f2520-5c11-40da-928c-5d06a9e1f515
-conditions_B
+# ╔═╡ cb9f4be2-c8c7-4a95-a550-36f82e98e2f6
+q_A
 
-# ╔═╡ 385a1c4b-1e44-4cd5-bbc3-f3b04a4636ee
+# ╔═╡ 2dd71b0b-d24a-402c-b233-4e8a13638d68
 begin
 	#lets test out some IR curves
 	q_sect_A = q_A |> 
@@ -448,18 +417,27 @@ begin
 		@filter(_.Photoreceptor == "Rods") |> 
 		@filter(_.Wavelength == 525) |>
 		DataFrame
-	@df q_sect_A plot(:Photons, :Response, 
-		st = :scatter)#, xaxis = :log)
-		#lets test out some IR curves
-	q_sect_B = q_B |> 
-		@filter(_.Photons > 0.0) |>
-		@filter(_.Age >=  30) |> 
-		@filter(_.Genotype == "DR") |> 
-		@filter(_.Photoreceptor == "Rods") |>
-		@filter(_.Wavelength == 525) |>
-		DataFrame
-	@df q_sect_B plot!(:Photons, :Response, 
-		st = :scatter, xaxis = :log, label = "B-wave")
+	@df q_sect_A plot(:Photons, :Tau_Rec, 
+		st = :scatter, 
+		xaxis = :log, xlabel = "Photons/μm²", 
+		ylabel = "Recovery τ  (s)")
+	#Lets fit the curve
+end
+
+# ╔═╡ 07748bb8-93aa-49de-87f9-d0a68ad9f00f
+savefig("E:\\Projects\\2020_JGP_Gnat\\Intensity_Recovery.png")
+
+# ╔═╡ 3767234f-b654-4dfd-8395-3f4d94ca0204
+begin
+	#q_sect_B = q_B |> 
+	#	@filter(_.Photons > 0.0) |>
+	#	@filter(_.Age >=  30) |> 
+	#	@filter(_.Genotype == "DR") |> 
+	#	@filter(_.Photoreceptor == "Rods") |>
+	#	@filter(_.Wavelength == 525) |>
+	#	DataFrame
+	#@df q_sect_B plot!(:Photons, :Response, 
+	#	st = :scatter, xaxis = :log, label = "B-wave")
 		#lets test out some IR curves
 end
 
@@ -558,17 +536,17 @@ savefig(fig_test, "E:\\Projects\\2020_JGP_Gnat\\test_figure.png")
 # ╟─84fb07ae-092e-4885-a804-ca442a6d2aa2
 # ╠═bf708d08-dc13-4bab-86b7-e417f613dbbf
 # ╠═4363930f-b4ed-43f4-84c1-5c486dcb9d8d
-# ╠═9ae2b084-d748-4e27-9b29-3d3f0123194f
 # ╟─2789b656-b79e-4138-9fb7-7228d94dafe8
-# ╟─4230725e-0e96-4f8b-82b5-3af01e50273a
+# ╠═4230725e-0e96-4f8b-82b5-3af01e50273a
 # ╟─61491972-d090-4b6d-af68-f708cb5dab5a
 # ╟─37c5a1c9-13b8-4db7-9dca-7790718b1706
-# ╟─0e7829e1-0943-4db5-84aa-ba5e5b053c9e
-# ╠═28d411ab-ad55-4646-b1d7-541d7402e508
+# ╠═0e7829e1-0943-4db5-84aa-ba5e5b053c9e
 # ╟─333fd8a8-52f2-4306-9a68-e828b930472a
-# ╟─54e39c16-5d5a-44ca-bd13-abe3afbbcbe3
-# ╠═ad8f2520-5c11-40da-928c-5d06a9e1f515
-# ╠═385a1c4b-1e44-4cd5-bbc3-f3b04a4636ee
+# ╠═54e39c16-5d5a-44ca-bd13-abe3afbbcbe3
+# ╠═cb9f4be2-c8c7-4a95-a550-36f82e98e2f6
+# ╠═2dd71b0b-d24a-402c-b233-4e8a13638d68
+# ╠═07748bb8-93aa-49de-87f9-d0a68ad9f00f
+# ╠═3767234f-b654-4dfd-8395-3f4d94ca0204
 # ╠═5cec52ef-5d8e-47b3-9ec8-99c84aa22921
 # ╟─ccc3109b-63a4-4048-9b72-525340972dd1
 # ╠═416ee703-b971-47b1-b879-56b97af8aeaf
