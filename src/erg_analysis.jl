@@ -60,7 +60,7 @@ function saturated_response(data::Experiment{T};
                     edges = collect(h.edges...)[2:end]
                     weights = h.weights./length(y_data)
                     rmax = edges[argmax(weights)]
-                    println(rmax)
+                    #println(rmax)
                 else
                     rmax = minimum(y_data)
                 end
