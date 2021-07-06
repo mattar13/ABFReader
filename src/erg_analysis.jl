@@ -94,106 +94,13 @@ function saturated_response(data::Experiment{T};
 end
 
 """
-This function only works on concatenated files with more than one data
-    Rmax argument should have the same number of sweeps and channels as the 
-    In the rdim calculation, it is better to adjust the higher percent
-    Example: no datas in 20-30% range, try 20-40%
-"""
-function dim_response(data::Experiment{T}, rmaxes::Array{T, 1}; return_idx = true, polarity::Int64 = -1, rmax_lin = [0.10, 0.50]) where T <: Real
-    #We need
-    if size(data,1) == 1
-        throw(ErrorException("There is no sweeps to this file, and Rdim will not work"))
-    elseif size(data,3) != size(rmaxes,1)
-        throw(ErrorException("The number of rmaxes is not equal to the channels of the dataset"))
-    else
-        rdims = zeros(T, size(data,3))
-        #rdims = fill(NaN, size(data,3))
-        dim_idx = zeros(Int64, size(data,3))
-        for swp in 1:size(data,1)
-            for ch in 1:size(data,3)
-                rmax_val = rmax_lin .* rmaxes[ch]
-                #println(rmax_val)
-                if rmax_val[1] > rmax_val[2]
-                    rmax_val = reverse(rmax_val)
-                end
-                #rdim_thresh = rmaxes[ch] * 0.15
-                
-                if polarity < 0
-                    minima = minimum(data[swp, :, ch])
-                else
-                    minima = maximum(data[swp, :, ch])
-                end
-                #println(rmax_val[1])
-                #println(minima)
-                #println(rmax_val[1]< minima)
-
-                #println(rmax_val[2])
-                #println(minima)
-                #println(minima <= rmax_val[2])
-                if rmax_val[1] < minima < rmax_val[2]
-                    #println("Minima in range")
-                    if minima < rdims[ch] && polarity < 0
-                        rdims[ch] = minima
-                        dim_idx[ch] = swp 
-                    elseif minima > rdims[ch] && polarity > 0
-                        rdims[ch] = minima
-                        dim_idx[ch] = swp
-                    end
-                else
-                    #println("Minima not in range")
-                    #rdims[ch] = NaN
-                end
-            end
-        end
-        rdims = map(x -> x == 0.0 ? NaN : x, rdims)
-        #dim_idx = map(x -> x == 0.0 ? NaN : x, dim_idx)
-        #println(rdims)
-        if return_idx #In most cases, the rdim will be used to calculate the time to peak
-            rdims |> vec, dim_idx |> vec
-        else
-            rdims |> vec
-        end
-    end
-end
-
-"""
 This function calculates the time to peak using the dim response properties of the concatenated file
 """
-function time_to_peak(data::Experiment{T}, dim_idx::Array{Int64,1}) where T <: Real
-    if size(data,1) == 1
-        throw(ErrorException("There is no sweeps to this file, and Tpeak will not work"))
-    elseif size(data,3) != size(dim_idx,1)
-        throw(ErrorException("The number of indexes is not equal to the channels of the dataset"))
-    else
-        t_peak = T[]
-        for (ch, swp) in enumerate(dim_idx)
-            if swp != 0
-                t_series = data.t[findall(data.t .>= 0.0)]
-                temp_record = data[swp, findall(data.t .>= 0), ch]
-                #println(argmin(data))
-                push!(t_peak, t_series[argmin(temp_record)])
-            else
-                push!(t_peak, NaN)
-            end
-        end
-        t_peak
-    end
-end
-
-function get_response(data::Experiment{T}, rmaxes::Array{T,1}; polarity = -1) where T <: Real
-    responses = zeros(size(data,1), size(data,3))
-    for swp in 1:size(data,1)
-        for ch in 1:size(data,3)
-            if polarity == -1
-                minima = minimum(data[swp, :, ch]) 
-                responses[swp, ch] = minima < rmaxes[ch] ? rmaxes[ch] : minima
-            elseif polarity == 1
-                maxima = maximum(data[swp, :, ch]) 
-                responses[swp, ch] = maxima >= rmaxes[ch] ? rmaxes[ch] : maxima
-            end
-        end
-    end
-    responses
+function time_to_peak(data::Experiment{T}) where T <: Real
+    over_stim = findall(data.t .> 0.0) #We only want to extract time points after the stim
+    lowest_val = map(x -> x[2], argmin(data[:, over_stim, :], dims = 2))[1,1,:]
+    lowest_val .+= over_stim[1]-1
+    data.t[lowest_val].*1000
 end
 
 #Pepperburg analysis
@@ -272,7 +179,7 @@ end
 The dominant time constant is calculated by fitting the normalized Rdim with the response recovery equation
 """
 function recovery_tau(data::Experiment{T}; τRec::T = 1.0) where T <: Real
-    fits = fill(Vector(), (size(data,1), size(data,3)))
+    trec = zeros(size(data,1), size(data,3))
     gofs = zeros(size(data,1), size(data,3))
     #This function uses the recovery model and takes t as a independent variable
     model(x,p) = map(t -> REC(t, -1.0, p[2]), x)
@@ -303,7 +210,7 @@ function recovery_tau(data::Experiment{T}; τRec::T = 1.0) where T <: Real
         ȳ = sum(model(xdata, fit.param))/length(xdata)
         SST = sum((ydata .- ȳ).^2)
         GOF = 1- SSE/SST
-        fits[swp, ch] =  fit.param
+        fits[swp, ch] =  fit.param[2]
         gofs[swp, ch] = GOF
     end
     return fits, gofs
