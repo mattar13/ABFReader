@@ -16,25 +16,6 @@ function RSQ(ŷ::Array{T}, y::Array{T}) where T <: Real
 	1-SSE/SST
 end
 
-
-"""
-This function calculates the min, max, mean, and std of each data
-"""
-function calculate_basic_stats(data::Experiment{T}) where T <: Real
-    mins = minimum(data.data_array, dims = 2)[:,1,:]
-    maxes = maximum(data.data_array, dims = 2)[:,1,:]
-    means = zeros(size(data,1), size(data,3))
-    stds = zeros(size(data,1), size(data,3))
-    for swp in 1:size(data,1), ch in 1:size(data,3)
-        stim_begin, stim_end = data.stim_protocol[swp].index_range
-        pre_stim = data[:, 1:stim_begin, :]
-        post_stim = data[:, stim_begin:size(data,2), :]
-        means[swp, ch] = sum(pre_stim[swp, :, ch])/size(pre_stim,2)
-        stds[swp, ch] = std(pre_stim[swp, :, ch])
-    end
-    return mins, maxes, means, stds
-end
-
 rolling_mean(arr::AbstractArray; radius = 5) = [sum(arr[i:i+radius])/radius for i = 1:length(arr)-radius]
 
 """
@@ -139,55 +120,34 @@ end
 
 pepperburg_analysis(data::Experiment{T}; kwargs...) where T <: Real= pepperburg_analysis(data, saturated_response(data; kwargs...); kwargs...)  
 
-
-
 """
 The integration time is fit by integrating the dim flash response and dividing it by the dim flash response amplitude
 - A key to note here is that the exact f(x) of the ERG data is not completely known
 - The integral is therefore a defininte integral and a sum of the area under the curve
 """
-
-function integration_time(data::Experiment{T}, dim_idx::Array{Int64,1}) where T <: Real
-    if size(data,3) != length(dim_idx)
-        throw(error("Size of dim indexes does not match channel size for data"))
-    else
-        int_time = T[]
-        for ch in 1:size(data,3)
-            if dim_idx[ch] == 0
-                push!(int_time, NaN)
-            else
-                dim_data = data[dim_idx[ch], :, ch]
-                #The integral is calculated by taking the sum of all points (in μV) and dividing by the time range (in ms)
-                #We have to make sure this response is in μV
-                if data.chUnits[ch] == "mV"
-                    rdim = minimum(dim_data)*1000
-                    sum_data = sum(dim_data.*1000)*(data.dt*1000)
-                else
-                    rdim = minimum(dim_data)
-                    sum_data = sum(dim_data)*data.dt
-                end
-                push!(int_time, sum_data/rdim)
-            end
-        end
-        return int_time
-    end
-end
+integral(data::Experiment{T}) where T <: Real = (-sum(data, dims = 2)*data.dt)[:,1,:]
 
 # The below functions are created by fitting a model 
 
 """
 The dominant time constant is calculated by fitting the normalized Rdim with the response recovery equation
 """
-function recovery_tau(data::Experiment{T}; τRec::T = 1.0) where T <: Real
-    trec = zeros(size(data,1), size(data,3))
-    gofs = zeros(size(data,1), size(data,3))
+function recovery_tau(data::Experiment{T}, resp::Array{T, 2}; τRec::T = 1.0) where T <: Real
+    #Make sure the sizes are the same
+    @assert size(resp) == (size(data, 1), size(data,3))
+
+    trec = zeros(T, size(data,1), size(data,3))
+    gofs = zeros(T, size(data,1), size(data,3))
     #This function uses the recovery model and takes t as a independent variable
     model(x,p) = map(t -> REC(t, -1.0, p[2]), x)
     for swp in 1:size(data,1), ch in 1:size(data,3)
         # println(dim_idx[ch])
         xdata = data.t
         ydata = data[swp, :, ch] 
-        ydata ./= minimum(ydata) #Normalize the Rdim
+        #Test both scenarios to ensure that
+        ydata ./= minimum(ydata) #Normalize the Rdim to the minimum value
+        #ydata ./= resp[swp, ch] #Normalize the Rdim to the saturated response
+
         #cutoff all points below -0.5 and above -1.0
         begin_rng = findall(ydata .>= 1.0)[end]
         xdata = xdata[begin_rng:end]
@@ -210,25 +170,31 @@ function recovery_tau(data::Experiment{T}; τRec::T = 1.0) where T <: Real
         ȳ = sum(model(xdata, fit.param))/length(xdata)
         SST = sum((ydata .- ȳ).^2)
         GOF = 1- SSE/SST
-        fits[swp, ch] =  fit.param[2]
+        trec[swp, ch] =  fit.param[2]
         gofs[swp, ch] = GOF
     end
-    return fits, gofs
+    return trec, gofs
 end
 
 
-function amplification(data::Experiment{T}, rmaxes::Array{T,1}; 
+function amplification(data::Experiment{T}, resp::Array{T,2}; 
         time_cutoff = 0.1,
-        lb = [0.0, 0.001], ub = [Inf, 0.040]
+        lb::Vector{T} = [0.0, 0.001], 
+        p0::Vector{T} = [200.0, 0.002], 
+        ub::Vector{T} = [Inf, 0.040]
     ) where T <: Real
+    
+    @assert size(resp) == (size(data, 1), size(data,3))
+
     amp = zeros(2, size(data,1), size(data,3))
     gofs = zeros(T, size(data,1), size(data,3))
+
     for swp in 1:size(data,1), ch in 1:size(data,3)
-        model(x, p) = map(t -> AMP(t, p[1], p[2], rmaxes[ch]), x)
+        model(x, p) = map(t -> AMP(t, p[1], p[2], resp[swp, ch]), x)
         idx_end = findall(data.t .>= time_cutoff)[1]
         xdata = data.t[1:idx_end]
-        ydata = data[swp,1:idx_end,ch]
-        p0 = [200.0, 0.002]        
+        ydata = data[swp, 1:idx_end, ch]
+             
         fit = curve_fit(model, xdata, ydata, p0, lower = lb, upper = ub)
         #Check Goodness of fit
         SSE = sum(fit.resid.^2)
@@ -240,83 +206,4 @@ function amplification(data::Experiment{T}, rmaxes::Array{T,1};
         gofs[swp, ch] = GOF
     end
     return amp, gofs
-end
-
-#Lets get the file we want to use first
-function IR_curve(data::Experiment{T}; 
-        ih = 100.0, n::Real = 2.0,  lb = [0.0, 1.0, 0.0], ub = [Inf, 4.0, Inf],
-        polarity::Int64 = -1, normalize = false, ignore_oversaturation = true,
-        report_GOF = false
-    ) where T <: Real
-    if length(data.filename) > 1
-        sensitivity = zeros(size(data,3))
-        fit_rmaxs = zeros(size(data,3))
-        fit_ns = zeros(size(data,3))
-        #The file is not a concatenation in clampfit
-        intensity = Float64[]
-                
-        #We can choose if the Rmax polarity is negative or positive
-        if polarity == -1
-            resp = -minimum(data, dims = 2)[:,1,:] 
-        elseif polarity == 1
-            resp = maximum(data, dims = 2)[:,1,:]
-        end
-        rmaxs = -saturated_response(data)
-        #We need to make sure that the rmax doesn't include the nose component
-        
-        if ignore_oversaturation == true
-            for i in 1:size(resp,2)
-                over_saturated = resp[:,i] .> rmaxs[i] #Find out anything over the rmax
-                under_saturated = resp[:,i] .<= rmaxs[i] #Find out anything under the rmax
-                resp[:, i] = (rmaxs[i] .* over_saturated) + (resp[:, i] .* under_saturated)
-            end
-        end
-
-
-        if normalize
-            #If we choose to normalize, the rmaxes will become 1 and responses
-            resp ./= maximum(resp)
-            rmaxs = ones(size(rmaxs))
-        end
-        
-        for (idx,info) in enumerate(data.filename)
-            t_begin, t_end = data.stim_protocol[idx].timestamps
-            t_stim = (t_end - t_begin)*1000
-            file_info = formatted_split(info, format_bank)
-            OD = Float64(file_info.ND) |> Transferrance
-            Per_Int = Float64(file_info.Intensity)
-            #println("$(file_info.ND) -> $(OD), $(Per_Int), $(t_stim)")
-            photons = stimulus_model([OD, Per_Int, t_stim])
-            push!(intensity, photons)
-        end
-
-        model_pars = [ih, n, sum(rmaxs)/2]
-        for i in 1:size(data,3)
-            if data.chUnits[i]== "mV" && normalize == false
-                #The data is in mV we want μV
-                resp[:,i] .*= 1000
-                rmaxs[i] = rmaxs[i] * 1000
-            end
-            #println(rmaxs)
-            model(x, p) = map(I -> IR(I, p[1], p[2]) * p[3], x)
-            #Fit the Ih curve for each channel
-            fit = curve_fit(model, intensity, resp[:,i], model_pars, lower = lb, upper = ub)
-            println(fit.param)
-            if report_GOF
-                SSE = sum(fit.resid.^2)
-                ȳ = sum(model(intensity, fit.param))/length(intensity)
-                SST = sum((resp[:,i] .- ȳ).^2)
-                GOF = 1- SSE/SST
-                println("Goodness of fit: $GOF")
-            end
-            sensitivity[i] = fit.param[1]
-            fit_ns[i] = fit.param[2]
-            fit_rmaxs[i] = fit.param[3]
-
-        end
-
-        return (intensity, resp, sensitivity, fit_ns, fit_rmaxs)
-    else
-        #The file is a preconcatenated file
-    end
 end
