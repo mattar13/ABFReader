@@ -1,5 +1,12 @@
 #everything in here is alot of code that does not necessarily need to be run every time 
 #using Query
+dataframe_sheets = [
+     "All_Files",
+     "trace_A", "trace_B", "trace_G", 
+     "experiments_A", "experiments_B", "exeriments_G", 
+     "conditions_A", "conditions_B", "conditions_G" 
+]
+
 
 function update_RS_datasheet(
      all_paths::Array{String}, 
@@ -67,12 +74,15 @@ function update_RS_datasheet(
                     print("Dataframe created, saving...")
                end
 
-               XLSX.writetable(data_file, 
-                         All_Files = (
-                              collect(DataFrames.eachcol(all_files)), 
-                              DataFrames.names(all_files)
-                         ),
-                    )
+               XLSX.openxlsx(data_file, mode = "w") do xf 
+                    for sn in dataframe_sheets
+                         XLSX.addsheet!(xf, sn)
+                    end
+                    XLSX.writetable!(xf["All_Files"], 
+                         collect(DataFrames.eachcol(trace_A)), 
+                         DataFrames.names(trace_A)
+                         )						
+               end
                
                
                if verbose 
@@ -214,14 +224,14 @@ function update_RS_datasheet(
                     #remove old analysis
                     rm(data_file)
                     #write new analysis
-                    XLSX.writetable(data_file, 
-                              All_Files = (
+                    XLSX.openxlsx(data_file, mode = "rw") do xf 
+                         sheet = xf["trace_A"]
+		               XLSX.writetable!(sheet, 
                                    collect(DataFrames.eachcol(all_files)), 
                                    DataFrames.names(all_files)
-                              ),
-                         )
+                              )
+                    end
                end
-
                return all_files
           end
      catch error

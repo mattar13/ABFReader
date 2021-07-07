@@ -5,10 +5,7 @@ using Markdown
 using InteractiveUtils
 
 # ╔═╡ 60eb055d-2772-49af-af4b-12c2f8a9a98c
-begin
-	using Revise
-	using NeuroPhys
-end
+using Revise, NeuroPhys
 
 # ╔═╡ 619511b0-b900-11eb-3b71-ef04627229a3
 using PlutoUI, Colors
@@ -18,6 +15,9 @@ using DataFrames, Query, XLSX, StatsPlots
 
 # ╔═╡ 0d3ec243-b988-4b7f-a038-63375d96ffe8
 using Distributions, StatsBase
+
+# ╔═╡ 66dece47-1600-47d0-b38d-86582a5f3f4b
+dotenv("D:\\.env") #This is the bot security file that contains the bot control
 
 # ╔═╡ ca371b23-48ea-42af-a639-1d10711784c0
 #define a single function for filtering
@@ -73,7 +73,7 @@ begin
 		#remove all photons under 10000
 		@filter(_.Photons < 10000) |> 
 		@map({_.Path, 
-			_.Year, _.Month, _.Date, _.Animal, _.Photoreceptor,
+			_.Year, _.Month, _.Date, _.Animal, _.Photoreceptor, _.Wavelength,
 			_.Age, _.Genotype, _.Condition, _.Photons, 
 			Channel = "Vm_prime",
 			Minima = 0.0, 
@@ -102,7 +102,7 @@ begin
 			{
 				A_Path = _.Path, AB_Path = __.Path, 
 				A_condition = _.Condition, AB_condition = __.Condition,
-				__.Year, __.Month, __.Date, __.Animal, _.Photoreceptor,
+				__.Year,__.Month,__.Date,__.Animal,__.Photoreceptor,__.Wavelength,
 				__.Age, __.Genotype, __.Condition, __.Photons, 
 				Channel = "Vm_prime",
 				Response = 0.0, Peak_Time = 0.0, Int_Time = 0.0, 
@@ -116,8 +116,8 @@ begin
 		{__.Path, 
 			AB_Path = _.Path, ABG_Path = __.Path, 
 			AB_Condition = _.Condition, ABG_Condition = __.Condition, 
-			__.Year, __.Month, __.Date, __.Animal, 
-			__.Age, __.Genotype, __.Condition, __.Photons, _.Photoreceptor,
+			__.Year, __.Month, __.Date, __.Animal,__.Photoreceptor,__.Wavelength,
+			__.Age, __.Genotype, __.Condition, __.Photons, 
 			Channel = "Vm_prime",
 			Response = 0.0, Peak_Time = 0.0, Int_Time = 0.0, 
 			Tau_Rec = 0.0, Tau_GOF = 0.0
@@ -268,6 +268,13 @@ begin
 		end
 	end
 	BotNotify("{ERG GNAT}: Completed extraction of A-wave")
+	XLSX.openxlsx(data_file, mode = "rw") do xf 
+		sheet = xf["trace_A"]
+		XLSX.writetable!(sheet, 
+			collect(DataFrames.eachcol(trace_A)), 
+			DataFrames.names(trace_A))						
+	end
+	
 	trace_A
 end
 
@@ -296,9 +303,9 @@ begin
 
 		#Extract the response 
 		if exp.Age <= 11
-			resp = abs.(minimum(B_data, dims = 2))
+			resp = abs.(minimum(B_data, dims = 2))[1,:,:]
 		else
-			resp = abs.(maximum(B_data, dims = 2))
+			resp = abs.(maximum(B_data, dims = 2))[1,:,:]
 		end
 		peak_time = time_to_peak(B_data)
 		#Extract the integrated time
@@ -333,6 +340,12 @@ begin
 		end
 	end
 	BotNotify("{ERG GNAT}: Completed extraction of B-wave")
+	XLSX.openxlsx(data_file, mode = "rw") do xf 
+		sheet = xf["trace_B"]
+		XLSX.writetable!(sheet, 
+			collect(DataFrames.eachcol(trace_B)), 
+			DataFrames.names(trace_B))						
+	end
 	trace_B
 end
 
@@ -362,9 +375,9 @@ begin
 
 		#Extract the negative response 
 		if exp.Age <= 11
-			resp = abs.(maximum(G_data, dims = 2))
+			resp = abs.(maximum(G_data, dims = 2))[1,:,:]
 		else
-			resp = abs.(minimum(G_data, dims = 2))
+			resp = abs.(minimum(G_data, dims = 2))[1,:,:]
 		end
 
 		peak_time = time_to_peak(G_data)
@@ -372,14 +385,13 @@ begin
 		tInt = NeuroPhys.integral(G_data)
 		#Extract the recovery time constant
 		tRec, tau_gofs = recovery_tau(G_data, resp) 
-		println(tRec)
-		if size(B_data, 3) > 1
+		if size(G_data, 3) > 1
 			trace_G[idx, :Response] = resp[1]
 			trace_G[idx, :Peak_Time] = peak_time[1]
 			trace_G[idx, :Int_Time] = tInt[1]
 			trace_G[idx, :Tau_Rec] = tRec[1]*1000
 			trace_G[idx, :Tau_GOF] = tau_gofs[1]
-			trace_G[idx, :Channel] = B_data.chNames[1]
+			trace_G[idx, :Channel] = G_data.chNames[1]
 			for add_i in 2:size(G_data,3)
 				added_row = deepcopy(trace_G[idx, :])
 				added_row.Response = resp[add_i]
@@ -387,8 +399,8 @@ begin
 				added_row.Int_Time = tInt[add_i]
 				added_row.Tau_Rec = tRec[add_i]*1000
 				added_row.Tau_GOF = tau_gofs[add_i]
-				added_row.Channel = B_data.chNames[add_i]
-				push!(trace_B, added_row)
+				added_row.Channel = G_data.chNames[add_i]
+				push!(trace_G, added_row)
 			end
 		else
 			trace_G[idx, :Response] = resp[1]
@@ -396,10 +408,16 @@ begin
 			trace_G[idx, :Int_Time] = tInt[1]
 			trace_G[idx, :Tau_Rec] = tRec[1]*1000
 			trace_G[idx, :Tau_GOF] = tau_gofs[1]
-			trace_G[idx, :Channel] = B_data.chNames[1]
+			trace_G[idx, :Channel] = G_data.chNames[1]
 		end
 	end
 	BotNotify("{ERG GNAT}: Completed extraction of B-wave")
+	XLSX.openxlsx(data_file, mode = "rw") do xf 
+		sheet = xf["trace_G"]
+		XLSX.writetable!(sheet, 
+			collect(DataFrames.eachcol(trace_G)), 
+			DataFrames.names(trace_G))						
+	end
 	trace_G
 end
 
@@ -419,29 +437,37 @@ begin
 			DataFrame
 		
 		#Rmax
-		experiments_A[idx, :rmax] = maximum(q_data.Response)
-		#Rdim
-		rdim_rng = [0.10, 0.40] .* maximum(q_data.Response)
-		in_range = findall(rdim_rng[1] .< q_data.Response .< rdim_rng[2])
-		rdims = q_data.Response[in_range]
-		if !isempty(rdims)
-			rdim_idx = in_range[argmax(rdims)]
-			experiments_A[idx, :rdim] = maximum(rdims)
-			experiments_A[idx, :time_to_peak] = q_data[rdim_idx, :Peak_Time]
-			experiments_A[idx, :integration_time] = q_data[rdim_idx, :Int_Time]
-			experiments_A[idx, :recovery_tau] =  q_data[rdim_idx, :Tau_Rec]
-			#for alpha and effective time we need to average the first 3-5 dim traces
-			#if the response is different than the minima, the trace is saturated
-			unsaturated = findall(q_data.Response .== q_data.Minima)
-			over_rdim = findall(q_data.Response .> maximum(rdims))
-			valid_amps = unsaturated[map(x -> x ∈ over_rdim, unsaturated)]
-			println(valid_amps)
-			#if the response is higher than the rdim, than it is 
-			experiments_A[idx, :alpha] = sum(q_data.a[valid_amps])/length(valid_amps)
-			println(experiments_A[idx, :alpha])
-			experiments_A[idx, :effective_time] = 	
-				sum(q_data.t_eff[valid_amps])/length(valid_amps)
+		if !isempty(q_data)
+			experiments_A[idx, :rmax] = maximum(q_data.Response)
+			#Rdim
+			rdim_rng = [0.10, 0.40] .* maximum(q_data.Response)
+			in_range = findall(rdim_rng[1] .< q_data.Response .< rdim_rng[2])
+			rdims = q_data.Response[in_range]
+			if !isempty(rdims)
+				rdim_idx = in_range[argmax(rdims)]
+				experiments_A[idx, :rdim] = maximum(rdims)
+				experiments_A[idx, :time_to_peak] = q_data[rdim_idx, :Peak_Time]
+				experiments_A[idx, :integration_time] = q_data[rdim_idx, :Int_Time]
+				experiments_A[idx, :recovery_tau] =  q_data[rdim_idx, :Tau_Rec]
+				#for alpha we need to average the first 3-5 dim traces
+				unsaturated = findall(q_data.Response .== q_data.Minima)
+				over_rdim = findall(q_data.Response .> maximum(rdims))
+				valid_amps = unsaturated[map(x -> x ∈ over_rdim, unsaturated)]
+				println(valid_amps)
+				#if the response is higher than the rdim, than it is 
+				experiments_A[idx, :alpha] = 	
+					sum(q_data.a[valid_amps])/length(valid_amps)
+				println(experiments_A[idx, :alpha])
+				experiments_A[idx, :effective_time] = 	
+					sum(q_data.t_eff[valid_amps])/length(valid_amps)
+			end
 		end
+	end
+	XLSX.openxlsx(data_file, mode = "rw") do xf 
+		sheet = xf["experiments_A"]
+		XLSX.writetable!(sheet, 
+			collect(DataFrames.eachcol(experiments_A)), 
+			DataFrames.names(experiments_A))						
 	end
 	experiments_A
 end
@@ -472,6 +498,12 @@ begin
 			#If we wanted to plot individual traces, here is where we would do that	
 		end
 	end
+	XLSX.openxlsx(data_file, mode = "rw") do xf 
+		sheet = xf["experiments_B"]
+		XLSX.writetable!(sheet, 
+			collect(DataFrames.eachcol(experiments_B)), 
+			DataFrames.names(experiments_B))						
+	end
 	experiments_B
 end
 
@@ -499,6 +531,12 @@ begin
 			end
 			#If we wanted to plot individual traces, here is where we would do that	
 		end
+	end
+	XLSX.openxlsx(data_file, mode = "rw") do xf 
+		sheet = xf["experiments_G"]
+		XLSX.writetable!(sheet, 
+			collect(DataFrames.eachcol(experiments_G)), 
+			DataFrames.names(experiments_G))						
 	end
 	experiments_G
 end
@@ -549,6 +587,12 @@ begin
 		conditions_A[idx, :Effective_Time_SEM] = 			
 			std(q_data.effective_time)/sqrt(length(q_data.effective_time))
 	end
+	XLSX.openxlsx(data_file, mode = "rw") do xf 
+		sheet = xf["conditions_A"]
+		XLSX.writetable!(sheet, 
+			collect(DataFrames.eachcol(conditions_A)), 
+			DataFrames.names(conditions_A))						
+	end
 	conditions_A
 end
 
@@ -582,6 +626,12 @@ begin
 			sum(q_data.recovery_tau)/length(q_data.recovery_tau)
 		conditions_B[idx, :Recovery_Tau_SEM] = 			
 			std(q_data.recovery_tau)/sqrt(length(q_data.recovery_tau))
+	end
+	XLSX.openxlsx(data_file, mode = "rw") do xf 
+		sheet = xf["conditions_B"]
+		XLSX.writetable!(sheet, 
+			collect(DataFrames.eachcol(conditions_B)), 
+			DataFrames.names(conditions_B))						
 	end
 	conditions_B
 end
@@ -617,14 +667,23 @@ begin
 		conditions_G[idx, :Recovery_Tau_SEM] = 			
 			std(q_data.recovery_tau)/sqrt(length(q_data.recovery_tau))
 	end
+	XLSX.openxlsx(data_file, mode = "rw") do xf 
+		sheet = xf["conditions_G"]
+		XLSX.writetable!(sheet, 
+			collect(DataFrames.eachcol(conditions_G)), 
+			DataFrames.names(conditions_G))						
+	end
 	conditions_G
 end
 
 # ╔═╡ 9258c7f4-530c-487c-8023-eca3d64cef0e
-XLSX.openxlsx(save_file, mode = "rw") do xf 
-	XLSX.addsheet!(xf, "Traces_A")
-	sheet = xf["Test"]
-	XLSX.writetable!(sheet, [1,2,3], ["a", "b", "c"])
+begin
+	XLSX.openxlsx(data_file, mode = "rw") do xf 
+		sheet = xf["trace_A"]
+		XLSX.writetable!(sheet, 
+			collect(DataFrames.eachcol(trace_A)), 
+			DataFrames.names(trace_A))						
+	end
 end
 
 # ╔═╡ 9b9dbf63-d148-476f-9de0-c854b360597a
@@ -1696,23 +1755,24 @@ end
 # ╔═╡ Cell order:
 # ╠═619511b0-b900-11eb-3b71-ef04627229a3
 # ╠═60eb055d-2772-49af-af4b-12c2f8a9a98c
+# ╠═66dece47-1600-47d0-b38d-86582a5f3f4b
 # ╠═1896d7c6-1685-481e-84cd-50c4583f14de
 # ╠═0d3ec243-b988-4b7f-a038-63375d96ffe8
 # ╠═ca371b23-48ea-42af-a639-1d10711784c0
 # ╠═7fb2fcdc-445d-4429-830f-5eb929539d9e
 # ╟─bd5889f5-12d3-4739-90de-094e2a6f414f
 # ╟─0f1d25a5-f366-41a9-a3c9-bb13bcb6ab2d
-# ╠═3781dc5f-e9e0-4a60-adb9-a422741d375d
+# ╟─3781dc5f-e9e0-4a60-adb9-a422741d375d
 # ╟─a3319e29-9d96-4529-a035-39ff2d4f1cd8
 # ╟─695cc1d2-0244-4609-970a-2df676263e99
 # ╟─659e9a5f-d383-4e89-be73-d008d1bcb122
-# ╠═f76e5e8b-25c9-4934-906e-2e57e5d48820
-# ╟─59c0d921-0f22-48ce-b4c0-f3a374e547d9
-# ╟─b06d3026-2543-4feb-9a7e-898564d892d1
-# ╟─7c4480ab-ece5-4659-b314-519fbee46cb6
-# ╠═0c09ad42-403d-4a24-a5d1-88c992203a8f
-# ╟─705481fe-b09c-47db-b786-77cd4a2dcb33
-# ╟─a912d133-cb30-44fc-83bb-fe94d5fcfeac
+# ╟─f76e5e8b-25c9-4934-906e-2e57e5d48820
+# ╠═59c0d921-0f22-48ce-b4c0-f3a374e547d9
+# ╠═b06d3026-2543-4feb-9a7e-898564d892d1
+# ╠═7c4480ab-ece5-4659-b314-519fbee46cb6
+# ╟─0c09ad42-403d-4a24-a5d1-88c992203a8f
+# ╠═705481fe-b09c-47db-b786-77cd4a2dcb33
+# ╠═a912d133-cb30-44fc-83bb-fe94d5fcfeac
 # ╠═b47fd915-2ae5-4e86-bb7b-1a8acdc648ba
 # ╠═9258c7f4-530c-487c-8023-eca3d64cef0e
 # ╠═9b9dbf63-d148-476f-9de0-c854b360597a
