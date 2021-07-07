@@ -57,29 +57,38 @@ begin
 		end
 	end
 	all_files
-end
+end;
+
+# ╔═╡ 0f1d25a5-f366-41a9-a3c9-bb13bcb6ab2d
+md"
+## Trace by Trace analysis of A, B, and Glial components
+"
 
 # ╔═╡ 3781dc5f-e9e0-4a60-adb9-a422741d375d
+#Construct the empty dataframes for the traces, experiments, and condition summaries
 begin
-	q_A = all_files |> 
+	trace_A = all_files |> 
 		@filter(_.Condition == "BaCl_LAP4" || _.Condition == "LAP4_BaCl") |>
 		@filter(_.Photoreceptor == "Rods" && _.Wavelength == 525) |>
 		#remove all photons under 10000
 		@filter(_.Photons < 10000) |> 
 		@map({_.Path, 
-			_.Year, _.Month, _.Date, _.Animal, 
+			_.Year, _.Month, _.Date, _.Animal, _.Photoreceptor,
 			_.Age, _.Genotype, _.Condition, _.Photons, 
 			Channel = "Vm_prime",
-			Response = 0.0
+			Minima = 0.0, 
+			Response = 0.0, Peak_Time = 0.0, Int_Time = 0.0, 
+			Tau_Rec = 0.0, Tau_GOF = 0.0, 
+			a = 0.0, t_eff = 0.0, Amp_GOF = 0.0
 			}) |>
 		DataFrame
-	q_AB = all_files |> 
+	trace_AB = all_files |> 
 		@filter(_.Condition == "BaCl") |>
 		@filter(_.Photoreceptor == "Rods" && _.Wavelength == 525) |>
 		#remove all photons under 10000	
 		@filter(_.Photons < 10000) |> 
 		DataFrame
-	q_ABG = all_files |> 
+	trace_ABG = all_files |> 
 		@filter(_.Condition == "NoDrugs") |>
 		@filter(_.Photoreceptor == "Rods" && _.Wavelength == 525) |>
 		#remove all photons under 10000	
@@ -87,67 +96,187 @@ begin
 		DataFrame
 	#Now derive new queries based on these
 		#extract all the places where the photon intensities match
-	q_B = q_A |> @join(q_AB, 
+	trace_B = trace_A |> @join(trace_AB, 
 			{_.Year, _.Month, _.Date, _.Animal, _.Photons}, 
 			{_.Year, _.Month, _.Date, _.Animal, _.Photons}, 
 			{
 				A_Path = _.Path, AB_Path = __.Path, 
 				A_condition = _.Condition, AB_condition = __.Condition,
-				__.Year, __.Month, __.Date, __.Animal, 
+				__.Year, __.Month, __.Date, __.Animal, _.Photoreceptor,
 				__.Age, __.Genotype, __.Condition, __.Photons, 
 				Channel = "Vm_prime",
-				Response = 0.0
+				Response = 0.0, Peak_Time = 0.0, Int_Time = 0.0, 
+				Tau_Rec = 0.0, Tau_GOF = 0.0
 			}
 		) |> 
 		DataFrame
-	q_G = q_AB |> @join(q_ABG, 
+	trace_G = trace_AB |> @join(trace_ABG, 
 		{_.Year, _.Month, _.Date, _.Animal, _.Photons}, 
 		{_.Year, _.Month, _.Date, _.Animal, _.Photons}, 
 		{__.Path, 
 			AB_Path = _.Path, ABG_Path = __.Path, 
 			AB_Condition = _.Condition, ABG_Condition = __.Condition, 
 			__.Year, __.Month, __.Date, __.Animal, 
-			__.Age, __.Genotype, __.Condition, __.Photons,
+			__.Age, __.Genotype, __.Condition, __.Photons, _.Photoreceptor,
 			Channel = "Vm_prime",
-			Response = 0.0
+			Response = 0.0, Peak_Time = 0.0, Int_Time = 0.0, 
+			Tau_Rec = 0.0, Tau_GOF = 0.0
 		}
 	) |> 
 	DataFrame
+	
+	#Break down data into experiments
+	experiments_A = trace_A |> 
+		@unique({_.Year, _.Month, _.Date, _.Age, _.Animal, _.Channel}) |> 
+		@orderby(_.Genotype) |> @thenby(_.Age) |> 
+		@thenby(_.Photoreceptor) |> @thenby(_.Wavelength) |>
+		@map({_.Year, _.Month, _.Date, _.Animal, _.Channel,
+			_.Genotype, _.Age, _.Wavelength, _.Photoreceptor,
+			rmax = 0.0, rdim = 0.0, time_to_peak = 0.0, 
+			integration_time = 0.0, 
+			recovery_tau = 0.0,
+			alpha = 0.0, effective_time = 0.0
+		}) |>
+		DataFrame
+	
+	experiments_B = trace_B |> 
+		@unique({_.Year, _.Month, _.Date, _.Age, _.Animal, _.Channel}) |> 
+		@orderby(_.Genotype) |> @thenby(_.Age) |> 
+		@thenby(_.Photoreceptor) |> @thenby(_.Wavelength) |> 
+		@map({_.Year, _.Month, _.Date, _.Animal, _.Channel,
+			_.Genotype, _.Age, _.Wavelength, _.Photoreceptor,
+			rmax = 0.0, rdim = 0.0, time_to_peak = 0.0, 
+			integration_time = 0.0, 
+			recovery_tau = 0.0,
+		}) |>
+		DataFrame
+	
+	experiments_G = trace_G |> 
+		@unique({_.Year, _.Month, _.Date, _.Age, _.Animal, _.Channel}) |> 
+		@orderby(_.Genotype) |> @thenby(_.Age) |> 
+		@thenby(_.Photoreceptor) |> @thenby(_.Wavelength) |>
+		@map({_.Year, _.Month, _.Date, _.Animal, _.Channel,
+			_.Genotype, _.Age, _.Wavelength, _.Photoreceptor,
+			rmax = 0.0, rdim = 0.0, time_to_peak = 0.0, 
+			integration_time = 0.0, 
+			recovery_tau = 0.0,
+		}) |>
+		DataFrame
+	
+	#Summarize A wave data
+	conditions_A = experiments_A |> 
+		@unique({_.Age, _.Genotype, _.Photoreceptor, _.Wavelength}) |>
+		@map({
+			_.Age, _.Genotype, _.Photoreceptor, _.Wavelength,
+			n = 0,
+			Rmax = 0.0, Rmax_SEM = 0.0, 
+			Rdim = 0.0, Rdim_SEM = 0.0, 
+			Time_To_Peak = 0.0, Time_To_Peak_SEM = 0.0, 
+			Integration_Time = 0.0, Integration_Time_SEM = 0.0, 
+			Recovery_Tau = 0.0, Recovery_Tau_SEM = 0.0, 
+			Alpha = 0.0, Alpha_SEM = 0.0, 
+			Effective_Time = 0.0, Effective_Time_SEM = 0.0
+		}) |>
+		DataFrame
+	
+	#Extract information about B-wave data
+	conditions_B = experiments_B |> 
+		@unique({_.Age, _.Genotype, _.Photoreceptor, _.Wavelength}) |>
+		@map({
+			_.Age, _.Genotype, _.Photoreceptor, _.Wavelength,
+			n = 0,
+			Rmax = 0.0, Rmax_SEM = 0.0, 
+			Rdim = 0.0, Rdim_SEM = 0.0, 
+			Time_To_Peak = 0.0, Time_To_Peak_SEM = 0.0, 
+			Integration_Time = 0.0, Integration_Time_SEM = 0.0, 
+			Recovery_Tau = 0.0, Recovery_Tau_SEM = 0.0, 
+		}) |>
+		DataFrame
+	
+	#Extract information about B-wave data
+	conditions_G = experiments_G |> 
+		@unique({_.Age, _.Genotype, _.Photoreceptor, _.Wavelength}) |>
+		@map({
+			_.Age, _.Genotype, _.Photoreceptor, _.Wavelength,
+			n = 0,
+			Rmax = 0.0, Rmax_SEM = 0.0, 
+			Rdim = 0.0, Rdim_SEM = 0.0, 
+			Time_To_Peak = 0.0, Time_To_Peak_SEM = 0.0, 
+			Integration_Time = 0.0, Integration_Time_SEM = 0.0, 
+			Recovery_Tau = 0.0, Recovery_Tau_SEM = 0.0, 
+		}) |>
+		DataFrame
 end;
 
 # ╔═╡ a3319e29-9d96-4529-a035-39ff2d4f1cd8
 begin
 	#Can we directly add responses to the data sheet? 
-	for (idx, exp) in enumerate(eachrow(q_A))
-		println("Extracting A-wave for experiment $idx of $(size(q_A, 1))")
+	for (idx, exp) in enumerate(eachrow(trace_A))
+		println("Extracting A-wave for experiment $idx of $(size(trace_A, 1))")
 		#we want to extract the response for each trace here
 		data = extract_abf(exp.Path, average_sweeps = true) |> filter_data
 		#Extract the response 
-		println(size(data))
-		sat_resp = abs.(saturated_response(data))
-		if size(sat_resp, 2) > 1
-			q_A[idx, :Response] = sat_resp[1]
-			q_A[idx, :Channel] = data.chNames[1]
-			for add_i in 2:size(sat_resp,3)
-				added_row = deepcopy(q_A[idx, :])
-				added_row.Response = sat_resp[add_i]
+		#Extract the minimum value
+		minima = -minimum(data, dims = 2)[:,1,:]
+		#Extract the response 
+		resp = abs.(saturated_response(data))
+		#Extract the latency to response
+		peak_time = time_to_peak(data)
+		#Extract the integrated time
+		tInt = NeuroPhys.integral(data)
+		#extract the Recovery time constant
+		tRec, tau_gofs = recovery_tau(data, resp) 
+		println("Analyzed time constant")
+		amp, amp_gofs = amplification(data, -resp) #We need to ensure this is negative
+		println("Analyzed amplification")
+		if size(data, 3) > 1
+			trace_A[idx, :Minima] = minima[1]
+			trace_A[idx, :Response] = resp[1]
+			trace_A[idx, :Peak_Time] = peak_time[1]
+			trace_A[idx, :Int_Time] = tInt[1]*1000
+			trace_A[idx, :Tau_Rec] = tRec[1]*1000
+			trace_A[idx, :Tau_GOF] = tau_gofs[1]
+			trace_A[idx, :a] = amp[1,1,1]
+			trace_A[idx, :t_eff] = amp[2,1,1]
+			trace_A[idx, :Amp_GOF] = amp_gofs[1]
+			trace_A[idx, :Channel] = data.chNames[1]
+			for add_i in 2:size(data,3)
+				added_row = deepcopy(trace_A[idx, :])
+				added_row.Minima = minima[add_i]
+				added_row.Response = resp[add_i]
+				added_row.Peak_Time = peak_time[add_i]
+				added_row.Int_Time = tInt[add_i]*1000
+				added_row.Tau_Rec = tRec[add_i]*1000
+				added_row.Tau_GOF = tau_gofs[add_i]
+				added_row.a = amp[1,1,add_i]
+				added_row.t_eff = amp[2,1,add_i]
+				added_row.Amp_GOF = amp_gofs[add_i]				
 				added_row.Channel = data.chNames[add_i]
-				push!(q_A, added_row)
+				push!(trace_A, added_row)
 			end
 		else
-			q_A[idx, :Response] = sat_resp[1]
-			q_A[idx, :Channel] = data.chNames[1]
+			trace_A[idx, :Minima] = minima[1]
+			trace_A[idx, :Response] = resp[1]
+			trace_A[idx, :Peak_Time] = peak_time[1]
+			trace_A[idx, :Int_Time] = tInt[1]*1000
+			trace_A[idx, :Tau_Rec] = tRec[1]*1000
+			trace_A[idx, :Tau_GOF] = tau_gofs[1]
+			trace_A[idx, :a] = amp[1,1,1]
+			trace_A[idx, :t_eff] = amp[2,1,1]
+			trace_A[idx, :Amp_GOF] = amp_gofs[1]
+			trace_A[idx, :Channel] = data.chNames[1]
 		end
 	end
-	q_A
+	BotNotify("{ERG GNAT}: Completed extraction of A-wave")
+	trace_A
 end
 
 # ╔═╡ 695cc1d2-0244-4609-970a-2df676263e99
 begin
 	#Directly add B-wave responses
-	for (idx, exp) in enumerate(eachrow(q_B))
+	for (idx, exp) in enumerate(eachrow(trace_B))
 		#we want to extract the response for each trace here
-		println("Extracting B-wave for experiment $idx of $(size(q_B, 1))")
+		println("Extracting B-wave for experiment $idx of $(size(trace_B, 1))")
 		A_data = extract_abf(exp.A_Path, average_sweeps = true) |> filter_data
 		AB_data = extract_abf(exp.AB_Path, average_sweeps = true) |> filter_data
 		
@@ -171,28 +300,47 @@ begin
 		else
 			resp = abs.(maximum(B_data, dims = 2))
 		end
-		if size(resp, 2) > 1
-			q_B[idx, :Response] = resp[1]
-			q_B[idx, :Channel] = B_data.chNames[1]
-			for add_i in 2:size(resp,3)
-				added_row = deepcopy(q_B[idx, :])
+		peak_time = time_to_peak(B_data)
+		#Extract the integrated time
+		tInt = NeuroPhys.integral(B_data)
+		#Extract the recovery time constant
+		tRec, tau_gofs = recovery_tau(B_data, resp) 
+		println(tRec)
+		if size(B_data, 3) > 1
+			trace_B[idx, :Response] = resp[1]
+			trace_B[idx, :Peak_Time] = peak_time[1]
+			trace_B[idx, :Int_Time] = tInt[1]
+			trace_B[idx, :Tau_Rec] = tRec[1]*1000
+			trace_B[idx, :Tau_GOF] = tau_gofs[1]
+			trace_B[idx, :Channel] = B_data.chNames[1]
+			for add_i in 2:size(B_data,3)
+				added_row = deepcopy(trace_B[idx, :])
 				added_row.Response = resp[add_i]
+				added_row.Peak_Time = peak_time[add_i]
+				added_row.Int_Time = tInt[add_i]
+				added_row.Tau_Rec = tRec[add_i]*1000
+				added_row.Tau_GOF = tau_gofs[add_i]
 				added_row.Channel = B_data.chNames[add_i]
-				push!(q_B, added_row)
+				push!(trace_B, added_row)
 			end
 		else
-			q_B[idx, :Response] = resp[1]
-			q_B[idx, :Channel] = B_data.chNames[1]
+			trace_B[idx, :Response] = resp[1]
+			trace_B[idx, :Peak_Time] = peak_time[1]
+			trace_B[idx, :Int_Time] = tInt[1]
+			trace_B[idx, :Tau_Rec] = tRec[1]*1000
+			trace_B[idx, :Tau_GOF] = tau_gofs[1]
+			trace_B[idx, :Channel] = B_data.chNames[1]
 		end
 	end
-	q_B
+	BotNotify("{ERG GNAT}: Completed extraction of B-wave")
+	trace_B
 end
 
 # ╔═╡ 659e9a5f-d383-4e89-be73-d008d1bcb122
 begin
 	#Directly add the Glial component response
-	for (idx, exp) in enumerate(eachrow(q_G))
-		println("Extracting G component for experiment $idx of $(size(q_G, 1))")
+	for (idx, exp) in enumerate(eachrow(trace_G))
+		println("Extracting G component for experiment $idx of $(size(trace_G, 1))")
 		#we want to extract the response for each trace here
 		AB_data = extract_abf(exp.AB_Path, average_sweeps = true) |> filter_data
 
@@ -219,21 +367,264 @@ begin
 			resp = abs.(minimum(G_data, dims = 2))
 		end
 
-		if size(resp, 2) > 1
-			q_G[idx, :Response] = resp[1] 
-			q_G[idx, :Channel] = G_data.chNames[1]
-			for add_i in 2:size(resp,3)
-				added_row = deepcopy(q_G[idx, :])
+		peak_time = time_to_peak(G_data)
+		#Extract the integrated time
+		tInt = NeuroPhys.integral(G_data)
+		#Extract the recovery time constant
+		tRec, tau_gofs = recovery_tau(G_data, resp) 
+		println(tRec)
+		if size(B_data, 3) > 1
+			trace_G[idx, :Response] = resp[1]
+			trace_G[idx, :Peak_Time] = peak_time[1]
+			trace_G[idx, :Int_Time] = tInt[1]
+			trace_G[idx, :Tau_Rec] = tRec[1]*1000
+			trace_G[idx, :Tau_GOF] = tau_gofs[1]
+			trace_G[idx, :Channel] = B_data.chNames[1]
+			for add_i in 2:size(G_data,3)
+				added_row = deepcopy(trace_G[idx, :])
 				added_row.Response = resp[add_i]
-				added_row.Channel = G_data.chNames[add_i]
-				push!(q_G, added_row)
+				added_row.Peak_Time = peak_time[add_i]
+				added_row.Int_Time = tInt[add_i]
+				added_row.Tau_Rec = tRec[add_i]*1000
+				added_row.Tau_GOF = tau_gofs[add_i]
+				added_row.Channel = B_data.chNames[add_i]
+				push!(trace_B, added_row)
 			end
 		else
-			q_G[idx, :Response] = resp[1]
-			q_G[idx, :Channel] = G_data.chNames[1]
+			trace_G[idx, :Response] = resp[1]
+			trace_G[idx, :Peak_Time] = peak_time[1]
+			trace_G[idx, :Int_Time] = tInt[1]
+			trace_G[idx, :Tau_Rec] = tRec[1]*1000
+			trace_G[idx, :Tau_GOF] = tau_gofs[1]
+			trace_G[idx, :Channel] = B_data.chNames[1]
 		end
 	end
-	q_G
+	BotNotify("{ERG GNAT}: Completed extraction of B-wave")
+	trace_G
+end
+
+# ╔═╡ f76e5e8b-25c9-4934-906e-2e57e5d48820
+md"
+## Summary of experiments of A, B and Glial components
+"
+
+# ╔═╡ 59c0d921-0f22-48ce-b4c0-f3a374e547d9
+begin
+	for (idx, exp) in enumerate(eachrow(experiments_A))
+		
+		q_data = trace_A |> 
+			@filter(_.Year==exp.Year&&_.Month==exp.Month&&_.Date==exp.Date)|>
+			@filter(_.Animal == exp.Animal && _.Wavelength == exp.Wavelength)|>
+			@filter(_.Channel == exp.Channel && _.Age == exp.Age) |> 
+			DataFrame
+		
+		#Rmax
+		experiments_A[idx, :rmax] = maximum(q_data.Response)
+		#Rdim
+		rdim_rng = [0.10, 0.40] .* maximum(q_data.Response)
+		in_range = findall(rdim_rng[1] .< q_data.Response .< rdim_rng[2])
+		rdims = q_data.Response[in_range]
+		if !isempty(rdims)
+			rdim_idx = in_range[argmax(rdims)]
+			experiments_A[idx, :rdim] = maximum(rdims)
+			experiments_A[idx, :time_to_peak] = q_data[rdim_idx, :Peak_Time]
+			experiments_A[idx, :integration_time] = q_data[rdim_idx, :Int_Time]
+			experiments_A[idx, :recovery_tau] =  q_data[rdim_idx, :Tau_Rec]
+			#for alpha and effective time we need to average the first 3-5 dim traces
+			#if the response is different than the minima, the trace is saturated
+			unsaturated = findall(q_data.Response .== q_data.Minima)
+			over_rdim = findall(q_data.Response .> maximum(rdims))
+			valid_amps = unsaturated[map(x -> x ∈ over_rdim, unsaturated)]
+			println(valid_amps)
+			#if the response is higher than the rdim, than it is 
+			experiments_A[idx, :alpha] = sum(q_data.a[valid_amps])/length(valid_amps)
+			println(experiments_A[idx, :alpha])
+			experiments_A[idx, :effective_time] = 	
+				sum(q_data.t_eff[valid_amps])/length(valid_amps)
+		end
+	end
+	experiments_A
+end
+
+# ╔═╡ b06d3026-2543-4feb-9a7e-898564d892d1
+begin
+	
+	for (idx, exp) in enumerate(eachrow(experiments_B))
+		q_data = trace_B |> 
+			@filter(_.Year==exp.Year&&_.Month==exp.Month&&_.Date==exp.Date)|>
+			@filter(_.Animal == exp.Animal && _.Wavelength == exp.Wavelength)|>
+			@filter(_.Channel == exp.Channel && _.Age == exp.Age) |> 
+			DataFrame
+		if !isempty(q_data)
+			#Rmax
+			experiments_B[idx, :rmax] = maximum(q_data.Response)
+			#Rdim
+			rdim_rng = [0.10, 0.40] .* maximum(q_data.Response)
+			in_range = findall(rdim_rng[1] .< q_data.Response .< rdim_rng[2])
+			rdims = q_data.Response[in_range]
+			if !isempty(rdims)
+				rdim_idx = in_range[argmax(rdims)]
+				experiments_B[idx, :rdim] = maximum(rdims)
+				experiments_B[idx, :time_to_peak] = q_data[rdim_idx, :Peak_Time]
+				experiments_B[idx, :integration_time] = q_data[rdim_idx, :Int_Time]
+				experiments_B[idx, :recovery_tau] =  q_data[rdim_idx, :Tau_Rec]
+			end
+			#If we wanted to plot individual traces, here is where we would do that	
+		end
+	end
+	experiments_B
+end
+
+# ╔═╡ 7c4480ab-ece5-4659-b314-519fbee46cb6
+begin
+	for (idx, exp) in enumerate(eachrow(experiments_G))
+		q_data = trace_G |> 
+			@filter(_.Year==exp.Year&&_.Month==exp.Month&&_.Date==exp.Date)|>
+			@filter(_.Animal == exp.Animal && _.Wavelength == exp.Wavelength)|>
+			@filter(_.Channel == exp.Channel && _.Age == exp.Age) |> 
+			DataFrame
+		if !isempty(q_data)
+			#Rmax
+			experiments_G[idx, :rmax] = maximum(q_data.Response)
+			#Rdim
+			rdim_rng = [0.10, 0.40] .* maximum(q_data.Response)
+			in_range = findall(rdim_rng[1] .< q_data.Response .< rdim_rng[2])
+			rdims = q_data.Response[in_range]
+			if !isempty(rdims)
+				rdim_idx = in_range[argmax(rdims)]
+				experiments_B[idx, :rdim] = maximum(rdims)
+				experiments_B[idx, :time_to_peak] = q_data[rdim_idx, :Peak_Time]
+				experiments_B[idx, :integration_time] = q_data[rdim_idx, :Int_Time]
+				experiments_B[idx, :recovery_tau] =  q_data[rdim_idx, :Tau_Rec]
+			end
+			#If we wanted to plot individual traces, here is where we would do that	
+		end
+	end
+	experiments_G
+end
+
+# ╔═╡ 0c09ad42-403d-4a24-a5d1-88c992203a8f
+md"
+## Summary of all conditions
+"
+
+# ╔═╡ 705481fe-b09c-47db-b786-77cd4a2dcb33
+begin
+	for (idx, cond) in enumerate(eachrow(conditions_A))
+		q_data = experiments_A |> 
+			@filter(_.Age == cond.Age && _.Genotype == cond.Genotype) |>
+			@filter(_.Photoreceptor==cond.Photoreceptor) |> 
+			@filter(_.Wavelength==cond.Wavelength) |>
+			DataFrame
+		conditions_A[idx, :n] = size(q_data, 1)
+		
+		conditions_A[idx, :Rmax] = sum(q_data.rmax)/length(q_data.rmax)
+		conditions_A[idx, :Rmax_SEM] = std(q_data.rmax)/sqrt(length(q_data.rmax))
+		
+		conditions_A[idx, :Rdim] = sum(q_data.rdim)/length(q_data.rdim)
+		conditions_A[idx, :Rdim_SEM] = std(q_data.rdim)/sqrt(length(q_data.rdim))
+		
+		conditions_A[idx, :Time_To_Peak] = 	
+			sum(q_data.time_to_peak)/length(q_data.time_to_peak)
+		conditions_A[idx, :Time_To_Peak_SEM] = 
+			std(q_data.time_to_peak)/sqrt(length(q_data.time_to_peak))
+		
+		conditions_A[idx, :Integration_Time] = 
+			sum(q_data.integration_time)/length(q_data.integration_time)
+		conditions_A[idx, :Integration_Time_SEM] = 			
+			std(q_data.integration_time)/sqrt(length(q_data.integration_time))
+		
+		conditions_A[idx, :Recovery_Tau] = 
+			sum(q_data.recovery_tau)/length(q_data.recovery_tau)
+		conditions_A[idx, :Recovery_Tau_SEM] = 			
+			std(q_data.recovery_tau)/sqrt(length(q_data.recovery_tau))
+		
+		conditions_A[idx, :Alpha] = 
+			sum(q_data.alpha)/length(q_data.alpha)
+		conditions_A[idx, :Alpha_SEM] = 			
+			std(q_data.alpha)/sqrt(length(q_data.alpha))
+		
+		conditions_A[idx, :Effective_Time] = 
+			sum(q_data.effective_time)/length(q_data.effective_time)
+		conditions_A[idx, :Effective_Time_SEM] = 			
+			std(q_data.effective_time)/sqrt(length(q_data.effective_time))
+	end
+	conditions_A
+end
+
+# ╔═╡ a912d133-cb30-44fc-83bb-fe94d5fcfeac
+begin
+	for (idx, cond) in enumerate(eachrow(conditions_B))
+		q_data = experiments_B |> 
+			@filter(_.Age == cond.Age && _.Genotype == cond.Genotype) |>
+			@filter(_.Photoreceptor==cond.Photoreceptor) |> 
+			@filter(_.Wavelength==cond.Wavelength) |>
+			DataFrame
+		conditions_B[idx, :n] = size(q_data, 1)
+		
+		conditions_B[idx, :Rmax] = sum(q_data.rmax)/length(q_data.rmax)
+		conditions_B[idx, :Rmax_SEM] = std(q_data.rmax)/sqrt(length(q_data.rmax))
+		
+		conditions_B[idx, :Rdim] = sum(q_data.rdim)/length(q_data.rdim)
+		conditions_B[idx, :Rdim_SEM] = std(q_data.rdim)/sqrt(length(q_data.rdim))
+		
+		conditions_B[idx, :Time_To_Peak] = 	
+			sum(q_data.time_to_peak)/length(q_data.time_to_peak)
+		conditions_B[idx, :Time_To_Peak_SEM] = 
+			std(q_data.time_to_peak)/sqrt(length(q_data.time_to_peak))
+		
+		conditions_B[idx, :Integration_Time] = 
+			sum(q_data.integration_time)/length(q_data.integration_time)
+		conditions_B[idx, :Integration_Time_SEM] = 			
+			std(q_data.integration_time)/sqrt(length(q_data.integration_time))
+		
+		conditions_B[idx, :Recovery_Tau] = 
+			sum(q_data.recovery_tau)/length(q_data.recovery_tau)
+		conditions_B[idx, :Recovery_Tau_SEM] = 			
+			std(q_data.recovery_tau)/sqrt(length(q_data.recovery_tau))
+	end
+	conditions_B
+end
+
+# ╔═╡ b47fd915-2ae5-4e86-bb7b-1a8acdc648ba
+begin
+	for (idx, cond) in enumerate(eachrow(conditions_G))
+		q_data = experiments_G |> 
+			@filter(_.Age == cond.Age && _.Genotype == cond.Genotype) |>
+			@filter(_.Photoreceptor==cond.Photoreceptor) |> 
+			@filter(_.Wavelength==cond.Wavelength) |>
+			DataFrame
+		conditions_G[idx, :n] = size(q_data, 1)
+		
+		conditions_G[idx, :Rmax] = sum(q_data.rmax)/length(q_data.rmax)
+		conditions_G[idx, :Rmax_SEM] = std(q_data.rmax)/sqrt(length(q_data.rmax))
+		
+		conditions_G[idx, :Rdim] = sum(q_data.rdim)/length(q_data.rdim)
+		conditions_G[idx, :Rdim_SEM] = std(q_data.rdim)/sqrt(length(q_data.rdim))
+		
+		conditions_G[idx, :Time_To_Peak] = 	
+			sum(q_data.time_to_peak)/length(q_data.time_to_peak)
+		conditions_G[idx, :Time_To_Peak_SEM] = 
+			std(q_data.time_to_peak)/sqrt(length(q_data.time_to_peak))
+		
+		conditions_G[idx, :Integration_Time] = 
+			sum(q_data.integration_time)/length(q_data.integration_time)
+		conditions_G[idx, :Integration_Time_SEM] = 			
+			std(q_data.integration_time)/sqrt(length(q_data.integration_time))
+		
+		conditions_G[idx, :Recovery_Tau] = 
+			sum(q_data.recovery_tau)/length(q_data.recovery_tau)
+		conditions_G[idx, :Recovery_Tau_SEM] = 			
+			std(q_data.recovery_tau)/sqrt(length(q_data.recovery_tau))
+	end
+	conditions_G
+end
+
+# ╔═╡ 9258c7f4-530c-487c-8023-eca3d64cef0e
+XLSX.openxlsx(save_file, mode = "rw") do xf 
+	XLSX.addsheet!(xf, "Traces_A")
+	sheet = xf["Test"]
+	XLSX.writetable!(sheet, [1,2,3], ["a", "b", "c"])
 end
 
 # ╔═╡ 9b9dbf63-d148-476f-9de0-c854b360597a
@@ -265,16 +656,16 @@ In this section we need to find good responses out of each category and plot the
 # ╔═╡ c9f6bb32-7115-4fd0-a26c-eb834f2ef973
 begin
 	#(Month = 5, Date = 26, Animal = 3) #P11 WT
-	q_11WTa = q_A |> @filter(_.Month==5 && _.Date==26 && _.Animal == 3)|>DataFrame
-	q_11WTb = q_B |> @filter(_.Month==5 && _.Date==26 && _.Animal == 3)|>DataFrame
-	q_11WTg = q_G |> @filter(_.Month==5 && _.Date==26 && _.Animal == 3)|>DataFrame
+	q_11WTa = trace_A |> @filter(_.Month==5 && _.Date==26 && _.Animal == 3)|>DataFrame
+	q_11WTb = trace_B |> @filter(_.Month==5 && _.Date==26 && _.Animal == 3)|>DataFrame
+	q_11WTg = trace_G |> @filter(_.Month==5 && _.Date==26 && _.Animal == 3)|>DataFrame
 	
 	#TBD (Month = ?, Date = ?, Animal = ?) #P11 R141C
 	
 	#(Month = 5, Data = 21,  Animal = 1) #P11 RS1KO
-	q_11RS1KOa = q_A |> @filter(_.Month==5 && _.Date==21 && _.Animal == 1)|>DataFrame
-	q_11RS1KOb = q_B |> @filter(_.Month==5 && _.Date==21 && _.Animal == 1)|>DataFrame
-	q_11RS1KOg = q_G |> @filter(_.Month==5 && _.Date==21 && _.Animal == 1)|>DataFrame
+	q_11RS1KOa = trace_A |> @filter(_.Month==5 && _.Date==21 && _.Animal == 1)|>DataFrame
+	q_11RS1KOb = trace_B |> @filter(_.Month==5 && _.Date==21 && _.Animal == 1)|>DataFrame
+	q_11RS1KOg = trace_G |> @filter(_.Month==5 && _.Date==21 && _.Animal == 1)|>DataFrame
 	
 	#Extract A wave data
 	data_WT11a = extract_abf(String.(q_11WTa.Path)) |> filter_data
@@ -418,17 +809,17 @@ savefig(fig_P11, "E:\\Projects\\2021_Retinoschisis\\fig2_P11_subtraction.png")
 # ╔═╡ 0176b257-0073-4417-aef3-6b68f719b04a
 begin	
 	#P13 WT (2020_5_28_n2)
-	q_WT13a = q_A|> @filter(_.Month==5 && _.Date==28 && _.Animal==2)|>DataFrame 
-	q_WT13b = q_B|> @filter(_.Month==5 && _.Date==28 && _.Animal==2)|>DataFrame 
-	q_WT13g = q_G|> @filter(_.Month==5 && _.Date==28 && _.Animal==2)|>DataFrame 
+	q_WT13a = trace_A|> @filter(_.Month==5 && _.Date==28 && _.Animal==2)|>DataFrame 
+	q_WT13b = trace_B|> @filter(_.Month==5 && _.Date==28 && _.Animal==2)|>DataFrame 
+	q_WT13g = trace_G|> @filter(_.Month==5 && _.Date==28 && _.Animal==2)|>DataFrame 
 	#P13 R141C (2020_05_15_n1)
-	q_R141C13a = q_A|>@filter(_.Month==5 && _.Date==16 && _.Animal==1)|>DataFrame 
-	q_R141C13b = q_B|>@filter(_.Month==5 && _.Date==16 && _.Animal==1)|>DataFrame 
-	q_R141C13g = q_G|>@filter(_.Month==5 && _.Date==16 && _.Animal==1)|>DataFrame 
+	q_R141C13a = trace_A|>@filter(_.Month==5 && _.Date==16 && _.Animal==1)|>DataFrame 
+	q_R141C13b = trace_B|>@filter(_.Month==5 && _.Date==16 && _.Animal==1)|>DataFrame 
+	q_R141C13g = trace_G|>@filter(_.Month==5 && _.Date==16 && _.Animal==1)|>DataFrame 
 	#P13 RS1KO (2020_05_24_n2)
-	q_RS1KO13a = q_A|>@filter(_.Month==5 && _.Date==24 && _.Animal==2)|>DataFrame 
-	q_RS1KO13b = q_B|>@filter(_.Month==5 && _.Date==24 && _.Animal==2)|>DataFrame 
-	q_RS1KO13g = q_G|>@filter(_.Month==5 && _.Date==24 && _.Animal==2)|>DataFrame 
+	q_RS1KO13a = trace_A|>@filter(_.Month==5 && _.Date==24 && _.Animal==2)|>DataFrame 
+	q_RS1KO13b = trace_B|>@filter(_.Month==5 && _.Date==24 && _.Animal==2)|>DataFrame 
+	q_RS1KO13g = trace_G|>@filter(_.Month==5 && _.Date==24 && _.Animal==2)|>DataFrame 
 	
 	#Extract A wave data
 	data_WT13a = extract_abf(String.(q_WT13a.Path)) |> filter_data
@@ -586,17 +977,17 @@ savefig(fig_P13, "E:\\Projects\\2021_Retinoschisis\\fig4_P13_subtraction.png")
 # ╔═╡ d9e5c629-6f8d-4dad-8386-ff4d5302913a
 begin
 	#P30 WT (2019_10_04)
-	q_WT30a = q_A|>@filter(_.Month == 10 && _.Date == 14 && _.Animal == 1)|>DataFrame 
-	q_WT30b = q_B|>@filter(_.Month == 10 && _.Date == 14 && _.Animal == 1)|>DataFrame 
+	q_WT30a = trace_A|>@filter(_.Month == 10 && _.Date == 14 && _.Animal == 1)|>DataFrame 
+	q_WT30b = trace_B|>@filter(_.Month == 10 && _.Date == 14 && _.Animal == 1)|>DataFrame 
 	q_WT30g = nothing
 	#P30 R141C (2020_05_18_n3)
-	q_R141C30a = q_A|>@filter(_.Month==5 && _.Date==18 && _.Animal==3)|>DataFrame 
-	q_R141C30b = q_B|>@filter(_.Month==5 && _.Date==18 && _.Animal==3)|>DataFrame 
-	q_R141C30g = q_G|>@filter(_.Month==5 && _.Date==18 && _.Animal==3)|>DataFrame 
+	q_R141C30a = trace_A|>@filter(_.Month==5 && _.Date==18 && _.Animal==3)|>DataFrame 
+	q_R141C30b = trace_B|>@filter(_.Month==5 && _.Date==18 && _.Animal==3)|>DataFrame 
+	q_R141C30g = trace_G|>@filter(_.Month==5 && _.Date==18 && _.Animal==3)|>DataFrame 
 	#P30 RS1KO (2020_05_27_n1)
-	q_RS1KO30a = q_A|>@filter(_.Month==5 && _.Date==27 && _.Animal==1)|>DataFrame 
-	q_RS1KO30b = q_B|>@filter(_.Month==5 && _.Date==27 && _.Animal==1)|>DataFrame 
-	q_RS1KO30g = q_G|>@filter(_.Month==5 && _.Date==27 && _.Animal==1)|>DataFrame 
+	q_RS1KO30a = trace_A|>@filter(_.Month==5 && _.Date==27 && _.Animal==1)|>DataFrame 
+	q_RS1KO30b = trace_B|>@filter(_.Month==5 && _.Date==27 && _.Animal==1)|>DataFrame 
+	q_RS1KO30g = trace_G|>@filter(_.Month==5 && _.Date==27 && _.Animal==1)|>DataFrame 
 	
 	#Extract A wave data
 	data_WT30a = filter_data(extract_abf(String.(q_WT30a.Path)), 
@@ -792,12 +1183,12 @@ begin
 			p0 = Float64[params.Ih[1], params.n[1], params.Rmax[1]]
 
 			if p == 30
-				q_section = q_A |> 
+				q_section = trace_A |> 
 					@filter(_.Age >= p && _.Genotype == g) |> 
 					@filter(_.Photons != 0) |> 
 					DataFrame
 			else
-				q_section = q_A |> 
+				q_section = trace_A |> 
 					@filter(_.Age == p && _.Genotype == g) |> 
 					@filter(_.Photons != 0) |> 
 					DataFrame
@@ -897,13 +1288,13 @@ begin
 			p0 = Float64[params.Ih[1], params.n[1], params.Rmax[1]]
 			
 			if p == 30
-				q_section = q_B |> 
+				q_section = trace_B |> 
 					@filter(_.Age >= p && _.Genotype == g) |> 
 					@filter(_.Response < 2000) |>
 					@filter(_.Photons != 0.0) |> 
 					DataFrame
 			else
-				q_section = q_B |> 
+				q_section = trace_B |> 
 					@filter(_.Age == p && _.Genotype == g) |> 
 					@filter(_.Response < 2000) |>
 					@filter(_.Photons != 0.0) |> 
@@ -997,7 +1388,7 @@ begin
 				DataFrame
 			p0 = Float64[params.Ih[1], params.n[1], params.Rmax[1]]
 			
-			q_section = q_G |> 
+			q_section = trace_G |> 
 				@filter(_.Age == p && _.Genotype == g) |> 
 				DataFrame
 			#now we can walk through each file of q_i
@@ -1081,7 +1472,7 @@ md"
 
 # ╔═╡ 4083369d-cb6f-4d3b-8d14-4c12637ecebf
 begin
-	q_BxA = q_B |> @join(q_A, 
+	trace_BxA = trace_B |> @join(trace_A, 
 			{_.Photons, _.Year, _.Month, _.Date, _.Animal,}, 
 			{_.Photons, _.Year, _.Month, _.Date, _.Animal,},
 			{_.A_Path, _.AB_Path, 
@@ -1093,7 +1484,7 @@ begin
 		@orderby(_.Photons)|> @thenby(_.A_Response)|> 
 		@unique(_.B_Response)|> @unique(_.A_Response)|>
 		DataFrame
-	q_GxA = q_G |> @join(q_A, 
+	trace_GxA = trace_G |> @join(trace_A, 
 			{_.Photons, _.Year, _.Month, _.Date, _.Animal}, 
 			{_.Photons, _.Year, _.Month, _.Date, _.Animal},
 			{_.ABG_Path, _.Genotype, _.Age, _.Photons, 
@@ -1118,25 +1509,25 @@ begin
 end;
 
 # ╔═╡ b24e8f5a-feef-471a-a2f2-28c655118518
-q_BxA[33, :AB_Path]
+trace_BxA[33, :AB_Path]
 
 # ╔═╡ 9ccf066b-fe51-454f-9562-c75798fc4f38
 begin
-	data = extract_abf(q_BxA[33, :A_Path]) |> filter_data
+	data = extract_abf(trace_BxA[33, :A_Path]) |> filter_data
 	plot(data.t, -data.data_array[1,:,1])
 end
 
 # ╔═╡ edea2e13-edb3-4892-944b-854b95eb7745
-q_BxA[33, :A_Response]
+trace_BxA[33, :A_Response]
 
 # ╔═╡ 86bf92c4-1c9c-4104-a2f1-efb41c86ec56
-q_BxA[33, :B_Response]
+trace_BxA[33, :B_Response]
 
 # ╔═╡ 724e82a1-433e-4274-bf18-7618363005fd
-q_BxA[33, :Div_Resp]
+trace_BxA[33, :Div_Resp]
 
 # ╔═╡ dabba351-f2c3-4bcf-94f4-902d1d6dff26
-q_BxA
+trace_BxA
 
 # ╔═╡ ae397dbf-7729-4aeb-a6d1-8dd3e18bb3b2
 begin
@@ -1145,7 +1536,7 @@ begin
 	fig_Ratio_AB = plot(layout = grid(length(ages),1), grid = false)
 	for (idx, p) in enumerate(ages), (idx_g, g) in enumerate(genotypes)
 		println(p, g)
-		q_SENab = q_BxA |> @filter(_.Genotype == g && _.Age == p) |> DataFrame
+		q_SENab = trace_BxA |> @filter(_.Genotype == g && _.Age == p) |> DataFrame
 		
 		#Lets extract the parameters
 		params = SENS_params |> 
@@ -1214,7 +1605,7 @@ begin
 	fig_STF_AG = plot(layout = grid(length(ages),1), grid = false)
 	for (idx, p) in enumerate(ages), (idx_g, g) in enumerate(genotypes)
 		println(p, g)
-		q_SENga = q_GxA |> @filter(_.Genotype == g && _.Age == p) |> DataFrame
+		q_SENga = trace_GxA |> @filter(_.Genotype == g && _.Age == p) |> DataFrame
 
 
 		params = SENS_params |> 
@@ -1293,7 +1684,7 @@ md"
 
 # ╔═╡ b8315294-7a0d-490a-a556-70a6282757b2
 begin
-q_A |> 
+trace_A |> 
 	@unique({_.Year, _.Month, _.Date, _.Animal}) |> 
 	@filter(_.Genotype == "WT" && _.Age == 13)|>
 	DataFrame
@@ -1310,14 +1701,24 @@ end
 # ╠═ca371b23-48ea-42af-a639-1d10711784c0
 # ╠═7fb2fcdc-445d-4429-830f-5eb929539d9e
 # ╟─bd5889f5-12d3-4739-90de-094e2a6f414f
-# ╟─3781dc5f-e9e0-4a60-adb9-a422741d375d
+# ╟─0f1d25a5-f366-41a9-a3c9-bb13bcb6ab2d
+# ╠═3781dc5f-e9e0-4a60-adb9-a422741d375d
 # ╟─a3319e29-9d96-4529-a035-39ff2d4f1cd8
 # ╟─695cc1d2-0244-4609-970a-2df676263e99
 # ╟─659e9a5f-d383-4e89-be73-d008d1bcb122
-# ╟─9b9dbf63-d148-476f-9de0-c854b360597a
-# ╟─d1aecd57-021f-4873-ae42-2896bcdb0a56
-# ╟─732cc6cc-d6bb-4632-8357-c108a1e79a62
-# ╟─beeacce0-0b91-4540-bf8c-91fb328ed51b
+# ╠═f76e5e8b-25c9-4934-906e-2e57e5d48820
+# ╟─59c0d921-0f22-48ce-b4c0-f3a374e547d9
+# ╟─b06d3026-2543-4feb-9a7e-898564d892d1
+# ╟─7c4480ab-ece5-4659-b314-519fbee46cb6
+# ╠═0c09ad42-403d-4a24-a5d1-88c992203a8f
+# ╟─705481fe-b09c-47db-b786-77cd4a2dcb33
+# ╟─a912d133-cb30-44fc-83bb-fe94d5fcfeac
+# ╠═b47fd915-2ae5-4e86-bb7b-1a8acdc648ba
+# ╠═9258c7f4-530c-487c-8023-eca3d64cef0e
+# ╠═9b9dbf63-d148-476f-9de0-c854b360597a
+# ╠═d1aecd57-021f-4873-ae42-2896bcdb0a56
+# ╠═732cc6cc-d6bb-4632-8357-c108a1e79a62
+# ╠═beeacce0-0b91-4540-bf8c-91fb328ed51b
 # ╠═b30e73b4-fbba-4ed8-9021-051b51f10d3a
 # ╠═2d8c6f46-475a-4e57-9f69-b63edcd3b46d
 # ╟─13b294c3-d100-4cf5-981d-a98a463afa6f
@@ -1337,7 +1738,7 @@ end
 # ╟─bace4d09-5bf0-41b4-ae85-87ed100e487c
 # ╠═9048174d-1426-441d-918f-66c146431b82
 # ╟─c8cccfc3-7fe6-4de3-a54f-43ccc511ac00
-# ╠═045f9d4b-342b-48dc-88bc-b15c795cdc29
+# ╟─045f9d4b-342b-48dc-88bc-b15c795cdc29
 # ╠═39152bf6-3ae3-4bc2-a062-0d96b9e4c1d3
 # ╟─41f26efb-af51-4ebf-9150-196c30c84409
 # ╠═381bbec1-8c4a-4f72-93a5-8bbffd79877b
