@@ -272,6 +272,13 @@ begin
 		end
 	end
 	BotNotify("{ERG GNAT}: Completed extraction of A-wave")
+	XLSX.openxlsx(data_file, mode = "rw") do xf 
+		sheet = xf["trace_A"]
+		XLSX.writetable!(sheet, 
+			collect(DataFrames.eachcol(trace_A)), 
+			DataFrames.names(trace_A))						
+	end
+
 	trace_A
 end
 
@@ -350,6 +357,12 @@ begin
 		end
 	end
 	BotNotify("{ERG GNAT}: Completed extraction of B-wave")
+	XLSX.openxlsx(data_file, mode = "rw") do xf 
+		sheet = xf["trace_B"]
+		XLSX.writetable!(sheet, 
+			collect(DataFrames.eachcol(trace_B)), 
+			DataFrames.names(trace_B))						
+	end
 	trace_B
 end
 
@@ -399,6 +412,12 @@ begin
 				sum(q_data.t_eff[valid_amps])/length(valid_amps)
 		end
 	end
+	XLSX.openxlsx(data_file, mode = "rw") do xf 
+		sheet = xf["experiments_A"]
+		XLSX.writetable!(sheet, 
+			collect(DataFrames.eachcol(experiments_A)), 
+			DataFrames.names(experiments_A))						
+	end
 	experiments_A
 end
 
@@ -427,6 +446,12 @@ begin
 			end
 			#If we wanted to plot individual traces, here is where we would do that	
 		end
+	end
+	XLSX.openxlsx(data_file, mode = "rw") do xf 
+		sheet = xf["experiments_B"]
+		XLSX.writetable!(sheet, 
+			collect(DataFrames.eachcol(experiments_B)), 
+			DataFrames.names(experiments_B))						
 	end
 	experiments_B
 end
@@ -481,6 +506,12 @@ begin
 		conditions_A[idx, :Effective_Time_SEM] = 			
 			std(q_data.effective_time)/sqrt(length(q_data.effective_time))
 	end
+	XLSX.openxlsx(data_file, mode = "rw") do xf 
+		sheet = xf["conditions_A"]
+		XLSX.writetable!(sheet, 
+			collect(DataFrames.eachcol(conditions_A)), 
+			DataFrames.names(conditions_A))						
+	end
 	conditions_A
 end
 
@@ -514,6 +545,12 @@ begin
 			sum(q_data.recovery_tau)/length(q_data.recovery_tau)
 		conditions_B[idx, :Recovery_Tau_SEM] = 			
 			std(q_data.recovery_tau)/sqrt(length(q_data.recovery_tau))
+	end
+	XLSX.openxlsx(data_file, mode = "rw") do xf 
+		sheet = xf["conditions_B"]
+		XLSX.writetable!(sheet, 
+			collect(DataFrames.eachcol(conditions_B)), 
+			DataFrames.names(conditions_B))						
 	end
 	conditions_B
 end
