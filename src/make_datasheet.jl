@@ -223,9 +223,9 @@ function update_RS_datasheet(
                          DataFrame
                     #remove old analysis
                     rm(data_file)
-                    #write new analysis
+                    #overwrite the All_Files datasheet
                     XLSX.openxlsx(data_file, mode = "rw") do xf 
-                         sheet = xf["trace_A"]
+                         sheet = xf["All_Files"]
 		               XLSX.writetable!(sheet, 
                                    collect(DataFrames.eachcol(all_files)), 
                                    DataFrames.names(all_files)
