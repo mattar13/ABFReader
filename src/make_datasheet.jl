@@ -3,7 +3,7 @@
 dataframe_sheets = [
      "All_Files",
      "trace_A", "trace_B", "trace_G", 
-     "experiments_A", "experiments_B", "exeriments_G", 
+     "experiments_A", "experiments_B", "experiments_G", 
      "conditions_A", "conditions_B", "conditions_G" 
 ]
 
