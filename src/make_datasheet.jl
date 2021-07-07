@@ -79,8 +79,8 @@ function update_RS_datasheet(
                          XLSX.addsheet!(xf, sn)
                     end
                     XLSX.writetable!(xf["All_Files"], 
-                         collect(DataFrames.eachcol(trace_A)), 
-                         DataFrames.names(trace_A)
+                         collect(DataFrames.eachcol(all_files)), 
+                         DataFrames.names(all_files)
                          )						
                end
                
