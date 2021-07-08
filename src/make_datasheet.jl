@@ -8,7 +8,7 @@ dataframe_sheets = [
 ]
 
 
-function update_RS_datasheet(
+function update_datasheet(
      all_paths::Array{String}, 
      calibration_file::String,
      data_file::String; 
@@ -75,13 +75,16 @@ function update_RS_datasheet(
                end
 
                XLSX.openxlsx(data_file, mode = "w") do xf 
-                    for sn in dataframe_sheets
-                         XLSX.addsheet!(xf, sn)
-                    end
+                    sheet1 = xf[1]
+                    XLSX.rename!(sheet1, "All_Files")
                     XLSX.writetable!(xf["All_Files"], 
                          collect(DataFrames.eachcol(all_files)), 
                          DataFrames.names(all_files)
-                         )						
+                         )	
+
+                    for sn in dataframe_sheets
+                         XLSX.addsheet!(xf, sn)
+                    end						
                end
                
                
@@ -238,10 +241,12 @@ function update_RS_datasheet(
           println(error)
           if isa(error, UndefVarError)
                println("There is a posibility that $(error.var) was not defined in the overall script")
+          else
+               throw(error)
           end     
      end
 end
 
-update_RS_datasheet(root::String, calibration_file; kwargs...) = update_RS_datasheet(root |> parse_abf, calibration_file; kwargs...)
+update_datasheet(root::String, calibration_file; kwargs...) = update_RS_datasheet(root |> parse_abf, calibration_file; kwargs...)
 
 #function run_data_analysis(data_file::String; )

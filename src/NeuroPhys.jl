@@ -67,7 +67,7 @@ export plot, plot!, vline!, hline!, savefig, histogram, grid, title!
 
 #These functions are specific for making datasheets
 include("make_datasheet.jl")
-export update_RS_datasheet
+export update_datasheet
 
 include("logging.jl")
 export dotenv, env_location, BotNotify
