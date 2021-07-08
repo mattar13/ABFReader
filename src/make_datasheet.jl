@@ -1,12 +1,10 @@
 #everything in here is alot of code that does not necessarily need to be run every time 
 #using Query
 dataframe_sheets = [
-     "All_Files",
      "trace_A", "trace_B", "trace_G", 
      "experiments_A", "experiments_B", "experiments_G", 
      "conditions_A", "conditions_B", "conditions_G" 
 ]
-
 
 function update_datasheet(
      all_paths::Array{String}, 
@@ -16,6 +14,7 @@ function update_datasheet(
      try #This only works if every directory is in the correct place
           #First we check if the root file exists
           if !isfile(data_file)
+
                #The file does not exist, so make the dataframe
                all_files = DataFrame(
                     :Path => all_paths, 
@@ -25,6 +24,8 @@ function update_datasheet(
                     :Photoreceptor => "Rods", 
                     :ND => 0, :Percent => 1, :Stim_time => 1.0, :Photons => 0.0
                )
+
+
 
                delete_after = Int64[]
                for (idx, path) in enumerate(all_paths)
@@ -75,8 +76,7 @@ function update_datasheet(
                end
 
                XLSX.openxlsx(data_file, mode = "w") do xf 
-                    sheet1 = xf[1]
-                    XLSX.rename!(sheet1, "All_Files")
+                    XLSX.rename!(xf["Sheet1"], "All_Files")
                     XLSX.writetable!(xf["All_Files"], 
                          collect(DataFrames.eachcol(all_files)), 
                          DataFrames.names(all_files)
