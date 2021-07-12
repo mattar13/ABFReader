@@ -44,7 +44,6 @@ end
 # ╔═╡ bd5889f5-12d3-4739-90de-094e2a6f414f
 begin
 	#This is a long script which simply makes a dataframe
-	
 	all_files = update_RS_datasheet(
 		all_paths, calibration_file, data_file, 
 		verbose = true
@@ -524,10 +523,10 @@ begin
 			rdims = q_data.Response[in_range]
 			if !isempty(rdims)
 				rdim_idx = in_range[argmax(rdims)]
-				experiments_B[idx, :rdim] = maximum(rdims)
-				experiments_B[idx, :time_to_peak] = q_data[rdim_idx, :Peak_Time]
-				experiments_B[idx, :integration_time] = q_data[rdim_idx, :Int_Time]
-				experiments_B[idx, :recovery_tau] =  q_data[rdim_idx, :Tau_Rec]
+				experiments_G[idx, :rdim] = maximum(rdims)
+				experiments_G[idx, :time_to_peak] = q_data[rdim_idx, :Peak_Time]
+				experiments_G[idx, :integration_time] = q_data[rdim_idx, :Int_Time]
+				experiments_G[idx, :recovery_tau] =  q_data[rdim_idx, :Tau_Rec]
 			end
 			#If we wanted to plot individual traces, here is where we would do that	
 		end
@@ -1763,24 +1762,24 @@ end
 # ╟─bd5889f5-12d3-4739-90de-094e2a6f414f
 # ╟─0f1d25a5-f366-41a9-a3c9-bb13bcb6ab2d
 # ╟─3781dc5f-e9e0-4a60-adb9-a422741d375d
-# ╠═a3319e29-9d96-4529-a035-39ff2d4f1cd8
-# ╠═695cc1d2-0244-4609-970a-2df676263e99
-# ╠═659e9a5f-d383-4e89-be73-d008d1bcb122
+# ╟─a3319e29-9d96-4529-a035-39ff2d4f1cd8
+# ╟─695cc1d2-0244-4609-970a-2df676263e99
+# ╟─659e9a5f-d383-4e89-be73-d008d1bcb122
 # ╟─f76e5e8b-25c9-4934-906e-2e57e5d48820
 # ╠═59c0d921-0f22-48ce-b4c0-f3a374e547d9
-# ╠═b06d3026-2543-4feb-9a7e-898564d892d1
-# ╠═7c4480ab-ece5-4659-b314-519fbee46cb6
+# ╟─b06d3026-2543-4feb-9a7e-898564d892d1
+# ╟─7c4480ab-ece5-4659-b314-519fbee46cb6
 # ╟─0c09ad42-403d-4a24-a5d1-88c992203a8f
-# ╠═705481fe-b09c-47db-b786-77cd4a2dcb33
-# ╠═a912d133-cb30-44fc-83bb-fe94d5fcfeac
-# ╠═b47fd915-2ae5-4e86-bb7b-1a8acdc648ba
+# ╟─705481fe-b09c-47db-b786-77cd4a2dcb33
+# ╟─a912d133-cb30-44fc-83bb-fe94d5fcfeac
+# ╟─b47fd915-2ae5-4e86-bb7b-1a8acdc648ba
 # ╠═9258c7f4-530c-487c-8023-eca3d64cef0e
 # ╠═9b9dbf63-d148-476f-9de0-c854b360597a
-# ╠═d1aecd57-021f-4873-ae42-2896bcdb0a56
-# ╠═732cc6cc-d6bb-4632-8357-c108a1e79a62
-# ╠═beeacce0-0b91-4540-bf8c-91fb328ed51b
-# ╠═b30e73b4-fbba-4ed8-9021-051b51f10d3a
-# ╠═2d8c6f46-475a-4e57-9f69-b63edcd3b46d
+# ╟─d1aecd57-021f-4873-ae42-2896bcdb0a56
+# ╟─732cc6cc-d6bb-4632-8357-c108a1e79a62
+# ╟─beeacce0-0b91-4540-bf8c-91fb328ed51b
+# ╟─b30e73b4-fbba-4ed8-9021-051b51f10d3a
+# ╟─2d8c6f46-475a-4e57-9f69-b63edcd3b46d
 # ╟─13b294c3-d100-4cf5-981d-a98a463afa6f
 # ╟─c9f6bb32-7115-4fd0-a26c-eb834f2ef973
 # ╟─48476e31-7593-43f1-be5c-b951af96bb16

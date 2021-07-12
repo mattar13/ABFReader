@@ -40,7 +40,7 @@ begin
 	all_paths = vcat(gnat_paths, pauls_paths)
 	#specify the calibration and the location of the data output
 	calibration_file = "E:\\Data\\Calibrations\\photon_lookup.xlsx"
-	save_file = "E:\\Projects\\2020_JGP_Gnat\\data_analysis.xlsx"
+	data_file = "E:\\Projects\\2020_JGP_Gnat\\data_analysis.xlsx"
 end
 
 # ╔═╡ 84fb07ae-092e-4885-a804-ca442a6d2aa2
@@ -50,8 +50,8 @@ md"
 
 # ╔═╡ bf708d08-dc13-4bab-86b7-e417f613dbbf
 begin	
-	all_files = update_RS_datasheet(
-		all_paths, calibration_file, save_file, 
+	all_files = update_datasheet(
+		all_paths, calibration_file, data_file, 
 		verbose = true
 	)
 	BotNotify("{ERG GNAT} Dataframe successfully loaded")
@@ -560,19 +560,12 @@ md"
 ## Save all analysis to an excel file
 "
 
-# ╔═╡ 0128c63a-9464-498d-9a1c-590aec06c3db
-XLSX.openxlsx(save_file, mode = "rw") do xf 
-	XLSX.addsheet!(xf, "Test")
-	sheet = xf["Test"]
-	XLSX.writetable!(sheet, [1,2,3], ["a", "b", "c"])
-end
-
 # ╔═╡ 1511c553-f553-4788-8e22-19a830d2c981
 begin	
 	q_sect_A = trace_A |> 
 		@filter(_.Photons > 0.0) |>
 		@filter(_.Age == 14) |> 
-		@filter(_.Genotype == "WT") |> 
+		@filter(_.Genotype == "GNAT-KO" || _.Genotype == "WT") |> 
 		@filter(_.Photoreceptor == "Rods") |> 
 		@filter(_.Wavelength == 525) |>
 		DataFrame
@@ -581,41 +574,34 @@ end
 # ╔═╡ 2dd71b0b-d24a-402c-b233-4e8a13638d68
 begin
 	#lets test out some IR curves
-
-	@df q_sect_A plot(:Photons, :a, 
+	@df q_sect_A plot(:Photons, :Peak_Time, 
 		st = :scatter, 
 		xaxis = :log, 
 		xlabel = "Photons/μm²", 
-		ylabel = "α")
+		ylabel = "α", group = :Genotype)
 	#Lets fit the curve
 end
 
 # ╔═╡ 6a9f0819-421d-4a79-bf34-fe7eb3b2a361
 q_sect_A
 
-# ╔═╡ 07748bb8-93aa-49de-87f9-d0a68ad9f00f
-savefig("E:\\Projects\\2020_JGP_Gnat\\Intensity_Recovery.png")
-
-# ╔═╡ 3767234f-b654-4dfd-8395-3f4d94ca0204
-begin
-	#q_sect_B = trace_A |> 
-	#	@filter(_.Photons > 0.0) |>
-	#	@filter(_.Age >=  30) |> 
-	#	@filter(_.Genotype == "DR") |> 
-	#	@filter(_.Photoreceptor == "Rods") |>
-	#	@filter(_.Wavelength == 525) |>
-	#	DataFrame
-	#@df q_sect_B plot!(:Photons, :Response, 
-	#	st = :scatter, xaxis = :log, label = "B-wave")
-		#lets test out some IR curves
-end
+# ╔═╡ 5237aadb-b169-49f5-b8cf-f9f7b517e4e4
+md"
+### Extract the synaptic transfer function and the B/A-log(I) plots
+"
 
 # ╔═╡ 5cec52ef-5d8e-47b3-9ec8-99c84aa22921
 begin
 	#Extract the BxA response
-	q_BxA = trace_A |> @join(trace_A, 
-			{_.Photons, _.Year, _.Month, _.Date, _.Animal,_.Channel}, 
-			{_.Photons, _.Year, _.Month, _.Date, _.Animal,_.Channel},
+	q_BxA = trace_B |> @join(trace_A, 
+			{_.Photons, 
+			_.Year, _.Month, _.Date, _.Animal, _.Channel, 
+			_.Genotype, _.Photoreceptor, _.Wavelength
+			}, 
+			{_.Photons, 
+			_.Year, _.Month, _.Date, _.Animal, _.Channel, 
+			_.Genotype, _.Photoreceptor, _.Wavelength
+			}, 
 			{_.A_Path, __.Path, _.Genotype, _.Age, 
 			_.Photons, _.Wavelength, _.Photoreceptor,
 			A_Response = __.Response, 
@@ -636,7 +622,7 @@ begin
 		@filter(_.Genotype == "WT" || _.Genotype == "DR") |> 
 		DataFrame
 	
-	fig_test = @df q_all plot(
+	fig_stf = @df q_all plot(
 		:A_Response, :B_Response, 
 		st = :scatter, group = :Genotype,
 		#yaxis = :log, xaxis = :log,
@@ -656,8 +642,7 @@ begin
 	dr_fit = curve_fit(model, q_DR.A_Response, q_DR.B_Response, p0, 
 		upper = ub, lower = lb
 	)
-	println(nr_fit.param)
-	plot!(fig_test, 
+	plot!(fig_stf, 
 		[nr_fit.param[1], nr_fit.param[1]], 
 		[1.0, model(nr_fit.param[1], nr_fit.param)],
 		c = :black, linestyle = :dash,
@@ -673,31 +658,98 @@ begin
 	)
 	
 	fit_range = LinRange(1.0, 1000, 10000)
-	plot!(fig_test, x -> model(x, nr_fit.param), fit_range, 
+	plot!(fig_stf, x -> model(x, nr_fit.param), fit_range, 
 		lw = 2.0, c = :black, label = ""
 	)
-	plot!(fig_test, x -> model(x, dr_fit.param), fit_range, 
+	plot!(fig_stf, x -> model(x, dr_fit.param), fit_range, 
 		lw = 2.0, c = :red, label = ""
 	)
-	fig_test
-end
-
-# ╔═╡ 416ee703-b971-47b1-b879-56b97af8aeaf
-begin
-	@df q_all plot(:Photons, :Div_Resp, 
-		group = :Genotype, st = :scatter, xaxis = :log, ylims = (0,50))	
+	
+	fig_ratio = @df q_all plot(:Photons, :Div_Resp, 
+		group = :Genotype, st = :scatter, 
+		c = [:red :black],  xaxis = :log, ylims = (0,50),
+		ylabel = "B-wave/A-wave", xlabel = "photons/μm²"
+		)	
+	
+	
+	fig_synapse = plot(fig_stf, fig_ratio, layout = grid(1,2))
 end
 
 # ╔═╡ 8de79d84-1c87-466f-b200-7ecde5b5e0a4
-savefig(fig_test, "E:\\Projects\\2020_JGP_Gnat\\test_figure.png")
+savefig(fig_synapse, "E:\\Projects\\2020_JGP_Gnat\\test_figure.png")
+
+# ╔═╡ e9079757-42f4-4838-8b3d-5bb31fa8a3a0
+trace_G
+
+# ╔═╡ 11dda007-4b7c-4b87-85a9-7b47be497f94
+begin
+	#lets explore some Gnat-KO functions
+	exp_B = trace_B|>
+		@filter(_.Month==6&&_.Date==24&&_.Animal==1) |> 
+		@filter(_.Wavelength == 525) |> 
+		DataFrame
+	exp_G = trace_G|>
+		@filter(_.Month==6&&_.Date==24&&_.Animal==1) |> 
+		@filter(_.Wavelength == 525) |> 
+		DataFrame
+	
+	A_data = extract_abf(exp_B.A_Path) |> filter_data
+	AB_data = extract_abf(exp_B.AB_Path) |> filter_data
+	
+	if size(AB_data) != size(A_data)
+		#we want to drop the extra channel
+		match_ch= findall(A_data.chNames.==AB_data.chNames)
+		if size(AB_data,3) > size(A_data,3) 
+			drop!(AB_data, drop_idx = match_ch[1])
+		else
+			drop!(A_data, drop_idx = match_ch[1])
+		end
+		B_data = AB_data - A_data
+	else
+		#Now we can subtract the A response from the AB response
+		B_data = AB_data - A_data 
+	end
+	
+	AB_data = extract_abf(exp_G.AB_Path) |> filter_data
+	ABG_data = extract_abf(exp_G.ABG_Path) |> filter_data
+	
+	if size(AB_data) != size(ABG_data)
+		#we want to drop the extra channel
+		match_ch= findall(AB_data.chNames.==ABG_data.chNames)
+		if size(ABG_data,3) > size(AB_data,3) 
+			drop!(ABG_data, drop_idx = match_ch[1])
+		else
+			drop!(AB_data, drop_idx = match_ch[1])
+		end
+		G_data = ABG_data - AB_data
+	else
+		#Now we can subtract the A response from the AB response
+		G_data = ABG_data - AB_data 
+	end
+end
+
+# ╔═╡ 56d9d180-4ccf-4f72-9b2a-f84d17e6d3f9
+plot(A_data)
+
+# ╔═╡ abc002ff-9634-4145-a62f-3bca4c4e3a45
+plot(AB_data)
+
+# ╔═╡ c69d17c7-e876-454e-9d4f-3bb42657022e
+plot(ABG_data)
+
+# ╔═╡ 8dd3d90f-6426-4ee9-8d60-323553375944
+plot(G_data)
+
+# ╔═╡ 88c83f8f-7696-4e64-9f81-896263db27e6
+plot(B_data)
 
 # ╔═╡ Cell order:
 # ╠═8e9bd9b4-ab95-4b27-bfb1-5c38a1e62767
-# ╠═d24a4cd7-bf63-44f8-a905-5dca5e26ad36
+# ╟─d24a4cd7-bf63-44f8-a905-5dca5e26ad36
 # ╠═a8445ac3-44e8-4b98-9711-0ea7fc4900dd
-# ╠═347daa1f-eb09-4c1e-a166-cd16723b0031
+# ╟─347daa1f-eb09-4c1e-a166-cd16723b0031
 # ╠═ad9a3673-ce76-4da8-bdae-5508d2c493ee
-# ╠═da044b8e-67ae-4ca8-9e39-a873716c124e
+# ╟─da044b8e-67ae-4ca8-9e39-a873716c124e
 # ╟─84fb07ae-092e-4885-a804-ca442a6d2aa2
 # ╠═bf708d08-dc13-4bab-86b7-e417f613dbbf
 # ╟─4363930f-b4ed-43f4-84c1-5c486dcb9d8d
@@ -711,13 +763,17 @@ savefig(fig_test, "E:\\Projects\\2020_JGP_Gnat\\test_figure.png")
 # ╟─6e1148c7-68e3-4ca8-8b1c-4ad75c739dc6
 # ╟─d61b59a1-a7c3-4b97-a022-086dddbd03eb
 # ╟─a66da55a-423a-45f2-a12b-c28ccaa65cfd
-# ╠═0128c63a-9464-498d-9a1c-590aec06c3db
-# ╠═1511c553-f553-4788-8e22-19a830d2c981
+# ╟─1511c553-f553-4788-8e22-19a830d2c981
 # ╠═2dd71b0b-d24a-402c-b233-4e8a13638d68
-# ╟─6a9f0819-421d-4a79-bf34-fe7eb3b2a361
-# ╠═07748bb8-93aa-49de-87f9-d0a68ad9f00f
-# ╠═3767234f-b654-4dfd-8395-3f4d94ca0204
-# ╠═5cec52ef-5d8e-47b3-9ec8-99c84aa22921
+# ╠═6a9f0819-421d-4a79-bf34-fe7eb3b2a361
+# ╟─5237aadb-b169-49f5-b8cf-f9f7b517e4e4
+# ╟─5cec52ef-5d8e-47b3-9ec8-99c84aa22921
 # ╟─ccc3109b-63a4-4048-9b72-525340972dd1
-# ╠═416ee703-b971-47b1-b879-56b97af8aeaf
 # ╠═8de79d84-1c87-466f-b200-7ecde5b5e0a4
+# ╠═e9079757-42f4-4838-8b3d-5bb31fa8a3a0
+# ╠═11dda007-4b7c-4b87-85a9-7b47be497f94
+# ╠═56d9d180-4ccf-4f72-9b2a-f84d17e6d3f9
+# ╠═abc002ff-9634-4145-a62f-3bca4c4e3a45
+# ╠═c69d17c7-e876-454e-9d4f-3bb42657022e
+# ╠═8dd3d90f-6426-4ee9-8d60-323553375944
+# ╠═88c83f8f-7696-4e64-9f81-896263db27e6

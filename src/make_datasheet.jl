@@ -134,7 +134,6 @@ function update_datasheet(
                          nt = formatted_split(new_file, format_bank)
                          if verbose
                               println(new_file)
-                              println(nt)
                          end
                          if !isnothing(nt)
                               if haskey(nt, :flag)
@@ -224,8 +223,6 @@ function update_datasheet(
                          @thenby(_.Animal)|> @thenby(_.Genotype) |> @thenby(_.Condition) |> 
                          @thenby(_.Wavelength) |> @thenby(_.Photons)|> 
                          DataFrame
-                    #remove old analysis
-                    rm(data_file)
                     #overwrite the All_Files datasheet
                     XLSX.openxlsx(data_file, mode = "rw") do xf 
                          sheet = xf["All_Files"]
