@@ -17,6 +17,9 @@ using PlutoUI, Colors, StatsPlots
 # ╔═╡ a8445ac3-44e8-4b98-9711-0ea7fc4900dd
 using DataFrames, Query, XLSX, StatsBase, Statistics
 
+# ╔═╡ accf9bc4-1904-4f6c-8fef-96f7f056494f
+
+
 # ╔═╡ 347daa1f-eb09-4c1e-a166-cd16723b0031
 #define a single function for filtering
 function filter_data(data; t_pre = 1.0, t_post = 2.0) 
@@ -745,8 +748,9 @@ plot(B_data)
 
 # ╔═╡ Cell order:
 # ╠═8e9bd9b4-ab95-4b27-bfb1-5c38a1e62767
-# ╟─d24a4cd7-bf63-44f8-a905-5dca5e26ad36
+# ╠═d24a4cd7-bf63-44f8-a905-5dca5e26ad36
 # ╠═a8445ac3-44e8-4b98-9711-0ea7fc4900dd
+# ╠═accf9bc4-1904-4f6c-8fef-96f7f056494f
 # ╟─347daa1f-eb09-4c1e-a166-cd16723b0031
 # ╠═ad9a3673-ce76-4da8-bdae-5508d2c493ee
 # ╟─da044b8e-67ae-4ca8-9e39-a873716c124e
