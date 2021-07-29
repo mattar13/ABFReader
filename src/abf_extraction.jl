@@ -134,5 +134,10 @@ function readStringSection(filename::String, blockStart, entrySize, entryCount;
           end
      end
      #may not need to return raw strings
+     #Now we will try to deconstruct all the important information from each string
+     internal_strings = split(strings[1], "\00")
+     internal_strings = internal_strings[internal_strings.!=""]
+     internal_strings = internal_strings[5:end]
+
      return strings
 end
