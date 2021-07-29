@@ -16,11 +16,13 @@ using Telegram, Telegram.API, ConfigEnv
 include("file_formatting.jl")
 export formatted_split, format_bank
 export check_age, check_color, check_pc, check_geno, get_root, contains_words, condition_check
-export parse_abf, extract_abf 
+export parse_abf
 export number_extractor, filename_extractor
 
 #Utility files contain file extraction and abf editing functions
 include("utils.jl")
+export extract_abf_new, extract_abf 
+#Most of these will be removed in the stable branch
 export StimulusProtocol, get_stim_channels, extract_stimulus
 export Experiment, getchannel, getsweep, getstim, findstimRng
 export eachchannel, eachsweep
