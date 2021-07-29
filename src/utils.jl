@@ -282,6 +282,13 @@ function extract_abf(abf_folder::AbstractArray{String}; average_sweeps = false, 
     return sweeps
 end
 
+"""
+this function utilizes all julia to extract ABF file data
+"""
+function extract_abf_new(filename)
+    header_obj = scanABF(filename)
+end
+
 function extract_stimulus(abf_path::String; stim_name = "IN 7", stim_threshold::Float64 = 0.2)
     #This function is a fast track for extracting only the stimulus
     #println("edited")
