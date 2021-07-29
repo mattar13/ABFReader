@@ -1,5 +1,6 @@
 module NeuroPhys
 
+using Base: String
 is_working() = println("And you can revise!") 
 #Imports
 using PyCall
@@ -27,6 +28,10 @@ export truncate_data, truncate_data!
 export split_data, drop!
 export concat, concat!
 export photon_lookup
+#These will be disabled eventually
+
+include("abf_extraction.jl")
+export readStruct, scanABF
 
 #filtering are any functions that return a Experiment file and alter the old one
 include("filtering.jl") 
