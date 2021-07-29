@@ -114,3 +114,25 @@ function scanABF(filename::String; bytemap = default_bytemap)
     end
      return ABF_Dict
 end
+
+function readStringSection(filename::String, blockStart, entrySize, entryCount; 
+          FileInfoSize:: Int64 = 512
+     ) where T <: Real
+     byteStart = blockStart*FileInfoSize #Look at the 
+     stringsRaw = fill(UInt8[], entryCount) #The raw string data
+     strings = fill("", entryCount) #The formatted strings
+     #Parse through the data and read the bytes 
+     open(filename, "r") do f
+          for i in 0:entryCount-1 #iterate through each entry
+               seek(f, byteStart+i*entrySize) #advance the file x bytes
+               b = [0x00] #memory entry for bytes
+               readbytes!(f, b, entrySize)
+               #In these scenarios, mu -> u
+               b[b.==0xb5] .= 0x75 #remove all instances of mu
+               stringsRaw[i+1] =  b #put the byte data into raw data
+               strings[i+1] =  b |> String #convert the byte data to string
+          end
+     end
+     #may not need to return raw strings
+     return strings
+end
