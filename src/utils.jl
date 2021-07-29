@@ -1,25 +1,3 @@
-
-"""
-This function reads the byte data from the ABF files
-
-"""
-function readByte(::Type{T}, f::IOStream, seekTo = -1; n::Int64 = 1) where T 
-     if seekTo >= 0
-          seek(f, seekTo)
-     end
-     if T == String
-          type_construct = repeat("s",n)
-          byteCount = sizeof(type_construct)
-          byteString = read(f, byteCount)
-          val = String(byteString)
-     else
-          byteCount = sizeof(T)
-          byteString = read(f, byteCount)
-          val = reinterpret(T, byteString) |> Array
-     end
-     return val
-end
-
 mutable struct StimulusProtocol{T}
     type::Symbol
     sweep::Int64
