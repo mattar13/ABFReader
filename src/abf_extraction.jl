@@ -7,6 +7,50 @@ ByteDict = Dict(
     :b => :Hex
 )
 
+#This is the default ABF2 Header bytemap
+default_bytemap = [
+     ("fFileSignature", "4s"),
+     ("fFileVersionNumber", "4b"),
+     ("uFileInfoSize", "I"),
+     ("lActualEpisodes", "I"),
+     ("uFileStartDate", "I"),
+     ("uFileStartTimeMS", "I"),
+     ("uStopwatchTime", "I"),
+     ("nFileType", "H"),
+     ("nDataFormat", "H"),
+     ("nSimultaneousScan", "H"),
+     ("nCRCEnable", "H"),
+     ("uFileCRC", "I"),
+     ("FileGUID", "I"),
+     ("unknown1", "I"),
+     ("unknown2", "I"),
+     ("unknown3", "I"),
+     ("uCreatorVersion", "I"),
+     ("uCreatorNameIndex", "I"),
+     ("uModifierVersion", "I"),
+     ("uModifierNameIndex", "I"),
+     ("uProtocolPathIndex", "I"),
+     ("ProtocolSection", "IIL", 76),
+     ("ADCSection", "IIL", 92),
+     ("DACSection", "IIL", 108),
+     ("EpochSection", "IIL", 124),
+     ("ADCPerDACSection", "IIL", 140),
+     ("EpochPerDACSection", "IIL", 156),
+     ("StringsSection", "IIL", 220),
+     ("DataSection", "IIL", 236),
+     ("TagSection", "IIL", 252),
+     # Sections I don't find useful
+     ("UserListSection", "IIl", 172),
+     ("StatsRegionSection", "IIl", 188),
+     ("MathSection", "IIl", 204),
+     ("ScopeSection", "IIl", 268),
+     ("DeltaSection", "IIl", 284),
+     ("VoiceTagSection", "IIl", 300),
+     ("SynchArraySection", "IIl", 316),
+     ("AnnotationSection", "IIl", 332),
+     ("StatsSection", "IIl", 348)
+]
+
 """
 These functions handle the byte interpretations of the ABF file
 
@@ -46,51 +90,11 @@ function readStruct(f::IOStream, byteType::String, seekTo::Int64)
     return readStruct(f, byteType)
 end
 
-#This is the default ABF2 Header bytemap
-default_bytemap = [
-        ("fFileSignature", "4s"),
-        ("fFileVersionNumber", "4b"),
-        ("uFileInfoSize", "I"),
-        ("lActualEpisodes", "I"),
-        ("uFileStartDate", "I"),
-        ("uFileStartTimeMS", "I"),
-        ("uStopwatchTime", "I"),
-        ("nFileType", "H"),
-        ("nDataFormat", "H"),
-        ("nSimultaneousScan", "H"),
-        ("nCRCEnable", "H"),
-        ("uFileCRC", "I"),
-        ("FileGUID", "I"),
-        ("unknown1", "I"),
-        ("unknown2", "I"),
-        ("unknown3", "I"),
-        ("uCreatorVersion", "I"),
-        ("uCreatorNameIndex", "I"),
-        ("uModifierVersion", "I"),
-        ("uModifierNameIndex", "I"),
-        ("uProtocolPathIndex", "I"),
-        ("ProtocolSection", "IIL", 76),
-        ("ADCSection", "IIL", 92),
-        ("DACSection", "IIL", 108),
-        ("EpochSection", "IIL", 124),
-        ("ADCPerDACSection", "IIL", 140),
-        ("EpochPerDACSection", "IIL", 156),
-        ("StringsSection", "IIL", 220),
-        ("DataSection", "IIL", 236),
-        ("TagSection", "IIL", 252),
-        # Sections I don't find useful
-        ("UserListSection", "IIl", 172),
-        ("StatsRegionSection", "IIl", 188),
-        ("MathSection", "IIl", 204),
-        ("ScopeSection", "IIl", 268),
-        ("DeltaSection", "IIl", 284),
-        ("VoiceTagSection", "IIl", 300),
-        ("SynchArraySection", "IIl", 316),
-        ("AnnotationSection", "IIl", 332),
-        ("StatsSection", "IIl", 348)
-    ]
 
 
+"""
+This scans the axon binary and extracts all the most useful header information
+"""
 function scanABF(filename::String; bytemap = default_bytemap)
     ABF_Dict = Dict()
     open(filename, "r") do f
