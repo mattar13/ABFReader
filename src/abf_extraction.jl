@@ -9,7 +9,7 @@ ByteDict = Dict(
 
 #This is the default ABF2 Header bytemap
 default_bytemap = [
-     ("fFileSignature", "4s"),
+     ("sFileSignature", "4s"),
      ("fFileVersionNumber", "4b"),
      ("uFileInfoSize", "I"),
      ("lActualEpisodes", "I"),
@@ -93,23 +93,50 @@ end
 This scans the axon binary and extracts all the most useful header information
 """
 function scanABF(filename::String; bytemap = default_bytemap)
-    ABF_Dict = Dict()
+    header_info = Dict()
     open(filename, "r") do f
         seek(f, 0)
         for (i, bmp) in enumerate(bytemap)
             if length(bmp) == 2
                 key, byte_format = bmp
                 val = readStruct(f, byte_format)
-                ABF_Dict[key] = val
+                header_info[key] = val
             elseif length(bmp) == 3
                 #This entry has a position
                 key, byte_format, start_byte = bmp
                 val = readStruct(f, byte_format, start_byte)
-                ABF_Dict[key] = val
+                header_info[key] = val
             end
         end
     end
-     return ABF_Dict
+    #Format the version number
+    versionPartsInt = reverse(header_info["fFileVersionNumber"])
+    versionParts = map(x -> "$(string(x)).", collect(versionPartsInt)) |> join
+    header_info["abfVersionString"] = versionParts
+    abfVersionDict = Dict{String, Int}()
+    abfVersionDict["major"] = parse(Int64,versionPartsInt[1])
+    abfVersionDict["minor"] = parse(Int64,versionPartsInt[2])
+    abfVersionDict["bugfix"] = parse(Int64,versionPartsInt[3])
+    abfVersionDict["build"] = parse(Int64,versionPartsInt[4])
+    header_info["abfVersionDict"] = abfVersionDict
+    #Format the Creater Info Dict
+    versionPartsInt = reverse(header_info["uCreatorVersion"])
+    versionParts = map(x -> "$(string(x)).", collect(versionPartsInt)) |> join
+    header_info["creatorVersionString"] = versionParts
+    # Format the FileGUID
+    guid = []
+    for i in [4, 3, 2, 1, 6, 5, 8, 7, 9, 10, 11, 12, 13, 14, 15, 16]
+        push!(guid, header_info["FileGUID"][i] |> string)
+    end
+    header_info["sFileGUID"] = join(guid)
+    #delete!(header_info, "FileGUID")
+    #Format the date found in the header
+    
+    d = DateTime(header_info["uFileStartDate"][1]|>string, DateFormat("yyyymmdd"))
+    t = Millisecond(header_info["uFileStartTimeMS"][1])
+    header_info["FileStartDateTime"] = d+t
+
+    return header_info
 end
 
 function readStringSection(filename::String, blockStart, entrySize, entryCount; 
