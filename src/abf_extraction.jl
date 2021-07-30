@@ -1,6 +1,6 @@
 #We need a map of corresponding bytes and byte_types 
 ByteDict = Dict(
-    :L => Int64, :l => Int64,
+    :L => Int64, :l => UInt64,
     :I => Int32, :i => UInt32,
     :H => Int16, :h => UInt16,
     :s => String, :f => Float32, 
@@ -21,11 +21,8 @@ default_bytemap = [
      ("nSimultaneousScan", "H"),
      ("nCRCEnable", "H"),
      ("uFileCRC", "I"),
-     ("FileGUID", "I"),
-     ("unknown1", "I"),
-     ("unknown2", "I"),
-     ("unknown3", "I"),
-     ("uCreatorVersion", "I"),
+     ("FileGUID", "16b"),
+     ("uCreatorVersion", "4b"),
      ("uCreatorNameIndex", "I"),
      ("uModifierVersion", "I"),
      ("uModifierNameIndex", "I"),
@@ -40,15 +37,15 @@ default_bytemap = [
      ("DataSection", "IIL", 236),
      ("TagSection", "IIL", 252),
      # Sections I don't find useful
-     ("UserListSection", "IIl", 172),
-     ("StatsRegionSection", "IIl", 188),
-     ("MathSection", "IIl", 204),
-     ("ScopeSection", "IIl", 268),
-     ("DeltaSection", "IIl", 284),
-     ("VoiceTagSection", "IIl", 300),
-     ("SynchArraySection", "IIl", 316),
-     ("AnnotationSection", "IIl", 332),
-     ("StatsSection", "IIl", 348)
+     ("UserListSection", "IIL", 172),
+     ("StatsRegionSection", "IIL", 188),
+     ("MathSection", "IIL", 204),
+     ("ScopeSection", "IIL", 268),
+     ("DeltaSection", "IIL", 284),
+     ("VoiceTagSection", "IIL", 300),
+     ("SynchArraySection", "IIL", 316),
+     ("AnnotationSection", "IIL", 332),
+     ("StatsSection", "IIL", 348)
 ]
 
 """
@@ -63,8 +60,8 @@ function readStruct(f::IOStream, byteType::String)
             vals = map(c -> readStruct(f, string(c))[1], collect(byteType))
             return vals #Return statement vs continuing
         else
-            n_bytes = parse(Int64, byteType[1])
-            type_conv = ByteDict[Symbol(byteType[2])]
+            n_bytes = parse(Int64, byteType[1:end-1])
+            type_conv = ByteDict[Symbol(byteType[end])]
         end
     else
         type_conv = ByteDict[Symbol(byteType)]
