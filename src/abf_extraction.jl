@@ -7,6 +7,18 @@ ByteDict = Dict(
     :b => :Hex
 )
 
+digitizers = Dict(
+    "0000" => "Unknown",
+    "0100" => "Demo",
+    "0200" => "MiniDigi",
+    "0300" => "DD132X",
+    "0400" => "OPUS",
+    "0500" => "PATCH",
+    "0600" => "Digidata 1440",
+    "0700" => "MINIDIGI2",
+    "0800" => "Digidata 1550"
+)
+
 #This is the default ABF2 Header bytemap
 default_bytemap = [
      ("sFileSignature", "4s"),
@@ -49,6 +61,80 @@ default_bytemap = [
      ("StatsSection", "IIL", 348)
 ]
 
+protocol_bytemap = [
+    ("nOperationMode", "H"),            # 0
+    ("fADCSequenceInterval", "f"),      # 2
+    ("bEnableFileCompression", "b"),    # 6
+    ("_sUnused", "3b"),                 # 7
+    ("uFileCompressionRatio", "I"),     # 10
+    ("fSynchTimeUnit", "f"),            # 14
+    ("fSecondsPerRun", "f"),            # 18
+    ("lNumSamplesPerEpisode", "I"),     # 22
+    ("lPreTriggerSamples", "I"),        # 26
+    ("lEpisodesPerRun", "I"),           # 30
+    ("lRunsPerTrial", "I"),             # 34
+    ("lNumberOfTrials", "I"),           # 38
+    ("nAveragingMode", "H"),            # 42
+    ("nUndoRunCount", "H"),             # 44
+    ("nFirstEpisodeInRun", "H"),        # 46
+    ("fTriggerThreshold", "f"),         # 48
+    ("nTriggerSource", "H"),            # 52
+    ("nTriggerAction", "H"),            # 54
+    ("nTriggerPolarity", "H"),          # 56
+    ("fScopeOutputInterval", "f"),      # 58
+    ("fEpisodeStartToStart", "f"),      # 62
+    ("fRunStartToStart", "f"),          # 66
+    ("lAverageCount", "I"),             # 70
+    ("fTrialStartToStart", "f"),        # 74
+    ("nAutoTriggerStrategy", "H"),      # 78
+    ("fFirstRunDelayS", "f"),           # 80
+    ("nChannelStatsStrategy", "H"),     # 84
+    ("lSamplesPerTrace", "I"),          # 86
+    ("lStartDisplayNum", "I"),          # 90
+    ("lFinishDisplayNum", "I"),         # 94
+    ("nShowPNRawData", "H"),            # 98
+    ("fStatisticsPeriod", "f"),         # 100
+    ("lStatisticsMeasurements", "I"),   # 104
+    ("nStatisticsSaveStrategy", "H"),   # 108
+    ("fADCRange", "f"),                 # 110
+    ("fDACRange", "f"),                 # 114
+    ("lADCResolution", "I"),            # 118
+    ("lDACResolution", "I"),            # 122
+    ("nExperimentType", "H"),           # 126
+    ("nManualInfoStrategy", "H"),       # 128
+    ("nCommentsEnable", "H"),           # 130
+    ("lFileCommentIndex", "I"),         # 132
+    ("nAutoAnalyseEnable", "H"),        # 136
+    ("nSignalType", "H"),               # 138
+    ("nDigitalEnable", "H"),            # 140
+    ("nActiveDACChannel", "H"),         # 142
+    ("nDigitalHolding", "H"),           # 144
+    ("nDigitalInterEpisode", "H"),      # 146
+    ("nDigitalDACChannel", "H"),        # 148
+    ("nDigitalTrainActiveLogic", "H"),  # 150
+    ("nStatsEnable", "H"),              # 152
+    ("nStatisticsClearStrategy", "H"),  # 154
+    ("nLevelHysteresis", "H"),          # 156
+    ("lTimeHysteresis", "I"),           # 158
+    ("nAllowExternalTags", "H"),        # 162
+    ("nAverageAlgorithm", "H"),         # 164
+    ("fAverageWeighting", "f"),         # 166
+    ("nUndoPromptStrategy", "H"),       # 170
+    ("nTrialTriggerSource", "H"),       # 172
+    ("nStatisticsDisplayStrategy", "H"),# 174
+    ("nExternalTagType", "H"),          # 176
+    ("nScopeTriggerOut", "H"),          # 178
+    ("nLTPType", "H"),                  # 180
+    ("nAlternateDACOutputState", "H"),  # 182
+    ("nAlternateDigitalOutputState", "H"),  # 184
+    ("fCellID", "fff"),                  # 186 #This one might not work right
+    ("nDigitizerADCs", "H"),            # 198
+    ("nDigitizerDACs", "H"),            # 200
+    ("nDigitizerTotalDigitalOuts", "H"),  # 202
+    ("nDigitizerSynchDigitalOuts", "H"),  # 204
+    ("nDigitizerType", "H"),            # 206
+]
+
 """
 These functions handle the byte interpretations of the ABF file
 
@@ -89,33 +175,55 @@ function readStruct(f::IOStream, byteType::String, seekTo::Int64)
 end
 
 function readStringSection(filename::String, blockStart, entrySize, entryCount; 
-          FileInfoSize:: Int64 = 512
-     ) where T <: Real
-     byteStart = blockStart*FileInfoSize #Look at the 
-     stringsRaw = fill(UInt8[], entryCount) #The raw string data
-     strings = fill("", entryCount) #The formatted strings
-     #Parse through the data and read the bytes 
-     open(filename, "r") do f
-          for i in 0:entryCount-1 #iterate through each entry
-               seek(f, byteStart+i*entrySize) #advance the file x bytes
-               b = [0x00] #memory entry for bytes
-               readbytes!(f, b, entrySize)
-               #In these scenarios, mu -> u
-               b[b.==0xb5] .= 0x75 #remove all instances of mu
-               stringsRaw[i+1] =  b #put the byte data into raw data
-               strings[i+1] =  b |> String #convert the byte data to string
-          end
-     end
-     #may not need to return raw strings
-     #Now we will try to deconstruct all the important information from each string
-     indexedStrings = split(strings[1], "\00")
-     indexedStrings = indexedStrings[indexedStrings.!=""]
-     indexedStrings = indexedStrings[4:end] #The first 4 strings for some reason are garbage
+        FileInfoSize:: Int64 = 512
+    )
 
-     return indexedStrings
+    byteStart = blockStart*FileInfoSize #Look at the 
+    stringsRaw = fill(UInt8[], entryCount) #The raw string data
+    strings = fill("", entryCount) #The formatted strings
+    #Parse through the data and read the bytes 
+    open(filename, "r") do f
+        for i in 0:entryCount-1 #iterate through each entry
+            seek(f, byteStart+i*entrySize) #advance the file x bytes
+            b = [0x00] #memory entry for bytes
+            readbytes!(f, b, entrySize)
+            #In these scenarios, mu -> u
+            b[b.==0xb5] .= 0x75 #remove all instances of mu
+            stringsRaw[i+1] =  b #put the byte data into raw data
+            strings[i+1] =  b |> String #convert the byte data to string
+        end
+    end
+    #may not need to return raw strings
+    #Now we will try to deconstruct all the important information from each string
+    indexedStrings = split(strings[1], "\00")
+    indexedStrings = indexedStrings[indexedStrings.!=""]
+    indexedStrings = indexedStrings[4:end] #The first 4 strings for some reason are garbage
+
+    return indexedStrings
 end
 
-function readProtocolSection(filename::String, blockStart, entrySize, entryCount;)
+function readProtocolSection(filename::String, blockStart;
+        FileInfoSize:: Int64 = 512, check_bit_info = false,
+        protocolBytemap = protocol_bytemap,
+    )
+    byteStart = blockStart*FileInfoSize #Look at the 
+    protocol_info = Dict()
+    open(filename, "r") do f
+        seek(f, byteStart) #advance the file x bytes
+
+        for (i, bmp) in enumerate(protocolBytemap)
+            if check_bit_info
+                println("Value $i => $(position(f)-byteStart)")
+            end
+            key, byte_format = bmp
+            val = readStruct(f, byte_format)
+            protocol_info[key] = val
+        end
+    end
+    protocol_info["sDigitizerType"] = digitizers[protocol_info["nDigitizerType"]]
+    return protocol_info
+end
+
 """
 This scans the axon binary and extracts all the most useful header information
 """
@@ -124,8 +232,8 @@ function scanABF(filename::String; bytemap = default_bytemap, check_bit_pos = fa
     open(filename, "r") do f
         seek(f, 0)
         for (i, bmp) in enumerate(bytemap)
-            if check_bit_pos 
-                println(position(f))
+            if check_bit_info
+                println("Value $i => $(position(f))")
             end
             if length(bmp) == 2
                 key, byte_format = bmp
