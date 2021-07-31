@@ -27,6 +27,7 @@ default_bytemap = [
      ("uModifierVersion", "I"),
      ("uModifierNameIndex", "I"),
      ("uProtocolPathIndex", "I"),
+     #These are the useful sections
      ("ProtocolSection", "IIL", 76),
      ("ADCSection", "IIL", 92),
      ("DACSection", "IIL", 108),
@@ -87,16 +88,45 @@ function readStruct(f::IOStream, byteType::String, seekTo::Int64)
     return readStruct(f, byteType)
 end
 
+function readStringSection(filename::String, blockStart, entrySize, entryCount; 
+          FileInfoSize:: Int64 = 512
+     ) where T <: Real
+     byteStart = blockStart*FileInfoSize #Look at the 
+     stringsRaw = fill(UInt8[], entryCount) #The raw string data
+     strings = fill("", entryCount) #The formatted strings
+     #Parse through the data and read the bytes 
+     open(filename, "r") do f
+          for i in 0:entryCount-1 #iterate through each entry
+               seek(f, byteStart+i*entrySize) #advance the file x bytes
+               b = [0x00] #memory entry for bytes
+               readbytes!(f, b, entrySize)
+               #In these scenarios, mu -> u
+               b[b.==0xb5] .= 0x75 #remove all instances of mu
+               stringsRaw[i+1] =  b #put the byte data into raw data
+               strings[i+1] =  b |> String #convert the byte data to string
+          end
+     end
+     #may not need to return raw strings
+     #Now we will try to deconstruct all the important information from each string
+     indexedStrings = split(strings[1], "\00")
+     indexedStrings = indexedStrings[indexedStrings.!=""]
+     indexedStrings = indexedStrings[4:end] #The first 4 strings for some reason are garbage
 
+     return indexedStrings
+end
 
+function readProtocolSection(filename::String, blockStart, entrySize, entryCount;)
 """
 This scans the axon binary and extracts all the most useful header information
 """
-function scanABF(filename::String; bytemap = default_bytemap)
+function scanABF(filename::String; bytemap = default_bytemap, check_bit_pos = false)
     header_info = Dict()
     open(filename, "r") do f
         seek(f, 0)
         for (i, bmp) in enumerate(bytemap)
+            if check_bit_pos 
+                println(position(f))
+            end
             if length(bmp) == 2
                 key, byte_format = bmp
                 val = readStruct(f, byte_format)
@@ -131,37 +161,14 @@ function scanABF(filename::String; bytemap = default_bytemap)
     header_info["sFileGUID"] = join(guid)
     #delete!(header_info, "FileGUID")
     #Format the date found in the header
-    
     d = DateTime(header_info["uFileStartDate"][1]|>string, DateFormat("yyyymmdd"))
     t = Millisecond(header_info["uFileStartTimeMS"][1])
     header_info["FileStartDateTime"] = d+t
+    #Lets pull out all relevant string info from the string section
+    blockStart, entrySize, entryCount = header_info["StringsSection"] 
+    indexedStrings = readStringSection(filename, blockStart, entrySize, entryCount) # Read the binary info for the StringsSection
+    header_info["ProtocolPath"] = indexedStrings[header_info["uProtocolPathIndex"][1]+1] #Read the protocol path
 
-    return header_info
+    return header_info #Finally return the header_info as a dictionary
 end
 
-function readStringSection(filename::String, blockStart, entrySize, entryCount; 
-          FileInfoSize:: Int64 = 512
-     ) where T <: Real
-     byteStart = blockStart*FileInfoSize #Look at the 
-     stringsRaw = fill(UInt8[], entryCount) #The raw string data
-     strings = fill("", entryCount) #The formatted strings
-     #Parse through the data and read the bytes 
-     open(filename, "r") do f
-          for i in 0:entryCount-1 #iterate through each entry
-               seek(f, byteStart+i*entrySize) #advance the file x bytes
-               b = [0x00] #memory entry for bytes
-               readbytes!(f, b, entrySize)
-               #In these scenarios, mu -> u
-               b[b.==0xb5] .= 0x75 #remove all instances of mu
-               stringsRaw[i+1] =  b #put the byte data into raw data
-               strings[i+1] =  b |> String #convert the byte data to string
-          end
-     end
-     #may not need to return raw strings
-     #Now we will try to deconstruct all the important information from each string
-     internal_strings = split(strings[1], "\00")
-     internal_strings = internal_strings[internal_strings.!=""]
-     internal_strings = internal_strings[5:end]
-
-     return strings
-end
