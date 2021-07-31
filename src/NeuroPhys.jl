@@ -34,7 +34,7 @@ export photon_lookup
 
 include("abf_extraction.jl")
 #export readStruct, 
-export readStringSection, readProtocolSection
+export readADCSection
 export parseABF
 
 #filtering are any functions that return a Experiment file and alter the old one
