@@ -135,6 +135,38 @@ protocol_bytemap = [
     ("nDigitizerType", "H"),            # 206
 ]
 
+adc_bytemap = [
+    ("nADCNum", "H"),  # 0
+    ("nTelegraphEnable", "H"),  # 2
+    ("nTelegraphInstrument", "H"),  # 4
+    ("fTelegraphAdditGain", "f"),  # 6
+    ("fTelegraphFilter", "f"),  # 10
+    ("fTelegraphMembraneCap", "f"),  # 14
+    ("nTelegraphMode", "H"),  # 18
+    ("fTelegraphAccessResistance", "f"),  # 20
+    ("nADCPtoLChannelMap", "H"),  # 24
+    ("nADCSamplingSeq", "H"),  # 26
+    ("fADCProgrammableGain", "f"),  # 28
+    ("fADCDisplayAmplification", "f"),  # 32
+    ("fADCDisplayOffset", "f"),  # 36
+    ("fInstrumentScaleFactor", "f"),  # 40
+    ("fInstrumentOffset", "f"),  # 44
+    ("fSignalGain", "f"),  # 48
+    ("fSignalOffset", "f"),  # 52
+    ("fSignalLowpassFilter", "f"),  # 56
+    ("fSignalHighpassFilter", "f"),  # 60
+    ("nLowpassFilterType", "b"),  # 64
+    ("nHighpassFilterType", "b"),  # 65
+    ("fPostProcessLowpassFilter", "f"),  # 66
+    ("nPostProcessLowpassFilterType", "s"),  # 70
+    ("bEnabledDuringPN", "b"),  # 71
+    ("nStatsChannelPolarity", "H"),  # 72
+    ("lADCChannelNameIndex", "I"),  # 74
+    ("lADCUnitsIndex", "I"),  # 78
+
+
+
+]
 """
 These functions handle the byte interpretations of the ABF file
 
@@ -230,6 +262,30 @@ function readProtocolSection(filename::String, byteStart;
     return protocol_info
 end
 
+function readADCSection(filename::String, byteStart, entryCount; 
+        adcBytemap = adc_bytemap, check_bit_pos = false
+    )
+    ADC_info = Dict() #This will be in the form entry -> [adc1, adc2, adc3, adc4]
+    ADC_info["ADCList"] = collect(1:entryCount)
+    open(filename, "r") do f
+        seek(f, byteStart) #advance the file x bytes
+        for i in 1:entryCount, (j, bmp) in enumerate(adcBytemap)
+            if check_bit_pos
+                println("Entry $j Value $i => $(position(f)-byteStart*i)")
+            end
+            key, byte_format = bmp
+            val = readStruct(f, byte_format)
+            println(val)
+            if i == 1
+                ADC_info[key] = [val[1]]
+            else
+                push!(ADC_info[key], val[1])
+            end
+        end
+    end
+    return ADC_info
+end
+
 """
 This scans the axon binary and extracts all the most useful header information
 """
@@ -273,16 +329,15 @@ function parseABF(filename::String; bytemap = default_bytemap, check_bit_pos = f
         push!(guid, header_info["FileGUID"][i] |> string)
     end
     header_info["sFileGUID"] = join(guid)
-    #delete!(header_info, "FileGUID")
     #Format the date found in the header
     d = DateTime(header_info["uFileStartDate"][1]|>string, DateFormat("yyyymmdd"))
     t = Millisecond(header_info["uFileStartTimeMS"][1])
     header_info["FileStartDateTime"] = d+t
-    #Pull out relevant info for data section
-    FileInfoSize = header_info["uFileInfoSize"][1]
-    protocol_byteStart = header_info["ProtocolSection"][1]*FileInfoSize
     
+    #Start decoding the sections
+    FileInfoSize = header_info["uFileInfoSize"][1] #This is the block size for all sections
     #Read the Protocol Section
+    protocol_byteStart = header_info["ProtocolSection"][1]*FileInfoSize
     protocol_info = readProtocolSection(filename, protocol_byteStart) #Read the binary info for the ProtocolSection
     header_info["nOperationMode"] = protocol_info["nOperationMode"]
     #Lets pull out all relevant string info from the string section
@@ -296,12 +351,18 @@ function parseABF(filename::String; bytemap = default_bytemap, check_bit_pos = f
     header_info["dataByteStart"] = blockStart*FileInfoSize
     header_info["dataPointCount"] = entryCount 
     header_info["dataPointByteSize"] = entrySize 
-    #header_info["channelCount"] = adcSection_entrycount
     dataRate = 1e6/protocol_info["fADCSequenceInterval"][1] #This is the data rate as
     header_info["dataRate"] = dataRate
     header_info["dataSecPerPoint"] = 1.0/dataRate
-    #now lets look at the data section
+    header_info["dataPointsPerMS"] = Int64(dataRate/1000)
     
+    #now lets look at the ADC section
+    blockStart, entrySize, entryCount = header_info["ADCSection"]
+    ADCByteStart = blockStart*FileInfoSize
+    header_info["channelCount"] = entryCount
+    ADC_info = readADCSection(filename, ADCByteStart, entryCount)
+
+    #header_info["sweepCount"] = TODO
     
     
     
