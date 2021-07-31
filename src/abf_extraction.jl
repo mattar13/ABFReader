@@ -8,15 +8,15 @@ ByteDict = Dict(
 )
 
 digitizers = Dict(
-    "0000" => "Unknown",
-    "0100" => "Demo",
-    "0200" => "MiniDigi",
-    "0300" => "DD132X",
-    "0400" => "OPUS",
-    "0500" => "PATCH",
-    "0600" => "Digidata 1440",
-    "0700" => "MINIDIGI2",
-    "0800" => "Digidata 1550"
+    0 => "Unknown",
+    1 => "Demo",
+    2 => "MiniDigi",
+    3 => "DD132X",
+    4 => "OPUS",
+    5 => "PATCH",
+    6 => "Digidata 1440",
+    7 => "MINIDIGI2",
+    8 => "Digidata 1550"
 )
 
 #This is the default ABF2 Header bytemap
@@ -62,7 +62,7 @@ default_bytemap = [
 ]
 
 protocol_bytemap = [
-    ("nOperationMode", "H"),            # 0
+    ("nOperationMode", "h"),            # 0
     ("fADCSequenceInterval", "f"),      # 2
     ("bEnableFileCompression", "b"),    # 6
     ("_sUnused", "3b"),                 # 7
@@ -163,6 +163,14 @@ function readStruct(f::IOStream, byteType::String)
         val = b |> String
     elseif type_conv == :Hex || type_conv == Int16 ||type_conv == UInt16
         val = bytes2hex(b)
+        if type_conv == Int16 || type_conv == UInt16
+            val_try = tryparse(Int32, val[1:2]) #This always adds 2 extra spots onto the end
+            if !isnothing(val_try) #Don't know why this fails sometimes
+                val = val_try
+            else
+                #print the scenario where this fails
+            end
+        end 
     else
         val = reinterpret(type_conv, b) |> Array
     end
@@ -227,12 +235,12 @@ end
 """
 This scans the axon binary and extracts all the most useful header information
 """
-function scanABF(filename::String; bytemap = default_bytemap, check_bit_pos = false)
+function parseABF(filename::String; bytemap = default_bytemap, check_bit_pos = false)
     header_info = Dict()
     open(filename, "r") do f
         seek(f, 0)
         for (i, bmp) in enumerate(bytemap)
-            if check_bit_info
+            if check_bit_pos
                 println("Value $i => $(position(f))")
             end
             if length(bmp) == 2
@@ -274,9 +282,12 @@ function scanABF(filename::String; bytemap = default_bytemap, check_bit_pos = fa
     header_info["FileStartDateTime"] = d+t
     #Lets pull out all relevant string info from the string section
     blockStart, entrySize, entryCount = header_info["StringsSection"] 
-    indexedStrings = readStringSection(filename, blockStart, entrySize, entryCount) # Read the binary info for the StringsSection
-    header_info["ProtocolPath"] = indexedStrings[header_info["uProtocolPathIndex"][1]+1] #Read the protocol path
-
+    protocol_info = readProtocolSection(filename, header_info["ProtocolSection"][1]) #Read the binary info for the ProtocolSection
+    indexed_strings = readStringSection(filename, blockStart, entrySize, entryCount) # Read the binary info for the StringsSection
+    
+    header_info["ProtocolPath"] = indexed_strings[header_info["uProtocolPathIndex"][1]+1] #Read the protocol path
+    header_info["abfFileComment"] = indexed_strings[protocol_info["lFileCommentIndex"][1]+1]
+    header_info["nOperationMode"] = protocol_info["nOperationMode"]
     return header_info #Finally return the header_info as a dictionary
 end
 
