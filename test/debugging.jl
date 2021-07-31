@@ -8,15 +8,15 @@ using Dates
 
 #%% Can we extract the ABF file details?
 filename = "E:\\Data\\ERG\\Gnat\\2021_06_24_ERG_GNAT\\Mouse1_Adult_GNAT-KO\\BaCl\\Green\\nd1_1p_0001.abf"
-header_info = scanABF(filename)
-header_info["ProtocolPath"]
-#%% The section is divided into [blockStart, entrySize, entryCount]
+@time header_info = parseABF(filename)
+FileInfoSize = header_info["uFileInfoSize"][1] #This is the block size for all sections
 
-blockStart, entrySize, entryCount = header_info["StringsSection"]
-indexed_strings = readStringSection(filename, blockStart, entrySize, entryCount)
-#%% Lets extract things from the ProtocolSection
-protocol_info = readProtocolSection(filename, header_info["ProtocolSection"][1])
-protocol_info["sDigitizerType"]
+
+#%% The section is divided into [blockStart, entrySize, entryCount]
+blockStart, entrySize, entryCount = header_info["ADCSection"]
+ADCByteStart = blockStart * FileInfoSize
+ADC_info = readADCSection(filename, ADCByteStart, entryCount)
+
 
 for ss in ProtocolData
      println(ss)
