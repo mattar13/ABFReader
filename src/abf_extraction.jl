@@ -182,11 +182,9 @@ function readStruct(f::IOStream, byteType::String, seekTo::Int64)
     return readStruct(f, byteType)
 end
 
-function readStringSection(filename::String, blockStart, entrySize, entryCount; 
-        FileInfoSize:: Int64 = 512
-    )
+function readStringSection(filename::String, byteStart, entrySize, entryCount)
 
-    byteStart = blockStart*FileInfoSize #Look at the 
+    #byteStart = blockStart*FileInfoSize #Look at the 
     stringsRaw = fill(UInt8[], entryCount) #The raw string data
     strings = fill("", entryCount) #The formatted strings
     #Parse through the data and read the bytes 
@@ -210,11 +208,11 @@ function readStringSection(filename::String, blockStart, entrySize, entryCount;
     return indexedStrings
 end
 
-function readProtocolSection(filename::String, blockStart;
-        FileInfoSize:: Int64 = 512, check_bit_info = false,
+function readProtocolSection(filename::String, byteStart;
+        check_bit_info = false,
         protocolBytemap = protocol_bytemap,
     )
-    byteStart = blockStart*FileInfoSize #Look at the 
+    #byteStart = blockStart*FileInfoSize #Look at the 
     protocol_info = Dict()
     open(filename, "r") do f
         seek(f, byteStart) #advance the file x bytes
@@ -280,14 +278,34 @@ function parseABF(filename::String; bytemap = default_bytemap, check_bit_pos = f
     d = DateTime(header_info["uFileStartDate"][1]|>string, DateFormat("yyyymmdd"))
     t = Millisecond(header_info["uFileStartTimeMS"][1])
     header_info["FileStartDateTime"] = d+t
+    #Pull out relevant info for data section
+    FileInfoSize = header_info["uFileInfoSize"][1]
+    protocol_byteStart = header_info["ProtocolSection"][1]*FileInfoSize
+    
+    #Read the Protocol Section
+    protocol_info = readProtocolSection(filename, protocol_byteStart) #Read the binary info for the ProtocolSection
+    header_info["nOperationMode"] = protocol_info["nOperationMode"]
     #Lets pull out all relevant string info from the string section
     blockStart, entrySize, entryCount = header_info["StringsSection"] 
-    protocol_info = readProtocolSection(filename, header_info["ProtocolSection"][1]) #Read the binary info for the ProtocolSection
-    indexed_strings = readStringSection(filename, blockStart, entrySize, entryCount) # Read the binary info for the StringsSection
-    
+    indexed_strings = readStringSection(filename, blockStart*FileInfoSize, entrySize, entryCount) # Read the binary info for the StringsSection
     header_info["ProtocolPath"] = indexed_strings[header_info["uProtocolPathIndex"][1]+1] #Read the protocol path
     header_info["abfFileComment"] = indexed_strings[protocol_info["lFileCommentIndex"][1]+1]
-    header_info["nOperationMode"] = protocol_info["nOperationMode"]
+    
+    #Lets read the data section
+    blockStart, entrySize, entryCount = header_info["DataSection"]
+    header_info["dataByteStart"] = blockStart*FileInfoSize
+    header_info["dataPointCount"] = entryCount 
+    header_info["dataPointByteSize"] = entrySize 
+    #header_info["channelCount"] = adcSection_entrycount
+    dataRate = 1e6/protocol_info["fADCSequenceInterval"][1] #This is the data rate as
+    header_info["dataRate"] = dataRate
+    header_info["dataSecPerPoint"] = 1.0/dataRate
+    #now lets look at the data section
+    
+    
+    
+    
+    
     return header_info #Finally return the header_info as a dictionary
 end
 
