@@ -167,6 +167,51 @@ adc_bytemap = [
 
 
 ]
+
+
+dac_bytemap = [
+    ("nDACNum", "H"),  # 0
+    ("nTelegraphDACScaleFactorEnable", "H"),  # 2
+    ("fInstrumentHoldingLevel", "f"),  # 4
+    ("fDACScaleFactor", "f"),  # 8
+    ("fDACHoldingLevel", "f"),  # 12
+    ("fDACCalibrationFactor", "f"),  # 16
+    ("fDACCalibrationOffset", "f"),  # 20
+    ("lDACChannelNameIndex", "I"),  # 24
+    ("lDACChannelUnitsIndex", "I"),  # 28
+    ("lDACFilePtr", "I"),  # 32
+    ("lDACFileNumEpisodes", "I"),  # 36
+    ("nWaveformEnable", "H"),  # 40
+    ("nWaveformSource", "H"),  # 42
+    ("nInterEpisodeLevel", "H"),  # 44
+    ("fDACFileScale", "f"),  # 46
+    ("fDACFileOffset", "f"),  # 50
+    ("lDACFileEpisodeNum", "I"),  # 54
+    ("nDACFileADCNum", "H"),  # 58
+    ("nConditEnable", "H"),  # 60
+    ("lConditNumPulses", "I"),  # 62
+    ("fBaselineDuration", "f"),  # 66
+    ("fBaselineLevel", "f"),  # 70
+    ("fStepDuration", "f"),  # 74
+    ("fStepLevel", "f"),  # 78
+    ("fPostTrainPeriod", "f"),  # 82
+    ("fPostTrainLevel", "f"),  # 86
+    ("nMembTestEnable", "H"),  # 90
+    ("nLeakSubtractType", "H"),  # 92
+    ("nPNPolarity", "H"),  # 94
+    ("fPNHoldingLevel", "f"),  # 96
+    ("nPNNumADCChannels", "H"),  # 100
+    ("nPNPosition", "H"),  # 102
+    ("nPNNumPulses", "H"),  # 104
+    ("fPNSettlingTime", "f"),  # 106
+    ("fPNInterpulse", "f"),  # 110
+    ("nLTPUsageOfDAC", "H"),  # 114
+    ("nLTPPresynapticPulses", "H"),  # 116
+    ("lDACFilePathIndex", "I"),  # 118
+    ("fMembTestPreSettlingTimeMS", "f"),  # 122
+    ("fMembTestPostSettlingTimeMS", "f"),  # 126
+    ("nLeakSubtractADCIndex", "H"),  # 130
+]
 """
 These functions handle the byte interpretations of the ABF file
 
@@ -214,24 +259,22 @@ function readStruct(f::IOStream, byteType::String, seekTo::Int64)
     return readStruct(f, byteType)
 end
 
-function readStringSection(filename::String, byteStart, entrySize, entryCount)
+function readStringSection(f::IOStream, byteStart, entrySize, entryCount)
 
     #byteStart = blockStart*FileInfoSize #Look at the 
     stringsRaw = fill(UInt8[], entryCount) #The raw string data
     strings = fill("", entryCount) #The formatted strings
     #Parse through the data and read the bytes 
-    open(filename, "r") do f
-        for i in 0:entryCount-1 #iterate through each entry
-            seek(f, byteStart+i*entrySize) #advance the file x bytes
-            b = [0x00] #memory entry for bytes
-            readbytes!(f, b, entrySize)
-            #In these scenarios, mu -> u
-            b[b.==0xb5] .= 0x75 #remove all instances of mu
-            stringsRaw[i+1] =  b #put the byte data into raw data
-            strings[i+1] =  b |> String #convert the byte data to string
-        end
+    #open(filename, "r") do f
+    for i in 0:entryCount-1 #iterate through each entry
+        seek(f, byteStart+i*entrySize) #advance the file x bytes
+        b = [0x00] #memory entry for bytes
+        readbytes!(f, b, entrySize)
+        #In these scenarios, mu -> u
+        b[b.==0xb5] .= 0x75 #remove all instances of mu
+        stringsRaw[i+1] =  b #put the byte data into raw data
+        strings[i+1] =  b |> String #convert the byte data to string
     end
-    #may not need to return raw strings
     #Now we will try to deconstruct all the important information from each string
     indexedStrings = split(strings[1], "\00")
     indexedStrings = indexedStrings[indexedStrings.!=""]
@@ -240,83 +283,109 @@ function readStringSection(filename::String, byteStart, entrySize, entryCount)
     return indexedStrings
 end
 
-function readProtocolSection(filename::String, byteStart;
+function readProtocolSection(f::IOStream, byteStart;
         check_bit_info = false,
         protocolBytemap = protocol_bytemap,
     )
     #byteStart = blockStart*FileInfoSize #Look at the 
     protocol_info = Dict()
-    open(filename, "r") do f
-        seek(f, byteStart) #advance the file x bytes
+    #open(filename, "r") do f
+    seek(f, byteStart) #advance the file x bytes
 
-        for (i, bmp) in enumerate(protocolBytemap)
-            if check_bit_info
-                println("Value $i => $(position(f)-byteStart)")
-            end
-            key, byte_format = bmp
-            val = readStruct(f, byte_format)
-            protocol_info[key] = val
+    for (i, bmp) in enumerate(protocolBytemap)
+        if check_bit_info
+            println("Value $i => $(position(f)-byteStart)")
         end
+        key, byte_format = bmp
+        val = readStruct(f, byte_format)
+        protocol_info[key] = val
     end
+    #end
     protocol_info["sDigitizerType"] = digitizers[protocol_info["nDigitizerType"]]
     return protocol_info
 end
 
-function readADCSection(filename::String, byteStart, entrySize, entryCount; 
+function readADCSection(f::IOStream, byteStart, entrySize, entryCount; 
         adcBytemap = adc_bytemap, check_bit_pos = false
     )
     ADC_info = Dict() #This will be in the form entry -> [adc1, adc2, adc3, adc4]
     ADC_info["channelList"] = collect(1:entryCount)
-    open(filename, "r") do f
-        for i in 1:entryCount
-            seek(f, byteStart + (i-1)*entrySize) #advance the file x bytes
-            for (j, bmp) in enumerate(adcBytemap)
-                if check_bit_pos
-                    println("Entry $j Value $i => $(position(f)-byteStart*i)")
-                end
-                key, byte_format = bmp
-                val = readStruct(f, byte_format)
-                #println(val)
-                if i == 1
-                    ADC_info[key] = [val[1]]
-                else
-                    push!(ADC_info[key], val[1])
-                end
+    #open(filename, "r") do f
+    for i in 1:entryCount
+        seek(f, byteStart + (i-1)*entrySize) #advance the file x bytes
+        for (j, bmp) in enumerate(adcBytemap)
+            if check_bit_pos
+                println("Entry $j Value $i => $(position(f)-byteStart*i)")
+            end
+            key, byte_format = bmp
+            val = readStruct(f, byte_format)
+            #println(val)
+            if i == 1
+                ADC_info[key] = [val[1]]
+            else
+                push!(ADC_info[key], val[1])
             end
         end
     end
+    #end
     return ADC_info
 end
 
-function readTagSection(filename::String, byteStart, entryCount, entrySize)
+function readTagSection(f::IOStream, byteStart, entrySize, entryCount)
     if entrySize == 0
         return nothing
     else    
         Tag_info = Dict() 
-        open(filename, "r") do f
-            seek(f, byteStart+(i-1)*entrySize) #advance the file x bytes
-            for i in 1:entryCount
-                if i == 1
-                    Tag_info["lTagTime"] = [readStruct(f, "I")]
-                    Tag_info["sComment"] = [readStruct(f, "56s")] 
-                    Tag_info["nTagType"] = [readStruct(f, "H")]
-                else
-                    push!(Tag_info["lTagTime"], readStruct(f, "I"))
-                    push!(Tag_info["sComment"], readStruct(f, "56s")) 
-                    push!(Tag_info["nTagType"],  readStruct(f, "H"))
-                end
+        #open(filename, "r") do f
+        seek(f, byteStart+(i-1)*entrySize) #advance the file x bytes
+        for i in 1:entryCount
+            if i == 1
+                Tag_info["lTagTime"] = [readStruct(f, "I")]
+                Tag_info["sComment"] = [readStruct(f, "56s")] 
+                Tag_info["nTagType"] = [readStruct(f, "H")]
+            else
+                push!(Tag_info["lTagTime"], readStruct(f, "I"))
+                push!(Tag_info["sComment"], readStruct(f, "56s")) 
+                push!(Tag_info["nTagType"],  readStruct(f, "H"))
             end
         end
+        #end
         return Tag_info
     end
+end
+
+function readDACSection(f::IOStream, byteStart, entrySize, entryCount; 
+        dacBytemap = dac_bytemap, check_bit_pos = false
+    )
+    DAC_info = Dict() #This will be in the form entry -> [adc1, adc2, adc3, adc4]
+    #DAC_info["channelList"] = collect(1:entryCount)
+    #open(filename, "r") do f
+    for i in 1:entryCount
+        seek(f, byteStart + (i-1)*entrySize) #advance the file x bytes
+        for (j, bmp) in enumerate(dacBytemap)
+            if check_bit_pos
+                println("Entry $j Value $i => $(position(f)-byteStart*i)")
+            end
+            key, byte_format = bmp
+            val = readStruct(f, byte_format)
+            #println(val)
+            if i == 1
+                DAC_info[key] = [val[1]]
+            else
+                push!(DAC_info[key], val[1])
+            end
+        end
+    end
+    #end
+    return DAC_info
 end
 """
 This scans the axon binary and extracts all the most useful header information
 """
 function parseABF(filename::String; bytemap = default_bytemap, check_bit_pos = false)
     header_info = Dict()
-    open(filename, "r") do f
-        seek(f, 0)
+    open(filename, "r") do f #Do everything within this loop
+        seek(f, 0) #Ensure that the 
         for (i, bmp) in enumerate(bytemap)
             if check_bit_pos
                 println("Value $i => $(position(f))")
@@ -332,83 +401,93 @@ function parseABF(filename::String; bytemap = default_bytemap, check_bit_pos = f
                 header_info[key] = val
             end
         end
+         #Format the version number
+        versionPartsInt = reverse(header_info["fFileVersionNumber"])
+        versionParts = map(x -> "$(string(x)).", collect(versionPartsInt)) |> join
+        header_info["abfVersionString"] = versionParts
+        abfVersionDict = Dict{String, Int}()
+        abfVersionDict["major"] = parse(Int64,versionPartsInt[1])
+        abfVersionDict["minor"] = parse(Int64,versionPartsInt[2])
+        abfVersionDict["bugfix"] = parse(Int64,versionPartsInt[3])
+        abfVersionDict["build"] = parse(Int64,versionPartsInt[4])
+        header_info["abfVersionDict"] = abfVersionDict
+        #Format the Creater Info Dict
+        versionPartsInt = reverse(header_info["uCreatorVersion"])
+        versionParts = map(x -> "$(string(x)).", collect(versionPartsInt)) |> join
+        header_info["creatorVersion"] = versionPartsInt
+        header_info["creatorVersionString"] = versionParts
+
+        # Format the FileGUID
+        guid = []
+        for i in [4, 3, 2, 1, 6, 5, 8, 7, 9, 10, 11, 12, 13, 14, 15, 16]
+            push!(guid, header_info["FileGUID"][i] |> string)
+        end
+        header_info["sFileGUID"] = join(guid)
+
+        #Format the date found in the header
+        d = DateTime(header_info["uFileStartDate"][1]|>string, DateFormat("yyyymmdd"))
+        t = Millisecond(header_info["uFileStartTimeMS"][1])
+        header_info["FileStartDateTime"] = d+t
+        
+        #Start decoding the sections
+        FileInfoSize = header_info["uFileInfoSize"][1] #This is the block size for all sections
+        
+        #protocol section
+        protocol_byteStart = header_info["ProtocolSection"][1]*FileInfoSize
+        protocol_info = readProtocolSection(f, protocol_byteStart) #Read the binary info for the ProtocolSection
+        header_info["nOperationMode"] = protocol_info["nOperationMode"]
+        
+        #string section
+        blockStart, entrySize, entryCount = header_info["StringsSection"] 
+        indexed_strings = readStringSection(f, blockStart*FileInfoSize, entrySize, entryCount) # Read the binary info for the StringsSection
+        header_info["ProtocolPath"] = indexed_strings[header_info["uProtocolPathIndex"][1]+1] #Read the protocol path
+        header_info["abfFileComment"] = indexed_strings[protocol_info["lFileCommentIndex"][1]+1]
+        header_info["creator"] = join([
+            indexed_strings[header_info["uCreatorNameIndex"][1]+1], " ",
+            header_info["creatorVersionString"]
+        ])
+
+        #data section
+        blockStart, dataPointByteSize, dataPointCount = header_info["DataSection"]
+        dataByteStart = blockStart*FileInfoSize
+        header_info["dataByteStart"] = dataByteStart
+        header_info["dataPointCount"] = dataPointCount 
+        header_info["dataPointByteSize"] = dataPointByteSize 
+        dataRate = 1e6/protocol_info["fADCSequenceInterval"][1] #This is the data rate as
+        header_info["dataRate"] = dataRate
+        header_info["dataSecPerPoint"] = 1.0/dataRate
+        header_info["dataPointsPerMS"] = Int64(dataRate/1000)
+        #Reading data into an array
+
+        #ADC section
+        blockStart, entrySize, channelCount = header_info["ADCSection"]
+        ADCByteStart = blockStart*FileInfoSize
+        header_info["channelCount"] = channelCount
+        ADC_info = readADCSection(f, ADCByteStart, entrySize, channelCount)
+        header_info["channelList"] = ADC_info["channelList"] 
+        header_info["sweepCount"] = header_info["lActualEpisodes"][1]
+        #Parse ADC channel names
+        header_info["adcNames"] = map(i -> indexed_strings[i+1], ADC_info["lADCChannelNameIndex"])
+        header_info["adcUnits"] = map(i -> indexed_strings[i+1], ADC_info["lADCUnitsIndex"])
+
+        #DAC section
+        blockStart, entrySize, entryCount = header_info["DACSection"]
+        DACByteStart = blockStart*FileInfoSize
+        DAC_info = readDACSection(f, DACByteStart, entrySize, entryCount)
+        #Parse DAC channel names
+        header_info["dacNames"] = map(i -> indexed_strings[i+1], DAC_info["lDACChannelNameIndex"])
+        header_info["dacUnits"] = map(i -> indexed_strings[i+1], DAC_info["lDACChannelUnitsIndex"])
+
+        #tag section
+        blockStart, entrySize, entryCount = header_info["TagSection"]
+        TagByteStart = blockStart * FileInfoSize
+        Tag_info = readTagSection(f, TagByteStart, entryCount, entrySize)
+        if !isnothing(Tag_info)
+            println("there are tags here")
+        end
+
+        #now we need to load and scale the data
     end
-    #Format the version number
-    versionPartsInt = reverse(header_info["fFileVersionNumber"])
-    versionParts = map(x -> "$(string(x)).", collect(versionPartsInt)) |> join
-    header_info["abfVersionString"] = versionParts
-    abfVersionDict = Dict{String, Int}()
-    abfVersionDict["major"] = parse(Int64,versionPartsInt[1])
-    abfVersionDict["minor"] = parse(Int64,versionPartsInt[2])
-    abfVersionDict["bugfix"] = parse(Int64,versionPartsInt[3])
-    abfVersionDict["build"] = parse(Int64,versionPartsInt[4])
-    header_info["abfVersionDict"] = abfVersionDict
-    #Format the Creater Info Dict
-    versionPartsInt = reverse(header_info["uCreatorVersion"])
-    versionParts = map(x -> "$(string(x)).", collect(versionPartsInt)) |> join
-    header_info["creatorVersion"] = versionPartsInt
-    header_info["creatorVersionString"] = versionParts
-
-    # Format the FileGUID
-    guid = []
-    for i in [4, 3, 2, 1, 6, 5, 8, 7, 9, 10, 11, 12, 13, 14, 15, 16]
-        push!(guid, header_info["FileGUID"][i] |> string)
-    end
-    header_info["sFileGUID"] = join(guid)
-
-    #Format the date found in the header
-    d = DateTime(header_info["uFileStartDate"][1]|>string, DateFormat("yyyymmdd"))
-    t = Millisecond(header_info["uFileStartTimeMS"][1])
-    header_info["FileStartDateTime"] = d+t
-    
-    #Start decoding the sections
-    FileInfoSize = header_info["uFileInfoSize"][1] #This is the block size for all sections
-    
-    #protocol section
-    protocol_byteStart = header_info["ProtocolSection"][1]*FileInfoSize
-    protocol_info = readProtocolSection(filename, protocol_byteStart) #Read the binary info for the ProtocolSection
-    header_info["nOperationMode"] = protocol_info["nOperationMode"]
-    
-    #string section
-    blockStart, entrySize, entryCount = header_info["StringsSection"] 
-    indexed_strings = readStringSection(filename, blockStart*FileInfoSize, entrySize, entryCount) # Read the binary info for the StringsSection
-    header_info["ProtocolPath"] = indexed_strings[header_info["uProtocolPathIndex"][1]+1] #Read the protocol path
-    header_info["abfFileComment"] = indexed_strings[protocol_info["lFileCommentIndex"][1]+1]
-    header_info["creator"] = join([
-        indexed_strings[header_info["uCreatorNameIndex"][1]+1], " ",
-        header_info["creatorVersionString"]
-    ])
-
-    #data section
-    blockStart, entrySize, entryCount = header_info["DataSection"]
-    header_info["dataByteStart"] = blockStart*FileInfoSize
-    header_info["dataPointCount"] = entryCount 
-    header_info["dataPointByteSize"] = entrySize 
-    dataRate = 1e6/protocol_info["fADCSequenceInterval"][1] #This is the data rate as
-    header_info["dataRate"] = dataRate
-    header_info["dataSecPerPoint"] = 1.0/dataRate
-    header_info["dataPointsPerMS"] = Int64(dataRate/1000)
-    
-    #ADC section
-    blockStart, entrySize, channelCount = header_info["ADCSection"]
-    ADCByteStart = blockStart*FileInfoSize
-    header_info["channelCount"] = channelCount
-    ADC_info = readADCSection(filename, ADCByteStart, entrySize, channelCount)
-    header_info["channelList"] = ADC_info["channelList"] 
-    header_info["sweepCount"] = header_info["lActualEpisodes"][1]
-    #Read the channel names into a string
-
-
-
-
-    #tag section
-    blockStart, entrySize, entryCount = header_info["TagSection"]
-    TagByteStart = blockStart * FileInfoSize
-    Tag_info = readTagSection(filename, TagByteStart, entryCount, entrySize)
-    if !isnothing(Tag_info)
-        println("there are tags here")
-    end
-
     return header_info #Finally return the header_info as a dictionary
 end
 
