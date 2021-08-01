@@ -262,24 +262,26 @@ function readProtocolSection(filename::String, byteStart;
     return protocol_info
 end
 
-function readADCSection(filename::String, byteStart, entryCount; 
+function readADCSection(filename::String, byteStart, entrySize, entryCount; 
         adcBytemap = adc_bytemap, check_bit_pos = false
     )
     ADC_info = Dict() #This will be in the form entry -> [adc1, adc2, adc3, adc4]
     ADC_info["channelList"] = collect(1:entryCount)
     open(filename, "r") do f
-        seek(f, byteStart) #advance the file x bytes
-        for i in 1:entryCount, (j, bmp) in enumerate(adcBytemap)
-            if check_bit_pos
-                println("Entry $j Value $i => $(position(f)-byteStart*i)")
-            end
-            key, byte_format = bmp
-            val = readStruct(f, byte_format)
-            #println(val)
-            if i == 1
-                ADC_info[key] = [val[1]]
-            else
-                push!(ADC_info[key], val[1])
+        for i in 1:entryCount
+            seek(f, byteStart + (i-1)*entrySize) #advance the file x bytes
+            for (j, bmp) in enumerate(adcBytemap)
+                if check_bit_pos
+                    println("Entry $j Value $i => $(position(f)-byteStart*i)")
+                end
+                key, byte_format = bmp
+                val = readStruct(f, byte_format)
+                #println(val)
+                if i == 1
+                    ADC_info[key] = [val[1]]
+                else
+                    push!(ADC_info[key], val[1])
+                end
             end
         end
     end
@@ -388,16 +390,25 @@ function parseABF(filename::String; bytemap = default_bytemap, check_bit_pos = f
     header_info["dataPointsPerMS"] = Int64(dataRate/1000)
     
     #ADC section
-    blockStart, entrySize, entryCount = header_info["ADCSection"]
+    blockStart, entrySize, channelCount = header_info["ADCSection"]
     ADCByteStart = blockStart*FileInfoSize
-    header_info["channelCount"] = entryCount
-    ADC_info = readADCSection(filename, ADCByteStart, entryCount)
+    header_info["channelCount"] = channelCount
+    ADC_info = readADCSection(filename, ADCByteStart, entrySize, channelCount)
     header_info["channelList"] = ADC_info["channelList"] 
     header_info["sweepCount"] = header_info["lActualEpisodes"][1]
-    
+    #Read the channel names into a string
+
+
+
+
     #tag section
-       
-    
+    blockStart, entrySize, entryCount = header_info["TagSection"]
+    TagByteStart = blockStart * FileInfoSize
+    Tag_info = readTagSection(filename, TagByteStart, entryCount, entrySize)
+    if !isnothing(Tag_info)
+        println("there are tags here")
+    end
+
     return header_info #Finally return the header_info as a dictionary
 end
 
