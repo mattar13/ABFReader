@@ -266,7 +266,7 @@ function readADCSection(filename::String, byteStart, entryCount;
         adcBytemap = adc_bytemap, check_bit_pos = false
     )
     ADC_info = Dict() #This will be in the form entry -> [adc1, adc2, adc3, adc4]
-    ADC_info["ADCList"] = collect(1:entryCount)
+    ADC_info["channelList"] = collect(1:entryCount)
     open(filename, "r") do f
         seek(f, byteStart) #advance the file x bytes
         for i in 1:entryCount, (j, bmp) in enumerate(adcBytemap)
@@ -275,7 +275,7 @@ function readADCSection(filename::String, byteStart, entryCount;
             end
             key, byte_format = bmp
             val = readStruct(f, byte_format)
-            println(val)
+            #println(val)
             if i == 1
                 ADC_info[key] = [val[1]]
             else
@@ -286,6 +286,28 @@ function readADCSection(filename::String, byteStart, entryCount;
     return ADC_info
 end
 
+function readTagSection(filename::String, byteStart, entryCount, entrySize)
+    if entrySize == 0
+        return nothing
+    else    
+        Tag_info = Dict() 
+        open(filename, "r") do f
+            seek(f, byteStart+(i-1)*entrySize) #advance the file x bytes
+            for i in 1:entryCount
+                if i == 1
+                    Tag_info["lTagTime"] = [readStruct(f, "I")]
+                    Tag_info["sComment"] = [readStruct(f, "56s")] 
+                    Tag_info["nTagType"] = [readStruct(f, "H")]
+                else
+                    push!(Tag_info["lTagTime"], readStruct(f, "I"))
+                    push!(Tag_info["sComment"], readStruct(f, "56s")) 
+                    push!(Tag_info["nTagType"],  readStruct(f, "H"))
+                end
+            end
+        end
+        return Tag_info
+    end
+end
 """
 This scans the axon binary and extracts all the most useful header information
 """
@@ -322,13 +344,16 @@ function parseABF(filename::String; bytemap = default_bytemap, check_bit_pos = f
     #Format the Creater Info Dict
     versionPartsInt = reverse(header_info["uCreatorVersion"])
     versionParts = map(x -> "$(string(x)).", collect(versionPartsInt)) |> join
+    header_info["creatorVersion"] = versionPartsInt
     header_info["creatorVersionString"] = versionParts
+
     # Format the FileGUID
     guid = []
     for i in [4, 3, 2, 1, 6, 5, 8, 7, 9, 10, 11, 12, 13, 14, 15, 16]
         push!(guid, header_info["FileGUID"][i] |> string)
     end
     header_info["sFileGUID"] = join(guid)
+
     #Format the date found in the header
     d = DateTime(header_info["uFileStartDate"][1]|>string, DateFormat("yyyymmdd"))
     t = Millisecond(header_info["uFileStartTimeMS"][1])
@@ -336,17 +361,23 @@ function parseABF(filename::String; bytemap = default_bytemap, check_bit_pos = f
     
     #Start decoding the sections
     FileInfoSize = header_info["uFileInfoSize"][1] #This is the block size for all sections
-    #Read the Protocol Section
+    
+    #protocol section
     protocol_byteStart = header_info["ProtocolSection"][1]*FileInfoSize
     protocol_info = readProtocolSection(filename, protocol_byteStart) #Read the binary info for the ProtocolSection
     header_info["nOperationMode"] = protocol_info["nOperationMode"]
-    #Lets pull out all relevant string info from the string section
+    
+    #string section
     blockStart, entrySize, entryCount = header_info["StringsSection"] 
     indexed_strings = readStringSection(filename, blockStart*FileInfoSize, entrySize, entryCount) # Read the binary info for the StringsSection
     header_info["ProtocolPath"] = indexed_strings[header_info["uProtocolPathIndex"][1]+1] #Read the protocol path
     header_info["abfFileComment"] = indexed_strings[protocol_info["lFileCommentIndex"][1]+1]
-    
-    #Lets read the data section
+    header_info["creator"] = join([
+        indexed_strings[header_info["uCreatorNameIndex"][1]+1], " ",
+        header_info["creatorVersionString"]
+    ])
+
+    #data section
     blockStart, entrySize, entryCount = header_info["DataSection"]
     header_info["dataByteStart"] = blockStart*FileInfoSize
     header_info["dataPointCount"] = entryCount 
@@ -356,16 +387,16 @@ function parseABF(filename::String; bytemap = default_bytemap, check_bit_pos = f
     header_info["dataSecPerPoint"] = 1.0/dataRate
     header_info["dataPointsPerMS"] = Int64(dataRate/1000)
     
-    #now lets look at the ADC section
+    #ADC section
     blockStart, entrySize, entryCount = header_info["ADCSection"]
     ADCByteStart = blockStart*FileInfoSize
     header_info["channelCount"] = entryCount
     ADC_info = readADCSection(filename, ADCByteStart, entryCount)
-
-    #header_info["sweepCount"] = TODO
+    header_info["channelList"] = ADC_info["channelList"] 
+    header_info["sweepCount"] = header_info["lActualEpisodes"][1]
     
-    
-    
+    #tag section
+       
     
     return header_info #Finally return the header_info as a dictionary
 end
