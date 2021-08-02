@@ -4,7 +4,7 @@ ByteDict = Dict(
     :I => Int32, :i => UInt32,
     :H => Int16, :h => UInt16,
     :s => String, :f => Float32, 
-    :b => :Hex
+    :b => :Hex, :B => :Byte
 )
 
 digitizers = Dict(
@@ -229,7 +229,7 @@ function readStruct(f::IOStream, byteType::String)
         end
     else
         type_conv = ByteDict[Symbol(byteType)]
-        if type_conv == String || type_conv == :Hex
+        if type_conv == String || type_conv == :Hex || type_conv == :Byte
             n_bytes = 1
         else
             n_bytes = sizeof(type_conv)
@@ -248,6 +248,9 @@ function readStruct(f::IOStream, byteType::String)
                 #print the scenario where this fails
             end
         end 
+    elseif type_conv == :Byte
+        #This returns just teh byte values
+        val = b
     else
         val = reinterpret(type_conv, b) |> Array
     end
@@ -382,8 +385,11 @@ end
 """
 This scans the axon binary and extracts all the most useful header information
 """
-function parseABF(filename::String; bytemap = default_bytemap, check_bit_pos = false)
+function parseABF(::Type{T}, filename::String; 
+        bytemap = default_bytemap, check_bit_pos = false
+    ) where T <: Real
     header_info = Dict()
+    raw = Real[]
     open(filename, "r") do f #Do everything within this loop
         seek(f, 0) #Ensure that the 
         for (i, bmp) in enumerate(bytemap)
@@ -401,7 +407,15 @@ function parseABF(filename::String; bytemap = default_bytemap, check_bit_pos = f
                 header_info[key] = val
             end
         end
-         #Format the version number
+        if header_info["nDataFormat"] == 0
+            dataType = Int16
+        elseif header_info["nDataFormat"] == 1
+            dataType = Float32
+        else
+            throw("unknown data format")
+        end
+        header_info["dataType"] = dataType
+        #Format the version number
         versionPartsInt = reverse(header_info["fFileVersionNumber"])
         versionParts = map(x -> "$(string(x)).", collect(versionPartsInt)) |> join
         header_info["abfVersionString"] = versionParts
@@ -469,7 +483,18 @@ function parseABF(filename::String; bytemap = default_bytemap, check_bit_pos = f
         #Parse ADC channel names
         header_info["adcNames"] = map(i -> indexed_strings[i+1], ADC_info["lADCChannelNameIndex"])
         header_info["adcUnits"] = map(i -> indexed_strings[i+1], ADC_info["lADCUnitsIndex"])
-
+        #The data should have a gain and an offset
+        dataGain = zeros(channelCount)
+        dataOffset = zeros(channelCount)
+        for i in 1:channelCount
+            gain = 1
+            offset = 0
+            gain /= (ADC_info["fInstrumentScaleFactor"][i] |> T)
+            dataGain[i] = gain
+            dataOffset[i] = offset
+        end
+        header_info["dataGain"] = dataGain
+        header_info["dataOffset"] = dataOffset
         #DAC section
         blockStart, entrySize, entryCount = header_info["DACSection"]
         DACByteStart = blockStart*FileInfoSize
@@ -477,7 +502,7 @@ function parseABF(filename::String; bytemap = default_bytemap, check_bit_pos = f
         #Parse DAC channel names
         header_info["dacNames"] = map(i -> indexed_strings[i+1], DAC_info["lDACChannelNameIndex"])
         header_info["dacUnits"] = map(i -> indexed_strings[i+1], DAC_info["lDACChannelUnitsIndex"])
-
+        
         #tag section
         blockStart, entrySize, entryCount = header_info["TagSection"]
         TagByteStart = blockStart * FileInfoSize
@@ -486,8 +511,25 @@ function parseABF(filename::String; bytemap = default_bytemap, check_bit_pos = f
             println("there are tags here")
         end
 
+        #Once we have both adc info and dac info as well as data, we can start actually parsing data
+        seek(f, dataByteStart) #put the data loc onto the dataByteStart
+        nRows = channelCount
+        nCols = Int64(dataPointCount/channelCount)
+        println(nRows*nCols)
+
+        raw_byte_code = "$(dataPointCount)B"
+        println(raw_byte_code)
+        raw = readStruct(f, raw_byte_code) #Read the raw data into a byte array
+        raw = reshape(raw,  (nRows, nCols)) #Reshape the raw data array
+        raw = dataType.(raw) #Convert it into a array of integers
+        raw = reverse(raw) #reverse the data
+        raw = raw .* dataGain #Multiply the data by the gain
+        raw = raw .+ dataOffset #Scale the data by the offset
+        #finally convert the data into the desired dataformat
+        data = T.(raw)
         #now we need to load and scale the data
     end
-    return header_info #Finally return the header_info as a dictionary
+    return header_info, data #Finally return the header_info as a dictionary
 end
 
+parseABF(filename::String; kwargs...) = parseABF(Float64, filename::String; kwargs...)
