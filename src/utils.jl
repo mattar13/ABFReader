@@ -1,12 +1,3 @@
-mutable struct StimulusProtocol{T}
-    type::Symbol
-    sweep::Int64
-    index_range::Tuple{Int64,Int64}
-    timestamps::Tuple{T,T}
-end
-
-StimulusProtocol(type::Symbol) = StimulusProtocol(type, 1, (1, 1), (0.0, 0.0))
-
 """
 this function utilizes all julia to extract ABF file data
 """
