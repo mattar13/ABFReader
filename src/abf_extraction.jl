@@ -291,7 +291,9 @@ function readProtocolSection(f::IOStream, byteStart;
         protocolBytemap = protocol_bytemap,
     )
     #byteStart = blockStart*FileInfoSize #Look at the 
-    protocol_info = Dict()
+    protocol_info = Dict{String, Any}(
+        "byteStart" => byteStart
+    )
     #open(filename, "r") do f
     seek(f, byteStart) #advance the file x bytes
 
@@ -311,7 +313,9 @@ end
 function readADCSection(f::IOStream, byteStart, entrySize, entryCount; 
         adcBytemap = adc_bytemap, check_bit_pos = false
     )
-    ADC_info = Dict() #This will be in the form entry -> [adc1, adc2, adc3, adc4]
+    ADC_info = Dict{String, Any}(
+        "byteStart" => byteStart, "entrySize" => entrySize, "entryCount" => entryCount
+    ) #This will be in the form entry -> [adc1, adc2, adc3, adc4]
     ADC_info["channelList"] = collect(1:entryCount)
     #open(filename, "r") do f
     for i in 1:entryCount
@@ -338,7 +342,9 @@ function readTagSection(f::IOStream, byteStart, entrySize, entryCount)
     if entrySize == 0
         return nothing
     else    
-        Tag_info = Dict() 
+        Tag_info = Dict{String, Any}(
+            "byteStart" => byteStart, "entrySize" => entrySize, "entryCount" => entryCount
+        ) 
         #open(filename, "r") do f
         seek(f, byteStart+(i-1)*entrySize) #advance the file x bytes
         for i in 1:entryCount
@@ -360,7 +366,9 @@ end
 function readDACSection(f::IOStream, byteStart, entrySize, entryCount; 
         dacBytemap = dac_bytemap, check_bit_pos = false
     )
-    DAC_info = Dict() #This will be in the form entry -> [adc1, adc2, adc3, adc4]
+    DAC_info = Dict{String, Any}(
+        "byteStart" => byteStart, "entrySize" => entrySize, "entryCount" => entryCount
+    ) #This will be in the form entry -> [adc1, adc2, adc3, adc4]
     #DAC_info["channelList"] = collect(1:entryCount)
     #open(filename, "r") do f
     for i in 1:entryCount
@@ -385,7 +393,7 @@ end
 
 
 function readSyncArraySection(f::IOStream, byteStart, entrySize, entryCount)
-    SyncArray_info = Dict(
+    SyncArray_info = Dict{String, Any}(
         "lStart" => Int32[], "lLength" => Int32[]
     )
     for i in 1:entryCount
@@ -495,6 +503,7 @@ function parseABF(::Type{T}, filename::String;
         ADCByteStart = blockStart*FileInfoSize
         header_info["channelCount"] = channelCount
         ADC_info = readADCSection(f, ADCByteStart, entrySize, channelCount)
+        header_info["ADCSection"] = ADC_info
         header_info["channelList"] = ADC_info["channelList"] 
         sweepCount = header_info["lActualEpisodes"][1]
         header_info["sweepCount"] = sweepCount
@@ -529,10 +538,13 @@ function parseABF(::Type{T}, filename::String;
         blockStart, entrySize, entryCount = header_info["DACSection"]
         DACByteStart = blockStart*FileInfoSize
         DAC_info = readDACSection(f, DACByteStart, entrySize, entryCount)
+        header_info["DACSection"] = DAC_info
         #Parse DAC channel names
         header_info["dacNames"] = map(i -> indexed_strings[i+1], DAC_info["lDACChannelNameIndex"])
         header_info["dacUnits"] = map(i -> indexed_strings[i+1], DAC_info["lDACChannelUnitsIndex"])
-        
+        #get the holding command section
+        header_info["holdingCommand"] = DAC_info["fDACHoldingLevel"]
+
         #tag section
         blockStart, entrySize, entryCount = header_info["TagSection"]
         TagByteStart = blockStart * FileInfoSize
@@ -570,7 +582,8 @@ function parseABF(::Type{T}, filename::String;
         raw = reshape(raw, (channelCount, sweepPointCount, sweepCount)) #Reshape the data
         raw = permutedims(raw, [3, 2, 1]) #permute the dims
         header_info["data"] = Array{T}(raw)
-        #now we need to load and scale the data
+        
+        #We want to try to read more info from the DAC
     end
     return header_info #Finally return the header_info as a dictionary
 end
@@ -609,6 +622,16 @@ mutable struct Experiment{T}
     #filename::Array{String,1}
 end
 
+mutable struct StimulusProtocol{T}
+    type::Symbol
+    sweep::Int64
+    index_range::Tuple{Int64,Int64}
+    timestamps::Tuple{T,T}
+end
+
+StimulusProtocol(type::Symbol) = StimulusProtocol(type, 1, (1, 1), (0.0, 0.0))
+
+
 """
     extract_abf(T, path::String, 
         [, 
@@ -642,11 +665,11 @@ and the data file can be indexed by simply calling the datafile and then providi
 function readABF(::Type{T}, abf_path::String; 
         swps = -1, 
         chs = ["Vm_prime","Vm_prime4", "IN 7"], 
-        stim_ch = "IN 7", 
+        average_sweeps::Bool = false,
+        stim_name = ["IN 7"], 
         stim_threshold::T = 0.2,
         keep_stimulus_channel::Bool = false,
         continuous::Bool = false, #puts the sweeps next to each other
-        average_sweeps::Bool = false,
         verbose::Bool = false
     ) where T <: Real
     header_info = parseABF(abf_path)
@@ -660,7 +683,7 @@ function readABF(::Type{T}, abf_path::String;
         swp_idxs = header_info["sweepList"]
     end
 
-    #pull out the requested channels
+    #Pull out the requested channels
     if isa(chs, Vector{String}) #If chs is a vector of channel names extract it as such
         ch_idxs = findall(ch -> ch ∈ chs, channel_names)
     elseif isa(chs, Vector{Int64}) #If chs is a vector of ints
@@ -668,6 +691,17 @@ function readABF(::Type{T}, abf_path::String;
     elseif chs == -1 #if chs is -1 extract all channels
         ch_idxs = header_info["channelList"]
     end
+    
+    #stim_protocol = Array{StimulusProtocol}([])
+    stim_idxs = Int64[]
+    for stim_ch in stim_name
+        stim_idx = findall(channel_names .== stim_ch)
+        push!(stim_idxs, stim_idx[1])
+        if keep_stimulus_channel==false
+            ch_idxs = ch_idxs[ch_idxs .!= stim_idx]
+        end
+    end
+
     #Extract info for the adc names and units
     ch_names = header_info["adcNames"][ch_idxs]
     ch_units = header_info["adcUnits"][ch_idxs]
@@ -675,6 +709,10 @@ function readABF(::Type{T}, abf_path::String;
     dt = header_info["dataSecPerPoint"]
     t = collect(1:header_info["sweepPointCount"]).*dt
     data = header_info["data"][swp_idxs, :, ch_idxs]
+    stimulus = header_info["data"][swp_idxs, :, stim_idxs]
+    stimulus_values = findall(stimulus .> stim_threshold)
+    stimulus_values[1]
+    stimulus_values[end]
     if average_sweeps == true
         data = sum(data, dims = 1)/size(data,1)
         println(data |> size)
