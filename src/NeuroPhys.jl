@@ -21,15 +21,13 @@ export number_extractor, filename_extractor
 
 include("abf_extraction.jl")
 #export readStruct, 
-export readADCSection
-export parseABF
+export parseABF, readABF, Experiment
 
 #Utility files contain file extraction and abf editing functions
 include("utils.jl")
-export extract_abf_new, extract_abf 
 #Most of these will be removed in the stable branch
 export StimulusProtocol, get_stim_channels, extract_stimulus
-export Experiment, getchannel, getsweep, getstim, findstimRng
+export getchannel, getsweep, getstim, findstimRng
 export eachchannel, eachsweep
 export truncate_data, truncate_data!
 export split_data, drop!
