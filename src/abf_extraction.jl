@@ -217,7 +217,7 @@ These functions handle the byte interpretations of the ABF file
 
 """
 function readStruct(f::IOStream, byteType::String)
-    b = [0x00]
+    b = UInt8[0x00] #Either this needs to be UInt8 or Int8
     if length(byteType) > 1
         first_char = tryparse(Int64, byteType[1] |> string)
         if isnothing(first_char)
@@ -382,6 +382,20 @@ function readDACSection(f::IOStream, byteStart, entrySize, entryCount;
     #end
     return DAC_info
 end
+
+
+function readSyncArraySection(f::IOStream, byteStart, entrySize, entryCount)
+    SyncArray_info = Dict(
+        "lStart" => Int32[], "lLength" => Int32[]
+    )
+    for i in 1:entryCount
+        seek(f, byteStart + (i-1)*entrySize)
+        push!(SyncArray_info["lStart"], readStruct(f, "I")[1])
+        push!(SyncArray_info["lLength"], readStruct(f, "I")[1])
+    end
+    SyncArray_info
+end
+
 """
 This scans the axon binary and extracts all the most useful header information
 """
@@ -500,7 +514,6 @@ function parseABF(::Type{T}, filename::String;
             if ADC_info["nTelegraphEnable"][i] == 1
                 gain /= (ADC_info["fTelegraphAdditGain"][i] |> T)
             end
-            println(protocol_info["fADCRange"])
             gain *= protocol_info["fADCRange"][1]
             gain /= protocol_info["lADCResolution"][1]
 
@@ -528,6 +541,12 @@ function parseABF(::Type{T}, filename::String;
             println("there are tags here")
         end
 
+        #Synch Array section
+        blockStart, entrySize, entryCount = header_info["SynchArraySection"]
+        SyncArrayByteStart  = blockStart * FileInfoSize
+        SyncArray_info = readSyncArraySection(f, SyncArrayByteStart, entrySize, entryCount)
+        println(SyncArray_info )
+        header_info["SyncArraySection"] = SyncArray_info
         sweepPointCount = Int64(
             dataPointCount/sweepCount/channelCount
         )
@@ -536,25 +555,25 @@ function parseABF(::Type{T}, filename::String;
         header_info["sweepList"] = collect(1:sweepCount)
         #Once we have both adc info and dac info as well as data, we can start actually parsing data
         seek(f, dataByteStart) #put the data loc onto the dataByteStart
-        nData = Int64(dataPointCount/channelCount)
-        #println(nRows*nCols)
+        nDataPoints = Int64(dataPointCount/channelCount)
+        header_info["nDataPoints"] = nDataPoints
 
-        raw_byte_code = "$(dataPointCount)B"
-        #println(raw_byte_code)
-        raw = readStruct(f, raw_byte_code) #Read the raw data into a byte array
-        raw = reshape(raw,  (channelCount, nData)) #Reshape the raw data array
-        #raw = Array(raw')
-        raw = dataType.(raw) #Convert it into a array of integers
-        #raw = reverse(raw) #reverse the data
-        raw = raw .* dataGain #Multiply the data by the gain
-        raw = raw .+ dataOffset #Scale the data by the offset
-        #we want the data to be in the shape: [nSweeps, nData, nChannels] currently it is [nChannels, nData]
-        #reshaped_raw = reshape(raw, (sweepCount|>Int64, sweepPointCount, channelCount))
-        #finally convert the data into the desired dataformat
-        data = T.(raw)
+        #Read the raw data
+        #y = Vector{dataType}(undef, dataPointCount)
+        raw = read(f, dataPointCount*sizeof(dataType)) #Read the raw data into a byte array
+        raw = reinterpret(dataType, raw) #convert the byte array into the dataType
+        raw = reshape(raw,  (channelCount, nDataPoints)) #Reshape the raw data array
+        if dataType == Int16
+            raw = raw .* dataGain #Multiply the data by the gain
+            raw = raw .+ dataOffset #Scale the data by the offset
+        end
+        #We can try to convert the data into a array of shape [sweeps, data, channels]
+        raw = reshape(raw, (channelCount, sweepPointCount, sweepCount)) #Reshape the data
+        raw = permutedims(raw, [3, 2, 1]) #permute the dims
+        header_info["data"] = Array{T}(raw)
         #now we need to load and scale the data
     end
-    return header_info, data #Finally return the header_info as a dictionary
+    return header_info #Finally return the header_info as a dictionary
 end
 
 parseABF(filename::String; kwargs...) = parseABF(Float64, filename::String; kwargs...)
