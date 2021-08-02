@@ -389,7 +389,7 @@ function parseABF(::Type{T}, filename::String;
         bytemap = default_bytemap, check_bit_pos = false
     ) where T <: Real
     header_info = Dict()
-    raw = Real[]
+    data = T[]
     open(filename, "r") do f #Do everything within this loop
         seek(f, 0) #Ensure that the 
         for (i, bmp) in enumerate(bytemap)
@@ -479,17 +479,31 @@ function parseABF(::Type{T}, filename::String;
         header_info["channelCount"] = channelCount
         ADC_info = readADCSection(f, ADCByteStart, entrySize, channelCount)
         header_info["channelList"] = ADC_info["channelList"] 
-        header_info["sweepCount"] = header_info["lActualEpisodes"][1]
+        sweepCount = header_info["lActualEpisodes"][1]
+        header_info["sweepCount"] = sweepCount
         #Parse ADC channel names
         header_info["adcNames"] = map(i -> indexed_strings[i+1], ADC_info["lADCChannelNameIndex"])
         header_info["adcUnits"] = map(i -> indexed_strings[i+1], ADC_info["lADCUnitsIndex"])
         #The data should have a gain and an offset
         dataGain = zeros(channelCount)
         dataOffset = zeros(channelCount)
+        
         for i in 1:channelCount
             gain = 1
             offset = 0
             gain /= (ADC_info["fInstrumentScaleFactor"][i] |> T)
+            gain /= (ADC_info["fSignalGain"][i] |> T)
+            gain /= (ADC_info["fADCProgrammableGain"][i] |>T )
+            if ADC_info["nTelegraphEnable"][i] == 1
+                gain /= (ADC_info["fTelegraphAdditGain"][i] |> T)
+            end
+            println(protocol_info["fADCRange"])
+            gain *= protocol_info["fADCRange"][1]
+            gain /= protocol_info["lADCResolution"][1]
+
+            offset += ADC_info["fInstrumentOffset"][i]
+            offset -= ADC_info["fSignalOffset"][i]
+
             dataGain[i] = gain
             dataOffset[i] = offset
         end
@@ -511,18 +525,23 @@ function parseABF(::Type{T}, filename::String;
             println("there are tags here")
         end
 
+        sweepPointCount = Int64(
+            dataPointCount/sweepCount/channelCount
+        )
+        header_info["sweepPointCount"] = sweepPointCount
         #Once we have both adc info and dac info as well as data, we can start actually parsing data
         seek(f, dataByteStart) #put the data loc onto the dataByteStart
         nRows = channelCount
         nCols = Int64(dataPointCount/channelCount)
-        println(nRows*nCols)
+        #println(nRows*nCols)
 
         raw_byte_code = "$(dataPointCount)B"
-        println(raw_byte_code)
+        #println(raw_byte_code)
         raw = readStruct(f, raw_byte_code) #Read the raw data into a byte array
         raw = reshape(raw,  (nRows, nCols)) #Reshape the raw data array
         raw = dataType.(raw) #Convert it into a array of integers
-        raw = reverse(raw) #reverse the data
+        #raw = Array(raw')
+        #raw = reverse(raw) #reverse the data
         raw = raw .* dataGain #Multiply the data by the gain
         raw = raw .+ dataOffset #Scale the data by the offset
         #finally convert the data into the desired dataformat
