@@ -19,6 +19,11 @@ export check_age, check_color, check_pc, check_geno, get_root, contains_words, c
 export parse_abf
 export number_extractor, filename_extractor
 
+include("abf_extraction.jl")
+#export readStruct, 
+export readADCSection
+export parseABF
+
 #Utility files contain file extraction and abf editing functions
 include("utils.jl")
 export extract_abf_new, extract_abf 
@@ -32,10 +37,7 @@ export concat, concat!
 export photon_lookup
 #These will be disabled eventually
 
-include("abf_extraction.jl")
-#export readStruct, 
-export readADCSection
-export parseABF
+
 
 #filtering are any functions that return a Experiment file and alter the old one
 include("filtering.jl") 
