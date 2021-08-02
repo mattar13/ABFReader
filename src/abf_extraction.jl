@@ -388,7 +388,10 @@ This scans the axon binary and extracts all the most useful header information
 function parseABF(::Type{T}, filename::String; 
         bytemap = default_bytemap, check_bit_pos = false
     ) where T <: Real
-    header_info = Dict()
+    header_info = Dict{String, Any}(
+        "abfPath" => filename, 
+        "abfFolder" => joinpath(splitpath(filename)[1:end-1]...)
+    )
     data = T[]
     open(filename, "r") do f #Do everything within this loop
         seek(f, 0) #Ensure that the 
@@ -529,21 +532,24 @@ function parseABF(::Type{T}, filename::String;
             dataPointCount/sweepCount/channelCount
         )
         header_info["sweepPointCount"] = sweepPointCount
+        header_info["sweepLengthSec"] = sweepPointCount/dataRate
+        header_info["sweepList"] = collect(1:sweepCount)
         #Once we have both adc info and dac info as well as data, we can start actually parsing data
         seek(f, dataByteStart) #put the data loc onto the dataByteStart
-        nRows = channelCount
-        nCols = Int64(dataPointCount/channelCount)
+        nData = Int64(dataPointCount/channelCount)
         #println(nRows*nCols)
 
         raw_byte_code = "$(dataPointCount)B"
         #println(raw_byte_code)
         raw = readStruct(f, raw_byte_code) #Read the raw data into a byte array
-        raw = reshape(raw,  (nRows, nCols)) #Reshape the raw data array
-        raw = dataType.(raw) #Convert it into a array of integers
+        raw = reshape(raw,  (channelCount, nData)) #Reshape the raw data array
         #raw = Array(raw')
+        raw = dataType.(raw) #Convert it into a array of integers
         #raw = reverse(raw) #reverse the data
         raw = raw .* dataGain #Multiply the data by the gain
         raw = raw .+ dataOffset #Scale the data by the offset
+        #we want the data to be in the shape: [nSweeps, nData, nChannels] currently it is [nChannels, nData]
+        #reshaped_raw = reshape(raw, (sweepCount|>Int64, sweepPointCount, channelCount))
         #finally convert the data into the desired dataformat
         data = T.(raw)
         #now we need to load and scale the data
