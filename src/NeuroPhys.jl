@@ -1,6 +1,6 @@
 module NeuroPhys
 
-using Base: String
+using Base: String, println
 is_working() = println("And you can revise!") 
 #Imports
 using PyCall
@@ -21,7 +21,7 @@ export number_extractor, filename_extractor
 
 include("abf_extraction.jl")
 #export readStruct, 
-export parseABF, readABF, Experiment
+export parseABF, readABF, Experiment, println
 export StimulusProtocol
 
 #Utility files contain file extraction and abf editing functions
