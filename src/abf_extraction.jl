@@ -212,6 +212,18 @@ dac_bytemap = [
     ("fMembTestPostSettlingTimeMS", "f"),  # 126
     ("nLeakSubtractADCIndex", "H"),  # 130
 ]
+
+EpochPerDAC_bytemap = [
+    ("nEpochNum", "H"),  # 0
+    ("nDACNum", "H"),  # 2
+    ("nEpochType", "H"),  # 4
+    ("fEpochInitLevel", "f"),  # 6
+    ("fEpochLevelInc", "f"),  # 10
+    ("lEpochInitDuration", "I"),  # 14
+    ("lEpochDurationInc", "I"),  # 18
+    ("lEpochPulsePeriod", "I"),  # 22
+    ("lEpochPulseWidth", "I")  # 26
+]
 """
 These functions handle the byte interpretations of the ABF file
 
@@ -391,9 +403,9 @@ function readDACSection(f::IOStream, byteStart, entrySize, entryCount;
     return DAC_info
 end
 
-
 function readSyncArraySection(f::IOStream, byteStart, entrySize, entryCount)
     SyncArray_info = Dict{String, Any}(
+        "byteStart" => byteStart, "entrySize" => entrySize, "entryCount" => entryCount,
         "lStart" => Int32[], "lLength" => Int32[]
     )
     for i in 1:entryCount
@@ -402,6 +414,44 @@ function readSyncArraySection(f::IOStream, byteStart, entrySize, entryCount)
         push!(SyncArray_info["lLength"], readStruct(f, "I")[1])
     end
     SyncArray_info
+end
+
+function readEpochPerDACSection(f::IOStream, byteStart, entrySize, entryCount; 
+        EpochPerDACBytemap = EpochPerDAC_bytemap, check_bit_pos = false    
+    )
+    EpochPerDAC_info = Dict{String, Any}(
+        "byteStart" => byteStart, "entrySize" => entrySize, "entryCount" => entryCount
+    )
+    for i in 1:entryCount
+        seek(f, byteStart + (i-1)*entrySize) #advance the file x bytes
+        for (j, bmp) in enumerate(EpochPerDACBytemap)
+            if check_bit_pos
+                println("Entry $j Value $i => $(position(f)-byteStart*i)")
+            end
+            key, byte_format = bmp
+            val = readStruct(f, byte_format)
+            #println(val)
+            if i == 1
+                EpochPerDAC_info[key] = [val[1]]
+            else
+                push!(EpochPerDAC_info[key], val[1])
+            end
+        end
+    end
+    return EpochPerDAC_info
+end
+
+function readEpochSection(f::IOStream, byteStart, entrySize, entryCount)
+    Epoch_info = Dict{String, Any}(
+        "byteStart" => byteStart, "entrySize" => entrySize, "entryCount" => entryCount, 
+        "nEpochNum" => Int16[], "nEpochDigitalOutput" => Int16[]
+    )
+    for i in 1:entryCount
+        seek(f, byteStart + (i-1)*entrySize)
+        push!(Epoch_info["nEpochNum"], readStruct(f, "H"))
+        push!(Epoch_info["nEpochDigitalOutput"], readStruct(f, "H"))
+    end
+    return Epoch_info
 end
 
 """
@@ -538,13 +588,23 @@ function parseABF(::Type{T}, filename::String;
         blockStart, entrySize, entryCount = header_info["DACSection"]
         DACByteStart = blockStart*FileInfoSize
         DAC_info = readDACSection(f, DACByteStart, entrySize, entryCount)
-        header_info["DACSection"] = DAC_info
+        header_info["DACSection"] = DAC_info #This actually replaces the entry DACSection
         #Parse DAC channel names
         header_info["dacNames"] = map(i -> indexed_strings[i+1], DAC_info["lDACChannelNameIndex"])
         header_info["dacUnits"] = map(i -> indexed_strings[i+1], DAC_info["lDACChannelUnitsIndex"])
         #get the holding command section
         header_info["holdingCommand"] = DAC_info["fDACHoldingLevel"]
+        
+        blockStart, entrySize, entryCount = header_info["EpochPerDACSection"]
+        EpochPerDACByteStart = blockStart*FileInfoSize
+        EpochPerDAC_info = readEpochPerDACSection(f, EpochPerDACByteStart, entrySize, entryCount)
+        header_info["EpochPerDACSection"] = EpochPerDAC_info
 
+        blockStart, entrySize, entryCount = header_info["EpochSection"]
+        EpochByteStart = blockStart*FileInfoSize
+        Epoch_info = readEpochSection(f, EpochPerDACByteStart, entrySize, entryCount)
+        header_info["EpochSection"] = EpochC_info
+        #block
         #tag section
         blockStart, entrySize, entryCount = header_info["TagSection"]
         TagByteStart = blockStart * FileInfoSize
@@ -710,9 +770,23 @@ function readABF(::Type{T}, abf_path::String;
     t = collect(1:header_info["sweepPointCount"]).*dt
     data = header_info["data"][swp_idxs, :, ch_idxs]
     stimulus = header_info["data"][swp_idxs, :, stim_idxs]
-    stimulus_values = findall(stimulus .> stim_threshold)
-    stimulus_values[1]
-    stimulus_values[end]
+    
+    stim_protocol = Array{StimulusProtocol}([])
+    for s_ch in 1:size(stimulus,3)
+        stimulus_values = findall(stimulus .> stim_threshold)
+        #stim_begin = stimulus_idxs[1]
+        #stim_end = stimulus_idxs[end]+1
+        #stim_time_start = t[stim_begin]
+        #stim_time_end = t[stim_end]
+        #stim = StimulusProtocol(
+        #    called|>Symbol, swp_idx, 
+        #    (stim_begin, stim_end), 
+        #    (stim_time_start, stim_time_end)    
+        #)
+        #push!(stim_protocol, stim)
+    end
+    println(stim_protocol)
+
     if average_sweeps == true
         data = sum(data, dims = 1)/size(data,1)
         println(data |> size)
