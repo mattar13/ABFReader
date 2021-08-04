@@ -1,29 +1,39 @@
-using Base: String
 using Revise
 using NeuroPhys
 using DataFrames, XLSX, Query, Statistics, StatsBase
 dotenv("D\\.env")
-using Dates
-
-
-#%% Can we extract the ABF file details?
-filename = "E:\\Data\\ERG\\Gnat\\2021_06_24_ERG_GNAT\\Mouse1_Adult_GNAT-KO\\BaCl\\Green\\nd1_1p_0001.abf"
+using Dates, Plots
+#%% Extract the abf file details
+filename = "test\\to_analyze.abf"
 @time header_info = parseABF(filename)
-FileInfoSize = header_info["uFileInfoSize"][1] #This is the block size for all sections
+header_info["Epochs"] 
+epochWaveformsBySweep = NeuroPhys.makeEpochTable(header_info, 1)
+epochWaveformsBySweep
+#header_info["EpochTable"] 
+header_info["EpochSection"]
+# we should make a epoch table dataframe
+epochs = header_info["Epochs"]
 
+fnames = fieldnames(header_info["Epochs"][1] |> typeof)
+fvals = map(nm -> getfield(header_info["Epochs"][1], nm), fnames)
+nt = NamedTuple{fnames}(fvals)
+DataFrame([nt])
 
-#%% The section is divided into [blockStart, entrySize, entryCount]
-blockStart, entrySize, entryCount = header_info["ADCSection"]
-ADCByteStart = blockStart * FileInfoSize
-ADC_info = readADCSection(filename, ADCByteStart, entryCount)
+header_info["EpochPerDACSection"]["nEpochNum"]
+header_info["DACSection"]["nWaveformEnable"]
+header_info["DACSection"]["nWaveformSource"]
+#%% we want to go through and add only the most necessary things to the experiment object
+readABF(filename; average_sweeps = true)
 
-
-for ss in ProtocolData
-     println(ss)
-end
 #%%
-
-extract_abf_new(filename)
+epochLetter = String[]
+num = 3
+while num >= 0
+     println(num)
+     push!(epochLetter, Char(num % 26 + 65) |> string)
+     num -= 26
+end
+join(epochLetter)
 #%% Lets actually see what python determines for each category
 using PyCall
 pyABF = pyimport("pyabf")
@@ -32,11 +42,16 @@ members = PyCall.inspect[:getmembers](trace_file)
 m_names = map(m -> m[1], members)
 m_vals = map(m -> m[2], members)
 m_dict = Dict(zip(m_names, m_vals))
-
+m_dict["data"]
 
 #%%
-keys(m_dict["_stringsSection"])
-m_dict["_stringsSection"]["strings"]
+data_old = extract_abf(filename)
+data_old[1, :, 1]
+
+#%%
+mycmd = `explorer.exe $(filename)`
+run(mycmd)
+
 #%% Lets make a dataframe that does not alter the other dataframe categories
 root1 = "E:\\Data\\ERG\\Gnat\\"
 gnat_paths = root1 |> parse_abf

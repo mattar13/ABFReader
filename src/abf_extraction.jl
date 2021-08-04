@@ -253,11 +253,76 @@ end
 #Instantiate an empty epoch
 Epoch() =  Epoch(" ", "Off", -1, -1, -1, -1, -1, -1, zeros(Int64, 8), -1, -1)
 
+mutable struct EpochSweepWaveform
+    p1s::Vector
+    p2s::Vector
+    levels::Vector
+    types::Vector
+    pulseWidths::Vector
+    pulsePeriods::Vector
+    digitalStates::Vector
+end
+
+EpochSweepWaveform() = EpochSweepWaveform([], [], [], [], [], [], [])
+
+function addEpoch(e::EpochSweepWaveform, pt1, pt2, level, type, pulseWidth, pulsePeriod, digitalState)
+    push!(e.p1s, pt1 |> Int64)
+    push!(e.p2s, pt2 |> Int64) 
+    push!(e.levels, level)
+    push!(e.types, type) 
+    push!(e.pulseWidths, pulseWidth)
+    push!(e.pulsePeriods, pulsePeriod)
+    push!(e.digitalStates, digitalState)
+end
+
+function getWaveform(e::EpochSweepWaveform; mode = :analog)
+    if mode == :analog #Get the analog waveform
+        sweepC = zeros(e.p2s[end])
+        for i in 1:length(e.levels)
+            epochType = e.types[i]
+            chunkSize = e.p2s[i] - e.p1s[i]
+            pulsePeriod = e.pulsePeriods[i]
+            pulseWidth = e.pulseWidths[i]
+            level = e.levels[i]
+            if i == 1
+                levelBefore = level
+            else
+                levelBefore = e.levels[i]
+            end
+            levelDelta = level - levelBefore
+            if e.pulsePeriods[i] > 0
+                pulseCount = Int64(chunkSize/e.pulsePeriods[i])
+            else
+                pulseCount = 0
+            end
+
+            if epochType == "Step"
+               sweepC[(e.p1s[i]+1):e.p2s[i]] .= level 
+            elseif epochType == "Pulse"
+                println("Not implemented")
+            end
+            #digitalStateForChannel = digitalState[channel]
+        end 
+        return sweepC
+    elseif mode == :digital
+        sweepD = zeros(e.p2s[end])
+        for i in 1:length(e.levels)
+            digitalState = e.digitalStates[i]
+            println(digitalState)
+            #digitalStateForChannel = digitalState[channel]
+        end 
+        return sweepD
+    else
+        throw("Invalid mode")
+    end
+end
+
 function makeEpochTable(headerSection::Dict, channel::Int64)
     e = headerSection["Epochs"]
     EpochTable = DataFrame()
     sampleRateHz = headerSection["dataRate"]
     holdingLevel = headerSection["holdingCommand"][channel]
+    lastSweepLevel = holdingLevel |> Float64
     if headerSection["abfVersionDict"]["major"] == 1 #For abf1
         println("Not implemented")
     elseif headerSection["abfVersionDict"]["major"] == 2 #For abf2
@@ -276,10 +341,29 @@ function makeEpochTable(headerSection::Dict, channel::Int64)
     #create a list of waveform objects by sweep`
     epochWaveformsBySweep = []
     for sweep in headerSection["sweepList"]
-        println(sweep)
+        ep = EpochSweepWaveform()
+        preEpochEndPoint = headerSection["sweepPointCount"]/64.0
+        position = preEpochEndPoint
+        level = holdingLevel
+        #add pre Epoch values
+        addEpoch(ep, 0.0, preEpochEndPoint, lastSweepLevel, "Step", 0, 0, zeros(Int64, 8))
+        for epoch in headerSection["Epochs"]
+            duration = epoch.duration + epoch.durationDelta * sweep
+            pt1, pt2 = (position, position + duration)
+            level = epoch.level + epoch.levelDelta*sweep
+            addEpoch(ep, pt1, pt2, level, epoch.epochType, epoch.pulseWidth, epoch.pulsePeriod, epoch.digitalPattern)
+            position = pt2
+        end
+        if returnToHold
+            lastSweepLastLevel = level |> Float64
+        else
+            lastSweepLastLevel = holdingLevel |> Float64
+        end
+        addEpoch(ep, position, headerSection["sweepPointCount"], lastSweepLastLevel, "Step", 0, 0, zeros(8))
+        push!(epochWaveformsBySweep, ep)
     end
 
-    return EpochTable
+    return epochWaveformsBySweep
 end
 """
 These functions handle the byte interpretations of the ABF file
