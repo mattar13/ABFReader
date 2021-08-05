@@ -30,7 +30,7 @@ epoch_type = Dict(
 )
 
 #This is the default ABF2 Header bytemap
-default_bytemap = [
+header_bytemap = [
      ("sFileSignature", "4s"),
      ("fFileVersionNumber", "4b"),
      ("uFileInfoSize", "I"),
@@ -415,6 +415,27 @@ function readStruct(f::IOStream, byteType::String, seekTo::Int64)
     return readStruct(f, byteType)
 end
 
+function readHeaderSection(f::IOStream; bytemap = header_bytemap)
+    headerSection = Dict{String, Any}()
+    seek(f, 0) #Ensure that the 
+    for (i, bmp) in enumerate(bytemap)
+        if check_bit_pos
+            println("Value $i => $(position(f))")
+        end
+        if length(bmp) == 2
+            key, byte_format = bmp
+            val = readStruct(f, byte_format)
+            headerSection[key] = val
+        elseif length(bmp) == 3
+            #This entry has a position
+            key, byte_format, start_byte = bmp
+            val = readStruct(f, byte_format, start_byte)
+            headerSection[key] = val
+        end
+    end
+    return headerSection
+end
+
 function readStringSection(f::IOStream, byteStart, entrySize, entryCount)
 
     #byteStart = blockStart*FileInfoSize #Look at the 
@@ -605,22 +626,7 @@ function parseABF(::Type{T}, filename::String;
     )
     data = T[]
     open(filename, "r") do f #Do everything within this loop
-        seek(f, 0) #Ensure that the 
-        for (i, bmp) in enumerate(bytemap)
-            if check_bit_pos
-                println("Value $i => $(position(f))")
-            end
-            if length(bmp) == 2
-                key, byte_format = bmp
-                val = readStruct(f, byte_format)
-                headerSection[key] = val
-            elseif length(bmp) == 3
-                #This entry has a position
-                key, byte_format, start_byte = bmp
-                val = readStruct(f, byte_format, start_byte)
-                headerSection[key] = val
-            end
-        end
+        headerSection = readHeaderSection(f)
         if headerSection["nDataFormat"] == 0
             dataType = Int16
         elseif headerSection["nDataFormat"] == 1
@@ -985,7 +991,7 @@ This function opens the ABF file for analysis
 """
 function openABF(abf_path::String)
     try
-        mycmd = `explorer.exe $(filename)`
+        mycmd = `explorer.exe $(abf_path)`
         run(mycmd)
     catch
         #for some reason this throws an error but still opens
