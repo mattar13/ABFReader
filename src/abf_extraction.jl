@@ -415,7 +415,9 @@ function readStruct(f::IOStream, byteType::String, seekTo::Int64)
     return readStruct(f, byteType)
 end
 
-function readHeaderSection(f::IOStream; bytemap = header_bytemap)
+function readHeaderSection(f::IOStream; 
+        bytemap = header_bytemap, check_bit_pos = false
+    )
     headerSection = Dict{String, Any}()
     seek(f, 0) #Ensure that the 
     for (i, bmp) in enumerate(bytemap)
@@ -618,7 +620,7 @@ end
 This scans the axon binary and extracts all the most useful header information
 """
 function parseABF(::Type{T}, filename::String; 
-        bytemap = default_bytemap, check_bit_pos = false
+        bytemap = default_bytemap, 
     ) where T <: Real
     headerSection = Dict{String, Any}(
         "abfPath" => filename, 
