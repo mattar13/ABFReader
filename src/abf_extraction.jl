@@ -619,16 +619,12 @@ end
 """
 This scans the axon binary and extracts all the most useful header information
 """
-function parseABF(::Type{T}, filename::String; 
-        bytemap = default_bytemap, 
-    ) where T <: Real
-    headerSection = Dict{String, Any}(
-        "abfPath" => filename, 
-        "abfFolder" => joinpath(splitpath(filename)[1:end-1]...)
-    )
+function parseABF(::Type{T}, filename::String) where T <: Real
     data = T[]
     open(filename, "r") do f #Do everything within this loop
         headerSection = readHeaderSection(f)
+        headerSection["abfPath"] = filename
+        headerSection["abfFolder"] = joinpath(splitpath(filename)[1:end-1]...)
         if headerSection["nDataFormat"] == 0
             dataType = Int16
         elseif headerSection["nDataFormat"] == 1
