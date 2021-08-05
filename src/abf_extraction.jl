@@ -621,6 +621,7 @@ This scans the axon binary and extracts all the most useful header information
 """
 function parseABF(::Type{T}, filename::String) where T <: Real
     data = T[]
+    headerSection = Dict{String, Any}()
     open(filename, "r") do f #Do everything within this loop
         headerSection = readHeaderSection(f)
         headerSection["abfPath"] = filename
