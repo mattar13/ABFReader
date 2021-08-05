@@ -981,10 +981,21 @@ end
 readABF(abf_path::String; kwargs...) = readABF(Float64, abf_path ; kwargs...)
 
 """
+This function opens the ABF file for analysis
+"""
+function openABF(abf_path::String)
+    try
+        mycmd = `explorer.exe $(filename)`
+        run(mycmd)
+    catch
+        #for some reason this throws an error but still opens
+    end
+end
+"""
 Begin writing a new extractABF function
 """
 
-function extract_abf_old(::Type{T}, abf_path::String; 
+function extract_abf(::Type{T}, abf_path::String; 
         swps = -1, 
         chs = ["Vm_prime","Vm_prime4", "IN 7"], 
         stim_ch = "IN 7", 
@@ -1188,7 +1199,7 @@ function extract_abf_old(::Type{T}, abf_path::String;
 end
 
 
-function extract_abf_old(abf_folder::AbstractArray{String}; average_sweeps = false, kwargs...) 
+function extract_abf(abf_folder::AbstractArray{String}; average_sweeps = false, kwargs...) 
     sweeps = concat(abf_folder; average_sweeps = false, kwargs...) #In the inner loop we don't want to average the sweeps
     #Save the sweep averaging for here
     if average_sweeps == true

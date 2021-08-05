@@ -21,7 +21,8 @@ export number_extractor, filename_extractor
 
 include("abf_extraction.jl")
 #export readStruct, 
-export parseABF, readABF, Experiment, println
+export openABF
+export parseABF, readABF, Experiment
 export StimulusProtocol
 
 #Utility files contain file extraction and abf editing functions
