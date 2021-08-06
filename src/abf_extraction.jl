@@ -438,9 +438,11 @@ function readHeaderSection(f::IOStream;
     return headerSection
 end
 
-function readStringSection(f::IOStream, byteStart, entrySize, entryCount)
+function readStringSection(f::IOStream, blockStart, entrySize, entryCount;
+        FileInfoSize = 512
+    )
 
-    #byteStart = blockStart*FileInfoSize #Look at the 
+    byteStart = blockStart*FileInfoSize #Look at the 
     stringsRaw = fill(UInt8[], entryCount) #The raw string data
     strings = fill("", entryCount) #The formatted strings
     #Parse through the data and read the bytes 
@@ -462,11 +464,12 @@ function readStringSection(f::IOStream, byteStart, entrySize, entryCount)
     return indexedStrings
 end
 
-function readProtocolSection(f::IOStream, byteStart, entrySize, entryCount;
+function readProtocolSection(f::IOStream, blockStart, entrySize, entryCount;
         check_bitSection = false,
         protocolBytemap = protocol_bytemap,
+        FileInfoSize = 512, 
     )
-    #byteStart = blockStart*FileInfoSize #Look at the 
+    byteStart = blockStart*FileInfoSize 
     protocolSection = Dict{String, Any}(
         "byteStart" => byteStart, "entrySize" => entrySize, "entryCount" => entryCount
     )
@@ -484,9 +487,11 @@ function readProtocolSection(f::IOStream, byteStart, entrySize, entryCount;
     return protocolSection
 end
 
-function readADCSection(f::IOStream, byteStart, entrySize, entryCount; 
-        adcBytemap = adc_bytemap, check_bit_pos = false
+function readADCSection(f::IOStream, blockStart, entrySize, entryCount; 
+        adcBytemap = adc_bytemap, check_bit_pos = false, 
+        FileInfoSize = 512
     )
+    byteStart = blockStart * FileInfoSize
     ADCSection = Dict{String, Any}(
         "byteStart" => byteStart, "entrySize" => entrySize, "entryCount" => entryCount
     ) #This will be in the form entry -> [adc1, adc2, adc3, adc4]
@@ -512,7 +517,10 @@ function readADCSection(f::IOStream, byteStart, entrySize, entryCount;
     return ADCSection
 end
 
-function readTagSection(f::IOStream, byteStart, entrySize, entryCount)
+function readTagSection(f::IOStream, blockStart, entrySize, entryCount;
+        FileInfoSize = 512
+    )
+    byteStart = blockStart * FileInfoSize
     if entrySize == 0
         return nothing
     else    
@@ -537,9 +545,11 @@ function readTagSection(f::IOStream, byteStart, entrySize, entryCount)
     end
 end
 
-function readDACSection(f::IOStream, byteStart, entrySize, entryCount; 
-        dacBytemap = dac_bytemap, check_bit_pos = false
+function readDACSection(f::IOStream, blockStart, entrySize, entryCount; 
+        dacBytemap = dac_bytemap, check_bit_pos = false, 
+        FileInfoSize = 512
     )
+    byteStart = blockStart * FileInfoSize
     DACSection = Dict{String, Any}(
         "byteStart" => byteStart, "entrySize" => entrySize, "entryCount" => entryCount
     ) #This will be in the form entry -> [adc1, adc2, adc3, adc4]
@@ -565,7 +575,10 @@ function readDACSection(f::IOStream, byteStart, entrySize, entryCount;
     return DACSection
 end
 
-function readSyncArraySection(f::IOStream, byteStart, entrySize, entryCount)
+function readSyncArraySection(f::IOStream, blockStart, entrySize, entryCount; 
+        FileInfoSize = 512
+    )
+    byteStart = blockStart * FileInfoSize
     SyncArraySection = Dict{String, Any}(
         "byteStart" => byteStart, "entrySize" => entrySize, "entryCount" => entryCount,
         "lStart" => Int32[], "lLength" => Int32[]
@@ -578,9 +591,11 @@ function readSyncArraySection(f::IOStream, byteStart, entrySize, entryCount)
     SyncArraySection
 end
 
-function readEpochPerDACSection(f::IOStream, byteStart, entrySize, entryCount; 
-        EpochPerDACBytemap = EpochPerDAC_bytemap, check_bit_pos = false    
+function readEpochPerDACSection(f::IOStream, blockStart, entrySize, entryCount; 
+        EpochPerDACBytemap = EpochPerDAC_bytemap, check_bit_pos = false, 
+        FileInfoSize = 512    
     )
+    byteStart = blockStart * FileInfoSize
     EpochPerDACSection = Dict{String, Any}(
         "byteStart" => byteStart, "entrySize" => entrySize, "entryCount" => entryCount
     )
@@ -603,7 +618,10 @@ function readEpochPerDACSection(f::IOStream, byteStart, entrySize, entryCount;
     return EpochPerDACSection
 end
 
-function readEpochSection(f::IOStream, byteStart, entrySize, entryCount)
+function readEpochSection(f::IOStream, blockStart, entrySize, entryCount; 
+        FileInfoSize = 512
+    )
+    byteStart = blockStart * FileInfoSize
     EpochSection = Dict{String, Any}(
         "byteStart" => byteStart, "entrySize" => entrySize, "entryCount" => entryCount, 
         "nEpochNum" => Int16[], "nEpochDigitalOutput" => Int16[]
@@ -624,6 +642,24 @@ function parseABF(::Type{T}, filename::String) where T <: Real
     headerSection = Dict{String, Any}()
     open(filename, "r") do f #Do everything within this loop
         headerSection = readHeaderSection(f)
+        ProtocolSection = readProtocolSection(f, headerSection["ProtocolSection"]...) #Read the binary info for the ProtocolSection
+        StringSection = readStringSection(f, headerSection["StringsSection"]...) # Read the binary info for the StringsSection
+        ADCSection = readADCSection(f, headerSection["ADCSection"]...)
+        EpochPerDACSection = readEpochPerDACSection(f, headerSection["EpochPerDACSection"]...)
+        EpochSection = readEpochSection(f, headerSection["EpochSection"]...)
+        DACSection = readDACSection(f, headerSection["DACSection"]...)
+        TagSection = readTagSection(f, headerSection["TagSection"]...)
+        SyncArraySection = readSyncArraySection(f, headerSection["SynchArraySection"]...)
+
+        headerSection["ProtocolSection"] = ProtocolSection
+        headerSection["ADCSection"] = ADCSection
+        headerSection["EpochPerDACSection"] = EpochPerDACSection
+        headerSection["EpochSection"] = EpochSection
+        headerSection["DACSection"] = DACSection
+        headerSection["SyncArraySection"] = SyncArraySection
+
+        channelCount = ADCSection["entryCount"]
+
         headerSection["abfPath"] = filename
         headerSection["abfFolder"] = joinpath(splitpath(filename)[1:end-1]...)
         if headerSection["nDataFormat"] == 0
@@ -667,19 +703,13 @@ function parseABF(::Type{T}, filename::String) where T <: Real
         FileInfoSize = headerSection["uFileInfoSize"][1] #This is the block size for all sections
         
         #protocol section
-        blockStart, entrySize, entryCount = headerSection["ProtocolSection"] 
-        ProtocolByteStart = blockStart*FileInfoSize
-        ProtocolSection = readProtocolSection(f, ProtocolByteStart, entrySize, entryCount) #Read the binary info for the ProtocolSection
-        headerSection["ProtocolSection"] = ProtocolSection
         headerSection["nOperationMode"] = ProtocolSection["nOperationMode"]
         
         #string section
-        blockStart, entrySize, entryCount = headerSection["StringsSection"] 
-        indexed_strings = readStringSection(f, blockStart*FileInfoSize, entrySize, entryCount) # Read the binary info for the StringsSection
-        headerSection["ProtocolPath"] = indexed_strings[headerSection["uProtocolPathIndex"][1]+1] #Read the protocol path
-        headerSection["abfFileComment"] = indexed_strings[ProtocolSection["lFileCommentIndex"][1]+1]
+        headerSection["ProtocolPath"] = StringSection[headerSection["uProtocolPathIndex"][1]+1] #Read the protocol path
+        headerSection["abfFileComment"] = StringSection[ProtocolSection["lFileCommentIndex"][1]+1]
         headerSection["creator"] = join([
-            indexed_strings[headerSection["uCreatorNameIndex"][1]+1], " ",
+            StringSection[headerSection["uCreatorNameIndex"][1]+1], " ",
             headerSection["creatorVersionString"]
         ])
 
@@ -694,37 +724,15 @@ function parseABF(::Type{T}, filename::String) where T <: Real
         headerSection["dataSecPerPoint"] = 1.0/dataRate
         headerSection["dataPointsPerMS"] = Int64(dataRate/1000)
 
-        #ADC section
-        blockStart, entrySize, channelCount = headerSection["ADCSection"]
-        ADCByteStart = blockStart*FileInfoSize
-        ADCSection = readADCSection(f, ADCByteStart, entrySize, channelCount)
-        headerSection["ADCSection"] = ADCSection
-        
-        #EpochPerDAC section
-        blockStart, entrySize, entryCount = headerSection["EpochPerDACSection"]
-        EpochPerDACByteStart = blockStart*FileInfoSize
-        EpochPerDACSection = readEpochPerDACSection(f, EpochPerDACByteStart, entrySize, entryCount)
-        headerSection["EpochPerDACSection"] = EpochPerDACSection
-        
-        #Epoch section
-        blockStart, entrySize, entryCount = headerSection["EpochSection"]
-        EpochByteStart = blockStart*FileInfoSize
-        EpochSection = readEpochSection(f, EpochPerDACByteStart, entrySize, entryCount)
-        headerSection["EpochSection"] = EpochSection
-
-        blockStart, entrySize, entryCount = headerSection["DACSection"]
-        DACByteStart = blockStart*FileInfoSize
-        DACSection = readDACSection(f, DACByteStart, entrySize, entryCount)
-        headerSection["DACSection"] = DACSection #This actually replaces the entry DACSection
-
         #Lets parse through other data sections
         headerSection["channelCount"] = channelCount
         headerSection["channelList"] = ADCSection["channelList"] 
         sweepCount = headerSection["lActualEpisodes"][1]
         headerSection["sweepCount"] = sweepCount
+        
         #Parse ADC channel names
-        headerSection["adcNames"] = map(i -> indexed_strings[i+1], ADCSection["lADCChannelNameIndex"])
-        headerSection["adcUnits"] = map(i -> indexed_strings[i+1], ADCSection["lADCUnitsIndex"])
+        headerSection["adcNames"] = map(i -> StringSection[i+1], ADCSection["lADCChannelNameIndex"])
+        headerSection["adcUnits"] = map(i -> StringSection[i+1], ADCSection["lADCUnitsIndex"])
         #The data should have a gain and an offset
         dataGain = zeros(channelCount)
         dataOffset = zeros(channelCount)
@@ -751,8 +759,8 @@ function parseABF(::Type{T}, filename::String) where T <: Real
         headerSection["dataOffset"] = dataOffset
         
         #Parse DAC channel names
-        headerSection["dacNames"] = map(i -> indexed_strings[i+1], DACSection["lDACChannelNameIndex"])
-        headerSection["dacUnits"] = map(i -> indexed_strings[i+1], DACSection["lDACChannelUnitsIndex"])
+        headerSection["dacNames"] = map(i -> StringSection[i+1], DACSection["lDACChannelNameIndex"])
+        headerSection["dacUnits"] = map(i -> StringSection[i+1], DACSection["lDACChannelUnitsIndex"])
         #get the holding command section
         headerSection["holdingCommand"] = DACSection["fDACHoldingLevel"]        
         #lets build a DACWaveform for every sweep
@@ -787,25 +795,9 @@ function parseABF(::Type{T}, filename::String) where T <: Real
             epoch.epochLetter = join(epochLetter)
             #add the epochType
             push!(epochs, epoch)
-
         end
         headerSection["Epochs"] = epochs
-        #make the EpochTable section
-        
-        #headerSection["EpochTable"] = EpochTable
-        #tag section
-        blockStart, entrySize, entryCount = headerSection["TagSection"]
-        TagByteStart = blockStart * FileInfoSize
-        TagSection = readTagSection(f, TagByteStart, entryCount, entrySize)
-        if !isnothing(TagSection)
-            println("there are tags here")
-        end
 
-        #Synch Array section
-        blockStart, entrySize, entryCount = headerSection["SynchArraySection"]
-        SyncArrayByteStart  = blockStart * FileInfoSize
-        SyncArraySection = readSyncArraySection(f, SyncArrayByteStart, entrySize, entryCount)
-        headerSection["SyncArraySection"] = SyncArraySection
         sweepPointCount = Int64(
             dataPointCount/sweepCount/channelCount
         )
