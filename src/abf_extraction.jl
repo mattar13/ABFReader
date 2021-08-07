@@ -250,85 +250,6 @@ mutable struct Epoch{T}
     pulseWidth::T
 end
 
-#Instantiate an empty epoch
-Epoch() =  Epoch(" ", "Off", -1, -1, -1, -1, -1, -1, zeros(Int64, 8), -1, -1)
-
-mutable struct EpochTable
-    sampleRateHz
-    holdingLevel
-    sweepPointCount
-    channel
-    epochs::Vector{Epoch}
-    epochWaveformBySweep::Vector{EpochSweepWaveform}
-end
-
-function EpochTable(abf, channel)
-    sampleRateHz = abf["dataRate"]
-    holdingLevel = abf["holdingCommand"][channel]
-    sweepPointCount = abf["sweepPointCount"]
-    
-    #Create a list of Epochs
-    epochs = Epoch[]
-    for (i, epochDACNum) in enumerate(abf["EpochPerDACSection"]["nDACNum"])
-        epoch = Epoch()
-        epoch.dacNum = epochDACNum
-        epochNumber = abf["EpochPerDACSection"]["nEpochNum"][i]
-        epoch.epochNumber = epochNumber
-        epoch.epochType = epoch_type[abf["EpochPerDACSection"]["nEpochType"][i]]
-        epoch.level = abf["EpochPerDACSection"]["fEpochInitLevel"][i]
-        epoch.levelDelta = abf["EpochPerDACSection"]["fEpochLevelInc"][i]
-        epoch.duration = abf["EpochPerDACSection"]["lEpochInitDuration"][i]
-        epoch.durationDelta = abf["EpochPerDACSection"]["lEpochDurationInc"][i]
-        epoch.pulsePeriod = abf["EpochPerDACSection"]["lEpochPulsePeriod"][i]
-        epoch.pulseWidth = abf["EpochPerDACSection"]["lEpochPulseWidth"][i]
-        #Add the digital channel
-        if epochDACNum == abf["ProtocolSection"]["nActiveDACChannel"]
-            digOut = abf["EpochSection"]["nEpochDigitalOutput"][i]
-            #println("Digital pattern: $digOut")
-            epoch.digitalPattern = digits(digOut, base = 2, pad = 8) #convert the digital output to a bit array
-        else
-            epoch.digitalPattern = digits(0, base = 2, pad = 8) #convert the digital output to a bit array
-        end
-        #Add the Epoch Letter
-        epochLetter = String[]
-        num = epochNumber
-        while num >= 0
-            push!(epochLetter, Char(num % 26 + 65) |> string)
-            num -= 26
-        end
-        epoch.epochLetter = join(epochLetter)
-        #add the epochType
-        push!(epochs, epoch)
-    end
-    
-    #Create a list of waveform objects by sweep
-    epochWaveformsBySweep = []
-    for sweep in abf["sweepList"]
-        ep = EpochSweepWaveform()
-        preEpochEndPoint = headerSection["sweepPointCount"]/64.0
-        position = preEpochEndPoint
-        level = holdingLevel
-        #add pre Epoch values
-        addEpoch(ep, 0.0, preEpochEndPoint, lastSweepLevel, "Step", 0, 0, zeros(Int64, 8))
-        for epoch in headerSection["Epochs"]
-            duration = epoch.duration + epoch.durationDelta * sweep
-            pt1, pt2 = (position, position + duration)
-            level = epoch.level + epoch.levelDelta*sweep
-            addEpoch(ep, pt1, pt2, level, epoch.epochType, epoch.pulseWidth, epoch.pulsePeriod, epoch.digitalPattern)
-            position = pt2
-        end
-        if returnToHold
-            lastSweepLastLevel = level |> Float64
-        else
-            lastSweepLastLevel = holdingLevel |> Float64
-        end
-        addEpoch(ep, position, headerSection["sweepPointCount"], lastSweepLastLevel, "Step", 0, 0, zeros(8))
-        push!(epochWaveformsBySweep, ep)
-    end
-
-    return EpochTable(sampleRateHz, holdingLevel, sweepPointCount, channel, epochs, epochWaveformsBySweep)
-end
-
 mutable struct EpochSweepWaveform
     p1s::Vector
     p2s::Vector
@@ -339,6 +260,19 @@ mutable struct EpochSweepWaveform
     digitalStates::Vector
 end
 
+mutable struct EpochTable
+    sampleRateHz
+    holdingLevel
+    sweepPointCount
+    channel
+    epochs::Vector{Epoch}
+    epochWaveformBySweep::Vector{EpochSweepWaveform}
+end
+
+
+
+Epoch() =  Epoch(" ", "Off", -1, -1, -1, -1, -1, -1, zeros(Int64, 8), -1, -1)
+#EpochTable will be instantiated last
 EpochSweepWaveform() = EpochSweepWaveform([], [], [], [], [], [], [])
 
 function addEpoch(e::EpochSweepWaveform, pt1, pt2, level, type, pulseWidth, pulsePeriod, digitalState)
@@ -351,10 +285,94 @@ function addEpoch(e::EpochSweepWaveform, pt1, pt2, level, type, pulseWidth, puls
     push!(e.digitalStates, digitalState)
 end
 
+
+function EpochTable(abf, channel)
+    sampleRateHz = abf["dataRate"]
+    holdingLevel = abf["holdingCommand"][channel]
+    sweepPointCount = abf["sweepPointCount"]
+    epochs = Epoch[]
+    epochWaveformsBySweep = []
+    returnToHold = false
+    if abf["abfVersionDict"]["major"] == 1
+        if channel > 1
+            channel = 0
+        end
+        #not fully implemented yet
+    elseif abf["abfVersionDict"]["major"] == 1
+
+        #Create a list of Epochs
+        for (i, epochDACNum) in enumerate(abf["EpochPerDACSection"]["nDACNum"])
+            epoch = Epoch()
+            epoch.dacNum = epochDACNum
+            epochNumber = abf["EpochPerDACSection"]["nEpochNum"][i]
+            epoch.epochNumber = epochNumber
+            epoch.epochType = epoch_type[abf["EpochPerDACSection"]["nEpochType"][i]]
+            epoch.level = abf["EpochPerDACSection"]["fEpochInitLevel"][i]
+            epoch.levelDelta = abf["EpochPerDACSection"]["fEpochLevelInc"][i]
+            epoch.duration = abf["EpochPerDACSection"]["lEpochInitDuration"][i]
+            epoch.durationDelta = abf["EpochPerDACSection"]["lEpochDurationInc"][i]
+            epoch.pulsePeriod = abf["EpochPerDACSection"]["lEpochPulsePeriod"][i]
+            epoch.pulseWidth = abf["EpochPerDACSection"]["lEpochPulseWidth"][i]
+            #Add the digital channel
+            if epochDACNum == abf["ProtocolSection"]["nActiveDACChannel"]
+                digOut = abf["EpochSection"]["nEpochDigitalOutput"][i]
+                #println("Digital pattern: $digOut")
+                epoch.digitalPattern = digits(digOut, base = 2, pad = 8) #convert the digital output to a bit array
+            else
+                epoch.digitalPattern = digits(0, base = 2, pad = 8) #convert the digital output to a bit array
+            end
+            #Add the Epoch Letter
+            epochLetter = String[]
+            num = epochNumber
+            while num >= 0
+                push!(epochLetter, Char(num % 26 + 65) |> string)
+                num -= 26
+            end
+            epoch.epochLetter = join(epochLetter)
+            #add the epochType
+            push!(epochs, epoch)
+        end
+        println("here")
+        returnToHold = abf["DACSection"]["nInterEpisodeLevel"][channel] == 1
+    end
+    println(returnToHold)
+    #Create a list of waveform objects by sweep
+    
+    lastSweepLastLevel = holdingLevel
+    for sweep in abf["sweepList"]
+        ep = EpochSweepWaveform()
+
+        #Add pre epoch values
+        preEpochEndPoint = abf["sweepPointCount"]/64.0
+        pt2 = preEpochEndPoint
+        addEpoch(ep, 0.0, preEpochEndPoint, lastSweepLastLevel, "Step", 0, 0, zeros(Int64, 8))
+        
+        position = preEpochEndPoint
+        level = holdingLevel
+        for epoch in epochs
+            duration = epoch.duration + epoch.durationDelta * sweep
+            pt1, pt2 = (position, position + duration)
+            level = epoch.level + epoch.levelDelta*sweep
+            addEpoch(ep, pt1, pt2, level, epoch.epochType, epoch.pulseWidth, epoch.pulsePeriod, epoch.digitalPattern)
+            position = pt2
+        end
+        if returnToHold
+            lastSweepLastLevel = level |> Float64
+        else
+            lastSweepLastLevel = holdingLevel |> Float64
+        end
+        addEpoch(ep, position, abf["sweepPointCount"], lastSweepLastLevel, "Step", 0, 0, zeros(8))
+        push!(epochWaveformsBySweep, ep)
+    end
+
+    return EpochTable(sampleRateHz, holdingLevel, sweepPointCount, channel, epochs, epochWaveformsBySweep)
+end
+
 function getWaveform(e::EpochSweepWaveform; mode = :analog)
     if mode == :analog #Get the analog waveform
         sweepC = zeros(e.p2s[end])
         for i in 1:length(e.levels)
+            #Easier access to epoch
             epochType = e.types[i]
             chunkSize = e.p2s[i] - e.p1s[i]
             pulsePeriod = e.pulsePeriods[i]
@@ -392,6 +410,7 @@ function getWaveform(e::EpochSweepWaveform; mode = :analog)
         throw("Invalid mode")
     end
 end
+
 """
 These functions handle the byte interpretations of the ABF file
 
