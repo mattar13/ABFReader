@@ -335,9 +335,8 @@ function EpochTable(abf, channel)
         println("here")
         returnToHold = abf["DACSection"]["nInterEpisodeLevel"][channel] == 1
     end
-    println(returnToHold)
-    #Create a list of waveform objects by sweep
-    
+
+    #Create a list of waveform objects by sweep    
     lastSweepLastLevel = holdingLevel
     for sweep in abf["sweepList"]
         ep = EpochSweepWaveform()
@@ -368,49 +367,57 @@ function EpochTable(abf, channel)
     return EpochTable(sampleRateHz, holdingLevel, sweepPointCount, channel, epochs, epochWaveformsBySweep)
 end
 
-function getWaveform(e::EpochSweepWaveform; mode = :analog)
-    if mode == :analog #Get the analog waveform
-        sweepC = zeros(e.p2s[end])
-        for i in 1:length(e.levels)
-            #Easier access to epoch
-            epochType = e.types[i]
-            chunkSize = e.p2s[i] - e.p1s[i]
-            pulsePeriod = e.pulsePeriods[i]
-            pulseWidth = e.pulseWidths[i]
-            level = e.levels[i]
-            if i == 1
-                levelBefore = level
-            else
-                levelBefore = e.levels[i]
-            end
-            levelDelta = level - levelBefore
-            if e.pulsePeriods[i] > 0
-                pulseCount = Int64(chunkSize/e.pulsePeriods[i])
-            else
-                pulseCount = 0
-            end
+function getWaveform(e::EpochSweepWaveform)
+    sweepC = zeros(e.p2s[end])
+    for i in 1:length(e.levels)
+        #Easier access to epoch
+        epochType = e.types[i]
+        chunkSize = e.p2s[i] - e.p1s[i]
+        pulsePeriod = e.pulsePeriods[i]
+        pulseWidth = e.pulseWidths[i]
+        level = e.levels[i]
+        if i == 1
+            levelBefore = level
+        else
+            levelBefore = e.levels[i]
+        end
+        levelDelta = level - levelBefore
+        if e.pulsePeriods[i] > 0
+            pulseCount = Int64(chunkSize/e.pulsePeriods[i])
+        else
+            pulseCount = 0
+        end
 
-            if epochType == "Step"
-               sweepC[(e.p1s[i]+1):e.p2s[i]] .= level 
-            elseif epochType == "Pulse"
-                println("Not implemented")
+        if epochType == "Step"
+            chunk = fill(level, chunkSize)               
+        elseif epochType == "Ramp"
+            chunk = LinRange(levelBefore, level, chunkSize)
+        elseif epochType == "Pulse"
+            chunk = fill(levelBefore, chunkSize)
+            for pulse in 1:pulseCount
+                p1 = Int64(pulsePeriod*pulse)
+                p2 = Int64(p1+pulseWidth)
+                chunk[p1:p2] = level
             end
-            #digitalStateForChannel = digitalState[channel]
-        end 
-        return sweepC
-    elseif mode == :digital
-        sweepD = zeros(e.p2s[end])
-        for i in 1:length(e.levels)
-            digitalState = e.digitalStates[i]
-            println(digitalState)
-            #digitalStateForChannel = digitalState[channel]
-        end 
-        return sweepD
-    else
-        throw("Invalid mode")
-    end
+        elseif epochType == "Tri"
+            println("to be implemented")
+        end
+        #digitalStateForChannel = digitalState[channel]
+        #add the chunk to the sweep
+        sweepC[(e.p1s[i]+1):(e.p2s[i])]
+    end 
+    return sweepC
 end
 
+function getDigitalWaveform(e::EpochSweepWaveform, channel)
+    sweepD = zeros(e.p2s[end])
+    for i in 1:length(e.levels)
+        digitalState = e.digitalStates[i]
+        digitalStateForChannel = digitalState[channel]
+        sweepD[e.p1s[i]:e.p2s[i]] = digitalStateForChannel
+    end 
+    return sweepD
+end
 """
 These functions handle the byte interpretations of the ABF file
 
