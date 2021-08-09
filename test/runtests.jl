@@ -8,6 +8,31 @@ println("Exporting succeeded")
 #%% Test the exporting and filtering of .abf files
 target_path1 = "test\\to_filter.abf"
 target_path2 = "test\\to_analyze.abf"
+#%% First test some things related to extracting the headerSection info
+println("Testing base functionality of ABF extraction")
+abf_1swp = NeuroPhys.readABFHeader(target_path1)
+abf_12swp = NeuroPhys.readABFHeader(target_path2)
+
+NeuroPhys.getWaveform(abf_1swp, 1, 1; channel_type = :analog) #Test get waveform of analog 0
+NeuroPhys.getWaveform(abf_1swp, 1, 1; channel_type = :digital) #Get waveform of digital 0
+
+NeuroPhys.getWaveform(abf_12swp, 1, 2; channel_type = :analog) #get waveform of multisweep analog
+NeuroPhys.getWaveform(abf_12swp, 1, 2; channel_type = :digital) #get waveform of multisweep digital
+
+NeuroPhys.getWaveform(abf_12swp, 1; channel_type = :analog) #get waveform of multisweep analog, all sweeps
+NeuroPhys.getWaveform(abf_12swp, 1; channel_type = :digital) #get waveform of multisweep analog
+
+#use strings to get the waveforms
+NeuroPhys.getWaveform(abf_12swp, "An 0", 1)
+NeuroPhys.getWaveform(abf_12swp, "Ana 0", 1)
+NeuroPhys.getWaveform(abf_12swp, "Analog 0", 1)
+NeuroPhys.getWaveform(abf_12swp, "An 0") #Get all related sweeps to analog 0
+
+NeuroPhys.getWaveform(abf_12swp, "D 0", 1)
+NeuroPhys.getWaveform(abf_12swp, "Dig 0", 1)
+NeuroPhys.getWaveform(abf_12swp, "Digital 0", 1)
+NeuroPhys.getWaveform(abf_12swp, "D 0") #Get all related sweeps to digital 0
+
 data1 = extract_abf(target_path1); #Extract the data for filtering
 data2 = extract_abf(target_path2; swps = -1, chs = [1,3,5]); #Extract the data for concatenation analysis
 println("File extraction works")
