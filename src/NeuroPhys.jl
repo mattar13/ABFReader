@@ -1,6 +1,6 @@
 module NeuroPhys
 
-pkg_dir = joinpath(splitpath(pathof(RetinalChaos))[1:end-2]...)
+pkg_dir = joinpath(splitpath(pathof(NeuroPhys))[1:end-2]...)
 export pkg_dir
 
 using Base: String, println
