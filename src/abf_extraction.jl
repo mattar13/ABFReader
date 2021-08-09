@@ -1027,6 +1027,7 @@ function readABF(::Type{T}, abf_path::String;
         ch_idxs = headerSection["channelList"]
     end
     
+    #This section we will rework to include getting analog and digital inputs
     #stim_protocol = Array{StimulusProtocol}([])
     stim_idxs = Int64[]
     for stim_ch in stim_name
