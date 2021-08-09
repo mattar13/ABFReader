@@ -286,61 +286,66 @@ function addEpoch(e::EpochSweepWaveform, pt1, pt2, level, type, pulseWidth, puls
 end
 
 
-function EpochTable(abf, channel)
+function EpochTable(abf::Dict{String, Any}, channel::Int64)
+    #channel has to be a channel number in this case
     sampleRateHz = abf["dataRate"]
     holdingLevel = abf["holdingCommand"][channel]
     sweepPointCount = abf["sweepPointCount"]
     epochs = Epoch[]
-    epochWaveformsBySweep = []
+    
     returnToHold = false
     if abf["abfVersionDict"]["major"] == 1
         if channel > 1
             channel = 0
         end
         #not fully implemented yet
-    elseif abf["abfVersionDict"]["major"] == 1
+    elseif abf["abfVersionDict"]["major"] == 2
 
         #Create a list of Epochs
         for (i, epochDACNum) in enumerate(abf["EpochPerDACSection"]["nDACNum"])
-            epoch = Epoch()
-            epoch.dacNum = epochDACNum
-            epochNumber = abf["EpochPerDACSection"]["nEpochNum"][i]
-            epoch.epochNumber = epochNumber
-            epoch.epochType = epoch_type[abf["EpochPerDACSection"]["nEpochType"][i]]
-            epoch.level = abf["EpochPerDACSection"]["fEpochInitLevel"][i]
-            epoch.levelDelta = abf["EpochPerDACSection"]["fEpochLevelInc"][i]
-            epoch.duration = abf["EpochPerDACSection"]["lEpochInitDuration"][i]
-            epoch.durationDelta = abf["EpochPerDACSection"]["lEpochDurationInc"][i]
-            epoch.pulsePeriod = abf["EpochPerDACSection"]["lEpochPulsePeriod"][i]
-            epoch.pulseWidth = abf["EpochPerDACSection"]["lEpochPulseWidth"][i]
-            #Add the digital channel
-            if epochDACNum == abf["ProtocolSection"]["nActiveDACChannel"]
-                digOut = abf["EpochSection"]["nEpochDigitalOutput"][i]
-                #println("Digital pattern: $digOut")
-                epoch.digitalPattern = digits(digOut, base = 2, pad = 8) #convert the digital output to a bit array
-            else
-                epoch.digitalPattern = digits(0, base = 2, pad = 8) #convert the digital output to a bit array
+            #only create a table for the selected channel
+            if epochDACNum == (channel-1)
+                epoch = Epoch()
+                epoch.dacNum = epochDACNum
+                epochNumber = abf["EpochPerDACSection"]["nEpochNum"][i]
+                epoch.epochNumber = epochNumber
+                epoch.epochType = epoch_type[abf["EpochPerDACSection"]["nEpochType"][i]]
+                epoch.level = abf["EpochPerDACSection"]["fEpochInitLevel"][i]
+                epoch.levelDelta = abf["EpochPerDACSection"]["fEpochLevelInc"][i]
+                epoch.duration = abf["EpochPerDACSection"]["lEpochInitDuration"][i]
+                epoch.durationDelta = abf["EpochPerDACSection"]["lEpochDurationInc"][i]
+                epoch.pulsePeriod = abf["EpochPerDACSection"]["lEpochPulsePeriod"][i]
+                epoch.pulseWidth = abf["EpochPerDACSection"]["lEpochPulseWidth"][i]
+                
+                #Add the digital channel
+                if epochDACNum == abf["ProtocolSection"]["nActiveDACChannel"]
+                    digOut = abf["EpochSection"]["nEpochDigitalOutput"][i]
+                    #println("Digital pattern: $digOut")
+                    epoch.digitalPattern = digits(digOut, base = 2, pad = 8) #convert the digital output to a bit array
+                else
+                    epoch.digitalPattern = digits(0, base = 2, pad = 8) #convert the digital output to a bit array
+                end
+
+                #Add the Epoch Letter
+                epochLetter = String[]
+                num = epochNumber
+                while num >= 0
+                    push!(epochLetter, Char(num % 26 + 65) |> string)
+                    num -= 26
+                end
+                epoch.epochLetter = join(epochLetter)
+                #add the epochType
+                push!(epochs, epoch)
             end
-            #Add the Epoch Letter
-            epochLetter = String[]
-            num = epochNumber
-            while num >= 0
-                push!(epochLetter, Char(num % 26 + 65) |> string)
-                num -= 26
-            end
-            epoch.epochLetter = join(epochLetter)
-            #add the epochType
-            push!(epochs, epoch)
         end
-        println("here")
         returnToHold = abf["DACSection"]["nInterEpisodeLevel"][channel] == 1
     end
-
+    
+    epochWaveformsBySweep = []
     #Create a list of waveform objects by sweep    
     lastSweepLastLevel = holdingLevel
     for sweep in abf["sweepList"]
         ep = EpochSweepWaveform()
-
         #Add pre epoch values
         preEpochEndPoint = abf["sweepPointCount"]/64.0
         pt2 = preEpochEndPoint
@@ -360,7 +365,7 @@ function EpochTable(abf, channel)
         else
             lastSweepLastLevel = holdingLevel |> Float64
         end
-        addEpoch(ep, position, abf["sweepPointCount"], lastSweepLastLevel, "Step", 0, 0, zeros(8))
+        addEpoch(ep, pt2, abf["sweepPointCount"], lastSweepLastLevel, "Step", 0, 0, zeros(8))
         push!(epochWaveformsBySweep, ep)
     end
 
@@ -411,10 +416,13 @@ end
 
 function getDigitalWaveform(e::EpochSweepWaveform, channel)
     sweepD = zeros(e.p2s[end])
-    for i in 1:length(e.levels)
+    #println(e.p2s)
+    for i in 1:length(e.levels)-1
         digitalState = e.digitalStates[i]
         digitalStateForChannel = digitalState[channel]
-        sweepD[e.p1s[i]:e.p2s[i]] = digitalStateForChannel
+        #println(e.p1s[i])
+        #println(e.p2s[i])
+        sweepD[(e.p1s[i]+1):(e.p2s[i]+1)] .= digitalStateForChannel
     end 
     return sweepD
 end
@@ -690,7 +698,7 @@ end
 """
 This scans the axon binary and extracts all the most useful header information
 """
-function parseABF(::Type{T}, filename::String) where T <: Real
+function readABFHeader(::Type{T}, filename::String) where T <: Real
     data = T[]
     headerSection = Dict{String, Any}()
     open(filename, "r") do f #Do everything within this loop
@@ -821,10 +829,8 @@ function parseABF(::Type{T}, filename::String) where T <: Real
         #get the holding command section
         headerSection["holdingCommand"] = DACSection["fDACHoldingLevel"] 
         
-        #lets build a DACWaveform for every sweep
-        
-        #headerSection["Epochs"] = epochs
 
+        
         sweepPointCount = Int64(
             dataPointCount/sweepCount/channelCount
         )
@@ -835,6 +841,18 @@ function parseABF(::Type{T}, filename::String) where T <: Real
         seek(f, dataByteStart) #put the data loc onto the dataByteStart
         nDataPoints = Int64(dataPointCount/channelCount)
         headerSection["nDataPoints"] = nDataPoints
+        
+        #lets build a Digital and Analog stimuli. This has to be done after the headerInfo has been read
+        EpochTableByChannel = []
+        analogCmds = []
+        digitalCmds = []
+        for ch in headerSection["channelList"]
+            et = EpochTable(headerSection, ch)
+            push!(EpochTableByChannel, et)
+            #waveform = NeuroPhys.getWaveform(epochTable.epochWaveformBySweep[ch])
+            #push!(stimulusByChannel, waveform)
+        end
+        headerSection["EpochTableByChannel"] = EpochTableByChannel
 
         #Read the raw data
         #y = Vector{dataType}(undef, dataPointCount)
@@ -855,7 +873,7 @@ function parseABF(::Type{T}, filename::String) where T <: Real
     return headerSection #Finally return the headerSection as a dictionary
 end
 
-parseABF(filename::String; kwargs...) = parseABF(Float64, filename::String; kwargs...)
+readABFHeader(filename::String; kwargs...) = readABFHeader(Float64, filename::String; kwargs...)
 
 """
 This file contains the ABF data traces. It is a generic experiment which doesn't include any other specifics. 
@@ -936,13 +954,13 @@ function readABF(::Type{T}, abf_path::String;
         stim_name = ["IN 7"], 
         stim_threshold::T = 0.2,
         keep_stimulus_channel::Bool = false,
-        continuous::Bool = false, #puts the sweeps next to each other
+        continuous::Bool = false, #this can be achieved in gap free mode
         verbose::Bool = false
     ) where T <: Real
-    headerSection = parseABF(abf_path)
-    path = headerSection["abfPath"]
-    dir = headerSection["abfFolder"]
-    channel_names = headerSection["adcNames"]
+    abf_info = parseABF(abf_path)
+    path = abf_info["abfPath"]
+    dir = abf_info["abfFolder"]
+    channel_names = abf_info["adcNames"]
     #Pull out the requested sweeps
     if isa(swps, Vector{Int64})
         swp_idxs = swps
