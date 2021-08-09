@@ -1,5 +1,8 @@
 module NeuroPhys
 
+pkg_dir = joinpath(splitpath(pathof(RetinalChaos))[1:end-2]...)
+export pkg_dir
+
 using Base: String, println
 is_working() = println("And you can revise!") 
 #Imports
@@ -22,7 +25,7 @@ export number_extractor, filename_extractor
 include("abf_extraction.jl")
 #export readStruct, 
 export openABF
-export readABFHeader, Experiment
+export readABFHeader, readABF, Experiment
 export StimulusProtocol
 
 #Utility files contain file extraction and abf editing functions
