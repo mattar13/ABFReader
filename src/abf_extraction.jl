@@ -372,7 +372,7 @@ function EpochTable(abf::Dict{String, Any}, channel::Int64)
     return EpochTable(sampleRateHz, holdingLevel, sweepPointCount, channel, epochs, epochWaveformsBySweep)
 end
 
-function getWaveform(e::EpochSweepWaveform)
+function getAnalogWaveform(e::EpochSweepWaveform)
     sweepC = zeros(e.p2s[end])
     for i in 1:length(e.levels)
         #Easier access to epoch
@@ -416,7 +416,6 @@ end
 
 function getDigitalWaveform(e::EpochSweepWaveform, channel)
     sweepD = zeros(e.p2s[end])
-    #println(e.p2s)
     for i in 1:length(e.levels)-1
         digitalState = e.digitalStates[i]
         digitalStateForChannel = digitalState[channel]
@@ -425,6 +424,57 @@ function getDigitalWaveform(e::EpochSweepWaveform, channel)
         sweepD[(e.p1s[i]+1):(e.p2s[i]+1)] .= digitalStateForChannel
     end 
     return sweepD
+end
+
+"""
+This function retrieves the file by name rather than by number
+"""
+function getWaveform(abf::Dict{String, Any}, channel::Real, sweep::Real; channel_type = :analog)
+   if channel_type == :digital
+        activeDACch = abf["ProtocolSection"]["nActiveDACChannel"]+1
+        epochTable = abf["EpochTableByChannel"][activeDACch] #Load the location of the digital stim
+        epoch = epochTable.epochWaveformBySweep[sweep] #Load the sweep
+        return getDigitalWaveform(epoch, channel) #Load the digital channel
+        #the analog channel containing the data is located here
+    elseif channel_type == :analog
+        epochTable = abf["EpochTableByChannel"][channel] #Load the channel
+        epoch = epochTable.epochWaveformBySweep[sweep] #Load the sweep
+        return getAnalogWaveform(epoch)
+    end
+end
+
+function getWaveform(abf::Dict{String, Any}, channel::String, sweep::Real)
+    channel_ID = lowercase(channel[1:end-1])
+    channel_ID = split(channel_ID, " ")[1] |> string
+    channel_num = parse(Int64, channel[end])+1
+    if channel_ID == "d" || channel_ID == "dig" || channel_ID == "digital"
+        return getWaveform(abf, channel_num, sweep; channel_type = :digital)
+    elseif channel_ID == "an" || channel_ID == "a" || channel_ID == "ana" ||channel_ID == "analog"
+        return getWaveform(abf, channel_num, sweep)
+    else
+        println("Please use one of these formats: ̸
+            1) Digital: [D, Dig, Digital]
+            2) Analog: [A, An, Ana, Analog]
+        ")  
+        throw("Improper channel ID")
+    end
+end
+
+function getWaveform(abf::Dict{String, Any}, channel::String)
+    #This function gets called to iterate through all sweeps
+    waveforms = zeros(abf["sweepCount"], abf["sweepPointCount"])
+    for i in 1:abf["sweepCount"]
+        waveforms[i, :] = getWaveform(abf, channel, i)
+    end
+    return waveforms
+end
+
+function getWaveform(abf::Dict{String, Any}, channel::Real; channel_type = :analog)
+    waveforms = zeros(abf["sweepCount"], abf["sweepPointCount"])
+    for i in 1:abf["sweepCount"]
+        waveforms[i, :] = getWaveform(abf, channel, i; channel_type = channel_type)
+    end
+    return waveforms
 end
 """
 These functions handle the byte interpretations of the ABF file
@@ -698,9 +748,16 @@ end
 """
 This scans the axon binary and extracts all the most useful header information
 """
-function readABFHeader(::Type{T}, filename::String) where T <: Real
+function readABFHeader(::Type{T}, filename::String; 
+        loadData = true
+    ) where T <: Real
     data = T[]
-    headerSection = Dict{String, Any}()
+    #Can we go through and convert anything before loading
+    headerSection = Dict{String, Any}(        
+        "abfPath" => filename, 
+        "abfFolder" => joinpath(splitpath(filename)[1:end-1]...)
+    ) 
+
     open(filename, "r") do f #Do everything within this loop
         headerSection = readHeaderSection(f)
         ProtocolSection = readProtocolSection(f, headerSection["ProtocolSection"]...) #Read the binary info for the ProtocolSection
@@ -721,8 +778,6 @@ function readABFHeader(::Type{T}, filename::String) where T <: Real
 
         channelCount = ADCSection["entryCount"]
 
-        headerSection["abfPath"] = filename
-        headerSection["abfFolder"] = joinpath(splitpath(filename)[1:end-1]...)
         if headerSection["nDataFormat"] == 0
             dataType = Int16
         elseif headerSection["nDataFormat"] == 1
@@ -842,31 +897,29 @@ function readABFHeader(::Type{T}, filename::String) where T <: Real
         nDataPoints = Int64(dataPointCount/channelCount)
         headerSection["nDataPoints"] = nDataPoints
         
-        #lets build a Digital and Analog stimuli. This has to be done after the headerInfo has been read
+        #The EpochTable Item will extract all stimuli only when it is called
         EpochTableByChannel = []
-        analogCmds = []
-        digitalCmds = []
         for ch in headerSection["channelList"]
             et = EpochTable(headerSection, ch)
             push!(EpochTableByChannel, et)
-            #waveform = NeuroPhys.getWaveform(epochTable.epochWaveformBySweep[ch])
-            #push!(stimulusByChannel, waveform)
         end
         headerSection["EpochTableByChannel"] = EpochTableByChannel
 
         #Read the raw data
         #y = Vector{dataType}(undef, dataPointCount)
-        raw = read(f, dataPointCount*sizeof(dataType)) #Read the raw data into a byte array
-        raw = reinterpret(dataType, raw) #convert the byte array into the dataType
-        raw = reshape(raw,  (channelCount, nDataPoints)) #Reshape the raw data array
-        if dataType == Int16
-            raw = raw .* dataGain #Multiply the data by the gain
-            raw = raw .+ dataOffset #Scale the data by the offset
+        if loadData
+            raw = read(f, dataPointCount*sizeof(dataType)) #Read the raw data into a byte array
+            raw = reinterpret(dataType, raw) #convert the byte array into the dataType
+            raw = reshape(raw,  (channelCount, nDataPoints)) #Reshape the raw data array
+            if dataType == Int16
+                raw = raw .* dataGain #Multiply the data by the gain
+                raw = raw .+ dataOffset #Scale the data by the offset
+            end
+            #We can try to convert the data into a array of shape [sweeps, data, channels]
+            raw = reshape(raw, (channelCount, sweepPointCount, sweepCount)) #Reshape the data
+            raw = permutedims(raw, [3, 2, 1]) #permute the dims
+            headerSection["data"] = Array{T}(raw)
         end
-        #We can try to convert the data into a array of shape [sweeps, data, channels]
-        raw = reshape(raw, (channelCount, sweepPointCount, sweepCount)) #Reshape the data
-        raw = permutedims(raw, [3, 2, 1]) #permute the dims
-        headerSection["data"] = Array{T}(raw)
         
         #We want to try to read more info from the DAC
     end
@@ -893,13 +946,11 @@ Fields:
 """
 mutable struct Experiment{T}
     infoDict::Dict{String, Any}
-    #ID::String
-    #protocol::String
+    dt::T
     t::Array{T, 1}
-    #data_array::Array{T, 3}
+    data_array::Array{T, 3}
     #date_collected::DateTime
     #tUnits::String
-    #dt::T
     #chNames::Array{String, 1}
     #chUnits::Array{String, 1}
     #labels::Array{String, 1}
@@ -958,8 +1009,7 @@ function readABF(::Type{T}, abf_path::String;
         verbose::Bool = false
     ) where T <: Real
     abf_info = parseABF(abf_path)
-    path = abf_info["abfPath"]
-    dir = abf_info["abfFolder"]
+
     channel_names = abf_info["adcNames"]
     #Pull out the requested sweeps
     if isa(swps, Vector{Int64})
@@ -994,8 +1044,8 @@ function readABF(::Type{T}, abf_path::String;
     dt = headerSection["dataSecPerPoint"]
     t = collect(1:headerSection["sweepPointCount"]).*dt
     data = headerSection["data"][swp_idxs, :, ch_idxs]
-    stimulus = headerSection["data"][swp_idxs, :, stim_idxs]
-    
+
+    #stimulus = headerSection["data"][swp_idxs, :, stim_idxs]
     stim_protocol = Array{StimulusProtocol}([])
     for s_ch in 1:size(stimulus,3)
         stimulus_values = findall(stimulus .> stim_threshold)
@@ -1022,6 +1072,8 @@ end
 
 readABF(abf_path::String; kwargs...) = readABF(Float64, abf_path ; kwargs...)
 
+#macro readABF()
+
 """
 This function opens the ABF file for analysis
 """
@@ -1033,6 +1085,8 @@ function openABF(abf_path::String)
         #for some reason this throws an error but still opens
     end
 end
+
+openABF(abf_obj::Dict{String, Any}) = openABF()
 """
 Begin writing a new extractABF function
 """
