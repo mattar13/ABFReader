@@ -269,8 +269,6 @@ mutable struct EpochTable
     epochWaveformBySweep::Vector{EpochSweepWaveform}
 end
 
-
-
 Epoch() =  Epoch(" ", "Off", -1, -1, -1, -1, -1, -1, zeros(Int64, 8), -1, -1)
 #EpochTable will be instantiated last
 EpochSweepWaveform() = EpochSweepWaveform([], [], [], [], [], [], [])
@@ -446,7 +444,9 @@ extracts a waveform from the data, digital stimuli, or analog stimuli
         digital -> this is the digital stimulus of the file
 ...
 """
-function getWaveform(abf::Dict{String, Any}, sweep::Int64, channel::Int64; channel_type = :analog)
+function getWaveform(abf::Dict{String, Any}, sweep::Int64, channel::Int64; 
+        channel_type = :analog
+    )
     if channel_type == :data
         #rather than extracting the digital or analog stimuli, we use the actual ADC
         return abf["data"][sweep, :, channel]
@@ -460,6 +460,45 @@ function getWaveform(abf::Dict{String, Any}, sweep::Int64, channel::Int64; chann
         epoch = epochTable.epochWaveformBySweep[sweep] #Load the sweep
         return getDigitalWaveform(epoch, channel) #Load the digital channel
         #the analog channel containing the data is located here
+    end
+end
+
+function getWaveform(abf::Dict{String, Any}, sweep::Union{Vector{Int64}, Int64}, channel::String; 
+        warn_bad_channel = true
+    )
+    #first we check to see if the channel name is in the adc names
+    adc_idx = findall(x -> channel == x,  abf["adcNames"])
+    dac_idx = findall(x -> channel == x, abf["dacNames"])
+    if !isempty(adc_idx)
+        return getWaveform(abf, sweep, adc_idx[1]; channel_type = :data)
+    elseif !isempty(dac_idx)
+        return getWaveform(abf, sweep, dac_idx[1])
+    else
+        channel_ID = lowercase(channel[1:end-1])
+        channel_ID = split(channel_ID, " ")[1] |> string
+        channel_num = tryparse(Int64, channel[end]|>string)
+        if channel_ID == "d" || channel_ID == "dig" || channel_ID == "digital"
+            return getWaveform(abf, sweep, channel_num+1; channel_type = :digital)
+        elseif channel_ID == "an" || channel_ID == "a" || channel_ID == "ana" ||channel_ID == "analog"
+            return getWaveform(abf, sweep, channel_num+1)
+        elseif warn_bad_channel
+            @warn begin "
+            Format [$channel] is invalid
+            
+            Please use one of these formats:
+
+            1) An ADC name from one of these: [$(map(x -> "$x, ", abf["adcNames"]) |>join)]   
+            2) Analog: [A, An , Ana  , Analog ]
+            3) A DAC name from one of these: [$(map(x -> "$x, ", abf["dacNames"]) |>join)]
+            4) Digital: [D , Dig , Digital]
+
+            "
+            end 
+            #throw("Improper channel ID")
+            return nothing #This may be because of a bad channel
+        else
+            return nothing
+        end
     end
 end
 
@@ -488,63 +527,34 @@ function getWaveform(abf::Dict{String, Any}, sweeps::Vector{Int64}, channels::Ve
     return waveforms
 end
 
-function getWaveform(abf::Dict{String, Any}, sweep::Union{Vector{Int64}, Int64}, channel::String)
-    #first we check to see if the channel name is in the adc names
-    adc_idx = findall(x -> channel == x,  abf["adcNames"])
-    dac_idx = findall(x -> channel == x, abf["dacNames"])
-    if !isempty(adc_idx)
-        return getWaveform(abf, sweep, adc_idx[1]; channel_type = :data)
-    elseif !isempty(dac_idx)
-        return getWaveform(abf, sweep, dac_idx[1])
-    else
-        channel_ID = lowercase(channel[1:end-1])
-        channel_ID = split(channel_ID, " ")[1] |> string
-        channel_num = parse(Int64, channel[end])+1
-        if channel_ID == "d" || channel_ID == "dig" || channel_ID == "digital"
-            return getWaveform(abf, sweep, channel_num; channel_type = :digital)
-        elseif channel_ID == "an" || channel_ID == "a" || channel_ID == "ana" ||channel_ID == "analog"
-            return getWaveform(abf, sweep, channel_num)
-        else
-            channel_num -= 1
-            @warn begin "
-            Format [$channel] is invalid
-            
-            Please use one of these formats:
-
-            1) An ADC name from one of these: [$(map(x -> "$x, ", abf["adcNames"]) |>join)]   
-            2) Analog: [A $channel_num, An $channel_num, Ana $channel_num , Analog $channel_num]
-            3) A DAC name from one of these: [$(map(x -> "$x, ", abf["dacNames"]) |>join)]
-            4) Digital: [D $channel_num, Dig $channel_num, Digital $channel_num]
-
-            "
-            end 
-            throw("Improper channel ID")
-        end
-    end
-end
-
-function getWaveform(abf::Dict{String, Any}, channel::String)
+function getWaveform(abf::Dict{String, Any}, channel::String; kwargs...)
     #This function gets called to iterate through all sweeps
-    waveforms = zeros(abf["sweepCount"], abf["sweepPointCount"])
+    waveforms = zeros(abf["sweepCount"], abf["sweepPointCount"], 1)
     for i in 1:abf["sweepCount"]
-        waveforms[i, :] .= getWaveform(abf, i, channel)
+        waveforms[i, :, 1] .= getWaveform(abf, i, channel; kwargs...)
     end
     return waveforms
 end
 
-function getWaveform(abf::Dict{String, Any}, channels::Vector{String})
+function getWaveform(abf::Dict{String, Any}, channels::Vector{String}; kwargs...)
     #This function gets called to iterate through all sweeps
     waveforms = zeros(abf["sweepCount"], abf["sweepPointCount"], length(channels))
     for i in 1:abf["sweepCount"], (j, channel) = enumerate(channels)
-        waveforms[i, :, j] .= getWaveform(abf, i, channel)
+        #we need to protect against mismatched channels
+        waveform = getWaveform(abf, i, channel; kwargs...)
+        if !isnothing(waveform)
+            waveforms[i, :, j] .= waveform
+        else
+            println("our error lies here")
+        end
     end
     return waveforms
 end
 
 function getWaveform(abf::Dict{String, Any}, channel::Int64; kwargs...)
-    waveforms = zeros(abf["sweepCount"], abf["sweepPointCount"])
+    waveforms = zeros(abf["sweepCount"], abf["sweepPointCount"], 1)
     for i in 1:abf["sweepCount"]
-        waveforms[i, :] = getWaveform(abf, i, channel; kwargs...)
+        waveforms[i, :, 1] = getWaveform(abf, i, channel; kwargs...)
     end
     return waveforms
 end
@@ -1072,6 +1082,7 @@ function readABF(::Type{T}, abf_path::String;
         average_sweeps::Bool = false,
         stimulus_name = "D 0",  #One of the best places to store digital stimuli
         stimulus_threshold::T = 2.5, #This is the normal voltage rating on digital stimuli
+        warn_bad_channel = false, #This will warn if a channel is improper
         continuous::Bool = false, #this can be achieved in gap free mode, I will work on that next
         verbose::Bool = false
     ) where T <: Real
@@ -1080,14 +1091,7 @@ function readABF(::Type{T}, abf_path::String;
     dt = abfInfo["dataSecPerPoint"]
     t = collect(1:abfInfo["sweepPointCount"]).*dt
 
-    #we can extract the data using getWaveform from above
-    if sweeps == -1 && channels == -1
-        data = abfInfo["data"]
-    elseif sweeps == -1 && channels != -1
-        data = getWaveform(abfInfo, channels)
-    elseif sweeps != -1 && channels == -1
-        data = abfInfo["data"][sweeps, :, :]
-    end
+
     
     #Pull out the requested channels
     if isa(channels, Vector{String}) #If chs is a vector of channel names extract it as such
@@ -1098,7 +1102,17 @@ function readABF(::Type{T}, abf_path::String;
         ch_idxs = headerSection["channelList"]
     end
     #Extract info for the adc names and units
+    ch_names = Vector{String}(abfInfo["adcNames"][ch_idxs])
     ch_units = Vector{String}(abfInfo["adcUnits"][ch_idxs])
+
+    #we can extract the data using getWaveform from above
+    if sweeps == -1 && channels == -1
+        data = abfInfo["data"]
+    elseif sweeps == -1 && channels != -1
+        data = getWaveform(abfInfo, ch_names; warn_bad_channel = warn_bad_channel)
+    elseif sweeps != -1 && channels == -1
+        data = abfInfo["data"][sweeps, :, :]
+    end
 
     stim_protocol_by_sweep = StimulusProtocol{Float64}[]
     if !isnothing(stimulus_name)
@@ -1117,7 +1131,7 @@ function readABF(::Type{T}, abf_path::String;
         data = sum(data, dims = 1)/size(data,1)
         stim_protocol_by_sweep = stim_protocol_by_sweep[1]
     end
-    return Experiment(abfInfo, dt, t, data, channels, ch_units, stim_protocol_by_sweep)
+    return Experiment(abfInfo, dt, t, data, ch_names, ch_units, stim_protocol_by_sweep)
 end
 
 readABF(abf_path::String; kwargs...) = readABF(Float64, abf_path ; kwargs...)
