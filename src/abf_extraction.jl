@@ -1080,7 +1080,7 @@ function readABF(::Type{T}, abf_path::String;
         sweeps = -1, 
         channels = ["Vm_prime","Vm_prime4"], 
         average_sweeps::Bool = false,
-        stimulus_name = "D 0",  #One of the best places to store digital stimuli
+        stimulus_name = "IN 7",  #One of the best places to store digital stimuli
         stimulus_threshold::T = 2.5, #This is the normal voltage rating on digital stimuli
         warn_bad_channel = false, #This will warn if a channel is improper
         continuous::Bool = false, #this can be achieved in gap free mode, I will work on that next
@@ -1090,8 +1090,6 @@ function readABF(::Type{T}, abf_path::String;
 
     dt = abfInfo["dataSecPerPoint"]
     t = collect(1:abfInfo["sweepPointCount"]).*dt
-
-
     
     #Pull out the requested channels
     if isa(channels, Vector{String}) #If chs is a vector of channel names extract it as such
