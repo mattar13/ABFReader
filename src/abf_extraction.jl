@@ -502,15 +502,22 @@ function getWaveform(abf::Dict{String, Any}, sweep::Union{Vector{Int64}, Int64},
         elseif channel_ID == "an" || channel_ID == "a" || channel_ID == "ana" ||channel_ID == "analog"
             return getWaveform(abf, sweep, channel_num)
         else
-            println("Please use one of these formats: ̸
-                1) Digital: [D, Dig, Digital]
-                2) Analog: [A, An, Ana, Analog]
-            ")  
+            
+            @warn begin "
+            Format [$channel] is invalid
+            
+            Please use one of these formats:
+
+            1) An ADC name from one of these: [$(map(x -> "$x, ", abf["adcNames"]) |>join)]   
+            1) Digital: [D, Dig, Digital]
+            2) Analog: [A, An, Ana, Analog]
+
+            "
+            end 
             throw("Improper channel ID")
         end
     end
 end
-
 
 function getWaveform(abf::Dict{String, Any}, channel::String)
     #This function gets called to iterate through all sweeps
@@ -1011,10 +1018,8 @@ mutable struct Experiment{T}
     dt::T
     t::Array{T, 1}
     data_array::Array{T, 3}
-    #date_collected::DateTime
-    #tUnits::String
-    #chNames::Array{String, 1}
-    #chUnits::Array{String, 1}
+    chNames::Array{String, 1}
+    chUnits::Array{String, 1}
     #labels::Array{String, 1}
     #stim_protocol::Array{StimulusProtocol}
     #filename::Array{String,1}
@@ -1061,8 +1066,8 @@ and the data file can be indexed by simply calling the datafile and then providi
 ...
 """
 function readABF(::Type{T}, abf_path::String; 
-        swps = -1, 
-        chs = ["Vm_prime","Vm_prime4", "IN 7"], 
+        sweeps = -1, 
+        channels = ["Vm_prime","Vm_prime4", "IN 7"], 
         average_sweeps::Bool = false,
         stim_name = ["IN 7"], 
         stim_threshold::T = 0.2,
@@ -1070,25 +1075,34 @@ function readABF(::Type{T}, abf_path::String;
         continuous::Bool = false, #this can be achieved in gap free mode, I will work on that next
         verbose::Bool = false
     ) where T <: Real
-    abf_info = parseABF(abf_path)
+    abfInfo = parseABF(abf_path)
 
-    channel_names = abf_info["adcNames"]
-    #Pull out the requested sweeps
-    if isa(swps, Vector{Int64})
-        swp_idxs = swps
-    elseif swps == -1
-        swp_idxs = headerSection["sweepList"]
+    dt = abfInfo["dataSecPerPoint"]
+    t = collect(1:abfInfo["sweepPointCount"]).*dt
+
+    #we can extract the data using getWaveform from above
+    if sweeps == -1 && channels == -1
+        data = abfInfo["data"]
+    elseif sweeps == -1 && channels != -1
+        data = getWaveform(abfInfo, channels)
+    elseif sweeps != -1 && channels == -1
+        data = abfInfo["data"]
     end
-
+    
+    channel_names = abfInfo["adcNames"]
     #Pull out the requested channels
-    if isa(chs, Vector{String}) #If chs is a vector of channel names extract it as such
+    if isa(channels, Vector{String}) #If chs is a vector of channel names extract it as such
         ch_idxs = findall(ch -> ch ∈ chs, channel_names)
     elseif isa(chs, Vector{Int64}) #If chs is a vector of ints
         ch_idxs = chs
     elseif chs == -1 #if chs is -1 extract all channels
         ch_idxs = headerSection["channelList"]
     end
-    
+    #Extract info for the adc names and units
+    ch_units = abfInfo["adcUnits"][ch_idxs]
+
+
+
     #This section we will rework to include getting analog and digital inputs
     #stim_protocol = Array{StimulusProtocol}([])
     stim_idxs = Int64[]
@@ -1100,13 +1114,8 @@ function readABF(::Type{T}, abf_path::String;
         end
     end
 
-    #Extract info for the adc names and units
-    ch_names = headerSection["adcNames"][ch_idxs]
-    ch_units = headerSection["adcUnits"][ch_idxs]
 
-    dt = headerSection["dataSecPerPoint"]
-    t = collect(1:headerSection["sweepPointCount"]).*dt
-    data = headerSection["data"][swp_idxs, :, ch_idxs]
+
 
     #stimulus = headerSection["data"][swp_idxs, :, stim_idxs]
     stim_protocol = Array{StimulusProtocol}([])
