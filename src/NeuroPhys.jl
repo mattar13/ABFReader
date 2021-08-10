@@ -4,7 +4,7 @@ pkg_dir = joinpath(splitpath(pathof(NeuroPhys))[1:end-2]...)
 export pkg_dir
 
 using Base: String, println
-is_working() = println("And you can revise!") 
+is_working() = println("Test this push, for some reason it's not working") 
 #Imports
 using PyCall
 using Plots
