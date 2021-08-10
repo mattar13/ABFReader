@@ -295,20 +295,20 @@ file_format = [
 ]
 
 format_bank_PAUL = [
-    ("\\", ~, ~, ~, :Project, 
+    ("\\", ~, ~, ~, :Project, ~, 
           ("_", :Year, :Month, :Date, check_geno, check_age, :Animal), 
           NeuroPhys.check_drugs, NeuroPhys.check_pc, NeuroPhys.check_color, 
           NeuroPhys.file_format
      ),
-     ("\\", ~, ~, ~, :Project, 
-          ("_", :Year, :Month, :Date, :Genotype, check_age, :Animal), 
+     ("\\", ~, ~, ~, :Project, ~, 
+          ("_", :Year, :Month, :Date, check_geno,  check_age, :Animal), 
           NeuroPhys.check_drugs, NeuroPhys.check_pc, NeuroPhys.check_color, 
           NeuroPhys.file_format, 
           (".", NeuroPhys.choose_words, ~)
      ),
 
-    ("\\", ~, ~, ~, :Project, 
-          ("_", :Year, :Month, :Date, :Genotype, check_age, :Animal), 
+    ("\\", ~, ~, ~, :Project, ~, 
+          ("_", :Year, :Month, :Date, check_geno,  check_age, :Animal), 
           NeuroPhys.check_pc, NeuroPhys.check_drugs, NeuroPhys.check_color, 
           NeuroPhys.file_format, 
           (".", NeuroPhys.choose_words, ~)
