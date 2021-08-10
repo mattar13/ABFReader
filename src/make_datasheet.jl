@@ -150,7 +150,7 @@ function update_datasheet(
                                         else
                                              photoreceptor = "Rods"
                                         end
-                                        stim_protocol = extract_stimulus(new_file)
+                                        stim_protocol = extract_stimulus(new_file, 1)
                                         tstops = stim_protocol.timestamps
                                         stim_time = round((tstops[2]-tstops[1])*1000)
                                         photon = photon_lookup(
@@ -178,7 +178,7 @@ function update_datasheet(
                                    else
                                         photoreceptor = "Rods"
                                    end
-                                   stim_protocol = extract_stimulus(new_file)
+                                   stim_protocol = extract_stimulus(new_file, 1)
                                    tstops = stim_protocol.timestamps
                                    stim_time = round((tstops[2]-tstops[1])*1000)
                                    photon = photon_lookup(
