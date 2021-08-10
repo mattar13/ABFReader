@@ -1124,6 +1124,7 @@ function readABF(::Type{T}, abf_path::String;
         data = sum(data, dims = 1)/size(data,1)
         stim_protocol_by_sweep = stim_protocol_by_sweep[1]
     end
+    return Experiment(abfInfo, dt, t, data, chNames, chUnits, stim_protocol_by_sweep)
     #return Experiment(headerSection, [1.0])
 end
 
