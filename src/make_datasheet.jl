@@ -43,7 +43,7 @@ function update_datasheet(
                               end
                          end
 
-                         stim_protocol = extract_stimulus(path)
+                         stim_protocol = extract_stimulus(path, 1)
                          tstops = stim_protocol.timestamps
                          stim_time = round((tstops[2]-tstops[1])*1000)
                          all_files[idx, :Stim_time] = stim_time
