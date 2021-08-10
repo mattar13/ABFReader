@@ -37,6 +37,8 @@ NeuroPhys.getWaveform(abf_12swp, 1, "D 0") #Get all related sweeps to digital 0
 data1 = readABF(target_path1); #Extract the data for filtering
 data2 = readABF(target_path2; channels = ["Vm_prime", "Vm_prime4"]); #Extract the data for concatenation analysis
 println("File extraction works")
+
+data1.infoDict["dataSecPerPoint"]
 #%% Test inline filtering functions
 truncate_data!(data1);
 truncate_data!(data2);
