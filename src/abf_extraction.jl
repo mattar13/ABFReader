@@ -1017,6 +1017,14 @@ Fields:
     labels: The labels for [X (Time), Y (Membrane Voltage), Command, DigitalOut]
     stimulus_ch: If there is a channel to set as the stimulus, this will remember that channel, otherwise, this is set to -1
 """
+mutable struct StimulusProtocol{T}
+    type::Symbol
+    sweep::Int64
+    channel::Union{String, Int64}
+    index_range::Tuple{Int64,Int64}
+    timestamps::Tuple{T,T}
+end
+
 mutable struct Experiment{T}
     infoDict::Dict{String, Any}
     dt::T
@@ -1024,16 +1032,8 @@ mutable struct Experiment{T}
     data_array::Array{T, 3}
     chNames::Array{String, 1}
     chUnits::Array{String, 1}
-    stim_protocol::Array{StimulusProtocol}
+    stim_protocol::Vector{StimulusProtocol{T}}
     #labels::Array{String, 1}
-end
-
-mutable struct StimulusProtocol{T}
-    type::Symbol
-    sweep::Int64
-    channel::Union{String, Int64}
-    index_range::Tuple{Int64,Int64}
-    timestamps::Tuple{T,T}
 end
 
 function StimulusProtocol(type::Symbol, sweep::Int64, channel::Union{Int64, String}, index_range::Tuple{T, T}, t::Vector) where T <: Real
@@ -1105,9 +1105,9 @@ function readABF(::Type{T}, abf_path::String;
         ch_idxs = headerSection["channelList"]
     end
     #Extract info for the adc names and units
-    ch_units = abfInfo["adcUnits"][ch_idxs]
+    ch_units = Vector{String}(abfInfo["adcUnits"][ch_idxs])
 
-    stim_protocol_by_sweep = Array{StimulusProtocol}([])
+    stim_protocol_by_sweep = StimulusProtocol[]
     if !isnothing(stimulus_name)
         stimulus_waveform = getWaveform(abfInfo, stimulus_name)
         for swp in 1:size(stimulus_waveform, 1)
@@ -1117,14 +1117,13 @@ function readABF(::Type{T}, abf_path::String;
             push!(stim_protocol_by_sweep, stimulus_protocol)
         end
     end
-    println(stim_protocol_by_sweep)
     #This section we will rework to include getting analog and digital inputs
 
     if average_sweeps == true
         data = sum(data, dims = 1)/size(data,1)
-        stim_protocol_by_sweep = stim_protocol_by_sweep[1]
+        stim_protocol_by_sweep = [stim_protocol_by_sweep[1]]
     end
-    return Experiment(abfInfo, dt, t, data, chNames, chUnits, stim_protocol_by_sweep)
+    return Experiment(abfInfo, dt, t, data, channels, ch_units, stim_protocol_by_sweep)
     #return Experiment(headerSection, [1.0])
 end
 
