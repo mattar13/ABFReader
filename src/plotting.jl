@@ -61,10 +61,10 @@ Plotting function.
             label := label
         end
         if size(exp,3) == 1 && isnothing(xlabels)
-            xlabels = "Time ($(exp.tUnits))"
+            xlabels = "Time (sec)"
         elseif isnothing(xlabels)
             xlabels = reshape(repeat([""], size(exp,3)-1), (1, size(exp,3)-1))
-            xlabels[end] = "Time ($(exp.tUnits))"
+            xlabels[end] = "Time (sec)"
         else
             xlabels = xlabels
         end
