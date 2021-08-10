@@ -17,8 +17,8 @@ using Dates
 using Telegram, Telegram.API, ConfigEnv
 #Functions that can help with file extraction
 include("file_formatting.jl")
-export formatted_split, format_bank
-export check_age, check_color, check_pc, check_geno, get_root, contains_words, condition_check
+export formatted_split, format_bank_PAUL, format_bank_RS, format_bank_GNAT
+#export check_age, check_color, check_pc, check_geno, get_root, contains_words, condition_check
 export parse_abf
 export number_extractor, filename_extractor
 

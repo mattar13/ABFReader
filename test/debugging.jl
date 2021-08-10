@@ -4,27 +4,17 @@ using DataFrames, XLSX, Query, Statistics, StatsBase
 dotenv("D\\.env")
 using Dates, Plots
 
-#%% Extract the abf file details
-filename = "test\\to_analyze.abf"
-exp = readABF(filename; average_sweeps = true)
-
-#if we need to open the ABF use this function
-@time abfInfo = NeuroPhys.readABFHeader(filename)
-data = NeuroPhys.getWaveform(abfInfo, ["Vm_prime","Vm_prime4", "IN 7"])
-d0 = NeuroPhys.getWaveform(abfInfo, "D0")
-
-plot(d0[1,:], xlims = (73100, 73200))
-plot!(data[1,:,3])
-epochTable = abfInfo["EpochTableByChannel"][1]
-#%%
-openABF(filename)
-#%% we want to go through and add only the most necessary things to the experiment object
-
-
-#%%
-data_old = extract_abf(filename)
-data_old[1, :, 1]
-
+#%% Lets test all the fileformats in the RS file structure
+root_rs = "E:\\Data\\ERG\\Retinoschisis\\"
+rs_paths = root_rs |> parse_abf
+incorrect_formats = []
+for (i, file) in enumerate(rs_paths)
+     format = formatted_split(file, format_bank_RS)
+     if isnothing(format)
+          push!(incorrect_formats, file)
+     end
+end
+incorrect_formats
 #%% Lets make a dataframe that does not alter the other dataframe categories
 root1 = "E:\\Data\\ERG\\Gnat\\"
 gnat_paths = root1 |> parse_abf

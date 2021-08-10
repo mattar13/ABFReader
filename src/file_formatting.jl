@@ -233,7 +233,7 @@ function check_age(x::String)
 end
 
 function check_geno(x; 
-        possible = ["DR", "WT", "GNAT-KO", "GNAT-HT", "UN", "RS1KO", "R141C"]
+        possible = ["DR", "WT", "GNAT-KO", "GNAT-HT", "UN", "RS1KO", "R141C", "C59S"]
     ) 
     #Don't seperate the numbers
     if x ∈ possible
@@ -320,6 +320,12 @@ format_bank_RS = [
             ("_", :Year, :Month, :Date, ~, ~), 
             ("_", :Animal, check_age, check_geno), 
             condition_check, :Photoreceptor, check_color, file_format
+    ),
+
+    ("\\", :Drive, ~, :Method, :Project, 
+            ("_", :Year, :Month, :Date, ~, ~), 
+            ("_", :Animal, check_age, check_geno), 
+            condition_check, :Photoreceptor, file_format
     ),
     
     ("\\", :Drive, ~, :Method, :Project, 
