@@ -152,9 +152,9 @@ function update_datasheet(
                                         end
 
                                         if haskey(nt, :Wavelength) #This happens in some rod files, the wavelength is 525
-                                             wavelength = 525
-                                        else
                                              wavelength = nt.Wavelength
+                                        else
+                                             wavelength = 525
                                         end 
 
                                         stim_protocol = extract_stimulus(new_file, 1)
@@ -187,9 +187,9 @@ function update_datasheet(
                                    end
 
                                    if haskey(nt, :Wavelength) #This happens in some rod files, the wavelength is 525
-                                        wavelength = 525
-                                   else
                                         wavelength = nt.Wavelength
+                                   else
+                                        wavelength = 525
                                    end 
                                    stim_protocol = extract_stimulus(new_file, 1)
                                    tstops = stim_protocol.timestamps
