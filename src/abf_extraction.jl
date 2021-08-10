@@ -837,6 +837,7 @@ function readABFHeader(::Type{T}, filename::String;
             "abfPath" => filename, 
             "abfFolder" => "\\"
         ) 
+    end
 
     open(filename, "r") do f #Do everything within this loop
         headerSection = readHeaderSection(f)
