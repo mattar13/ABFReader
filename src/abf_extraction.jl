@@ -1032,7 +1032,7 @@ mutable struct Experiment{T}
     data_array::Array{T, 3}
     chNames::Array{String, 1}
     chUnits::Array{String, 1}
-    stim_protocol::Vector{StimulusProtocol{T}}
+    stim_protocol::Union{Vector{StimulusProtocol{T}}, StimulusProtocol{T}}
     #labels::Array{String, 1}
 end
 
@@ -1107,7 +1107,7 @@ function readABF(::Type{T}, abf_path::String;
     #Extract info for the adc names and units
     ch_units = Vector{String}(abfInfo["adcUnits"][ch_idxs])
 
-    stim_protocol_by_sweep = StimulusProtocol[]
+    stim_protocol_by_sweep = StimulusProtocol{Float64}[]
     if !isnothing(stimulus_name)
         stimulus_waveform = getWaveform(abfInfo, stimulus_name)
         for swp in 1:size(stimulus_waveform, 1)
@@ -1121,10 +1121,9 @@ function readABF(::Type{T}, abf_path::String;
 
     if average_sweeps == true
         data = sum(data, dims = 1)/size(data,1)
-        stim_protocol_by_sweep = [stim_protocol_by_sweep[1]]
+        stim_protocol_by_sweep = stim_protocol_by_sweep[1]
     end
     return Experiment(abfInfo, dt, t, data, channels, ch_units, stim_protocol_by_sweep)
-    #return Experiment(headerSection, [1.0])
 end
 
 readABF(abf_path::String; kwargs...) = readABF(Float64, abf_path ; kwargs...)
