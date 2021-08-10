@@ -418,7 +418,7 @@ function getDigitalWaveform(e::EpochSweepWaveform, channel)
     sweepD = zeros(e.p2s[end])
     for i in 1:length(e.levels)-1
         digitalState = e.digitalStates[i]
-        digitalStateForChannel = digitalState[channel]
+        digitalStateForChannel = digitalState[channel]*5 #for voltage output
         #println(e.p1s[i])
         #println(e.p2s[i])
         sweepD[(e.p1s[i]+1):(e.p2s[i]+1)] .= digitalStateForChannel
@@ -490,9 +490,12 @@ end
 
 function getWaveform(abf::Dict{String, Any}, sweep::Union{Vector{Int64}, Int64}, channel::String)
     #first we check to see if the channel name is in the adc names
-    data_idx = findall(x -> channel == x,  abf["adcNames"])
-    if !isempty(data_idx)
-        return getWaveform(abf, sweep, data_idx[1]; channel_type = :data)
+    adc_idx = findall(x -> channel == x,  abf["adcNames"])
+    dac_idx = findall(x -> channel == x, abf["dacNames"])
+    if !isempty(adc_idx)
+        return getWaveform(abf, sweep, adc_idx[1]; channel_type = :data)
+    elseif !isempty(dac_idx)
+        return getWaveform(abf, sweep, dac_idx[1])
     else
         channel_ID = lowercase(channel[1:end-1])
         channel_ID = split(channel_ID, " ")[1] |> string
@@ -502,15 +505,16 @@ function getWaveform(abf::Dict{String, Any}, sweep::Union{Vector{Int64}, Int64},
         elseif channel_ID == "an" || channel_ID == "a" || channel_ID == "ana" ||channel_ID == "analog"
             return getWaveform(abf, sweep, channel_num)
         else
-            
+            channel_num -= 1
             @warn begin "
             Format [$channel] is invalid
             
             Please use one of these formats:
 
             1) An ADC name from one of these: [$(map(x -> "$x, ", abf["adcNames"]) |>join)]   
-            1) Digital: [D, Dig, Digital]
-            2) Analog: [A, An, Ana, Analog]
+            2) Analog: [A $channel_num, An $channel_num, Ana $channel_num , Analog $channel_num]
+            3) A DAC name from one of these: [$(map(x -> "$x, ", abf["dacNames"]) |>join)]
+            4) Digital: [D $channel_num, Dig $channel_num, Digital $channel_num]
 
             "
             end 
@@ -1020,20 +1024,23 @@ mutable struct Experiment{T}
     data_array::Array{T, 3}
     chNames::Array{String, 1}
     chUnits::Array{String, 1}
+    stim_protocol::Array{StimulusProtocol}
     #labels::Array{String, 1}
-    #stim_protocol::Array{StimulusProtocol}
-    #filename::Array{String,1}
 end
 
 mutable struct StimulusProtocol{T}
     type::Symbol
     sweep::Int64
+    channel::Union{String, Int64}
     index_range::Tuple{Int64,Int64}
     timestamps::Tuple{T,T}
 end
 
-StimulusProtocol(type::Symbol) = StimulusProtocol(type, 1, (1, 1), (0.0, 0.0))
-
+function StimulusProtocol(type::Symbol, sweep::Int64, channel::Union{Int64, String}, index_range::Tuple{T, T}, t::Vector) where T <: Real
+    t1 = t[index_range[1]]
+    t2 = t[index_range[2]]
+    StimulusProtocol(type, sweep, channel, index_range, (t1, t2))
+end
 
 """
     extract_abf(T, path::String, 
@@ -1067,15 +1074,14 @@ and the data file can be indexed by simply calling the datafile and then providi
 """
 function readABF(::Type{T}, abf_path::String; 
         sweeps = -1, 
-        channels = ["Vm_prime","Vm_prime4", "IN 7"], 
+        channels = ["Vm_prime","Vm_prime4"], 
         average_sweeps::Bool = false,
-        stim_name = ["IN 7"], 
-        stim_threshold::T = 0.2,
-        keep_stimulus_channel::Bool = false,
+        stimulus_name = "D 0",  #One of the best places to store digital stimuli
+        stimulus_threshold::T = 2.5, #This is the normal voltage rating on digital stimuli
         continuous::Bool = false, #this can be achieved in gap free mode, I will work on that next
         verbose::Bool = false
     ) where T <: Real
-    abfInfo = parseABF(abf_path)
+    abfInfo = readABFHeader(abf_path)
 
     dt = abfInfo["dataSecPerPoint"]
     t = collect(1:abfInfo["sweepPointCount"]).*dt
@@ -1086,13 +1092,13 @@ function readABF(::Type{T}, abf_path::String;
     elseif sweeps == -1 && channels != -1
         data = getWaveform(abfInfo, channels)
     elseif sweeps != -1 && channels == -1
-        data = abfInfo["data"]
+        data = abfInfo["data"][sweeps, :, :]
     end
     
     channel_names = abfInfo["adcNames"]
     #Pull out the requested channels
     if isa(channels, Vector{String}) #If chs is a vector of channel names extract it as such
-        ch_idxs = findall(ch -> ch ∈ chs, channel_names)
+        ch_idxs = findall(ch -> ch ∈ channels, channel_names)
     elseif isa(chs, Vector{Int64}) #If chs is a vector of ints
         ch_idxs = chs
     elseif chs == -1 #if chs is -1 extract all channels
@@ -1101,43 +1107,22 @@ function readABF(::Type{T}, abf_path::String;
     #Extract info for the adc names and units
     ch_units = abfInfo["adcUnits"][ch_idxs]
 
-
-
-    #This section we will rework to include getting analog and digital inputs
-    #stim_protocol = Array{StimulusProtocol}([])
-    stim_idxs = Int64[]
-    for stim_ch in stim_name
-        stim_idx = findall(channel_names .== stim_ch)
-        push!(stim_idxs, stim_idx[1])
-        if keep_stimulus_channel==false
-            ch_idxs = ch_idxs[ch_idxs .!= stim_idx]
+    stim_protocol_by_sweep = Array{StimulusProtocol}([])
+    if !isnothing(stimulus_name)
+        stimulus_waveform = getWaveform(abfInfo, stimulus_name)
+        for swp in 1:size(stimulus_waveform, 1)
+            idx1 = findfirst(stimulus_waveform[swp, :] .> stimulus_threshold)
+            idx2 = findlast(stimulus_waveform[swp, :] .> stimulus_threshold)
+            stimulus_protocol = StimulusProtocol(:test, swp, stimulus_name, (idx1, idx2), t)
+            push!(stim_protocol_by_sweep, stimulus_protocol)
         end
     end
-
-
-
-
-    #stimulus = headerSection["data"][swp_idxs, :, stim_idxs]
-    stim_protocol = Array{StimulusProtocol}([])
-    for s_ch in 1:size(stimulus,3)
-        stimulus_values = findall(stimulus .> stim_threshold)
-        #stim_begin = stimulus_idxs[1]
-        #stim_end = stimulus_idxs[end]+1
-        #stim_time_start = t[stim_begin]
-        #stim_time_end = t[stim_end]
-        #stim = StimulusProtocol(
-        #    called|>Symbol, swp_idx, 
-        #    (stim_begin, stim_end), 
-        #    (stim_time_start, stim_time_end)    
-        #)
-        #push!(stim_protocol, stim)
-    end
-    println(stim_protocol)
+    println(stim_protocol_by_sweep)
+    #This section we will rework to include getting analog and digital inputs
 
     if average_sweeps == true
         data = sum(data, dims = 1)/size(data,1)
-        println(data |> size)
-        #stim_protocol = [stim_protocol[1]]
+        stim_protocol_by_sweep = stim_protocol_by_sweep[1]
     end
     #return Experiment(headerSection, [1.0])
 end
