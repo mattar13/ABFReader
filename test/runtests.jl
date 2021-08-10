@@ -23,18 +23,19 @@ NeuroPhys.getWaveform(abf_12swp, 1; channel_type = :analog) #get waveform of mul
 NeuroPhys.getWaveform(abf_12swp, 1; channel_type = :digital) #get waveform of multisweep analog
 
 #use strings to get the waveforms
-NeuroPhys.getWaveform(abf_12swp, "An 0", 1)
-NeuroPhys.getWaveform(abf_12swp, "Ana 0", 1)
-NeuroPhys.getWaveform(abf_12swp, "Analog 0", 1)
-NeuroPhys.getWaveform(abf_12swp, "An 0") #Get all related sweeps to analog 0
+NeuroPhys.getWaveform(abf_12swp, 1, "An 0")
+NeuroPhys.getWaveform(abf_12swp, 1, "Ana 0")
+NeuroPhys.getWaveform(abf_12swp, 1, "Analog 0")
+NeuroPhys.getWaveform(abf_12swp, 1, "An 0") #Get all related sweeps to analog 0
+NeuroPhys.getWaveform(abf_12swp, 1, "Cmd 0") #Get all related sweeps to analog 0
 
-NeuroPhys.getWaveform(abf_12swp, "D 0", 1)
-NeuroPhys.getWaveform(abf_12swp, "Dig 0", 1)
-NeuroPhys.getWaveform(abf_12swp, "Digital 0", 1)
-NeuroPhys.getWaveform(abf_12swp, "D 0") #Get all related sweeps to digital 0
+NeuroPhys.getWaveform(abf_12swp, 1, "D 0")
+NeuroPhys.getWaveform(abf_12swp, 1, "Dig 0")
+NeuroPhys.getWaveform(abf_12swp, 1, "Digital 0")
+NeuroPhys.getWaveform(abf_12swp, 1, "D 0") #Get all related sweeps to digital 0
 
-data1 = extract_abf(target_path1); #Extract the data for filtering
-data2 = extract_abf(target_path2; swps = -1, chs = [1,3,5]); #Extract the data for concatenation analysis
+data1 = readABF(target_path1); #Extract the data for filtering
+data2 = readABF(target_path2; channels = ["Vm_prime", "Vm_prime4"]); #Extract the data for concatenation analysis
 println("File extraction works")
 #%% Test inline filtering functions
 truncate_data!(data1);
