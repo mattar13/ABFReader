@@ -827,18 +827,8 @@ function readABFHeader(::Type{T}, filename::String;
     data = T[]
     #Can we go through and convert anything before loading
     file_dir = splitpath(filename)
-    if length(file_dir) > 1
-        headerSection = Dict{String, Any}(        
-            "abfPath" => filename, 
-            "abfFolder" => joinpath(file_dir[1:end-1]...)
-        ) 
-    else
-        headerSection = Dict{String, Any}(        
-            "abfPath" => filename, 
-            "abfFolder" => "\\"
-        ) 
-    end
 
+    headerSection = Dict{String, Any}()
     open(filename, "r") do f #Do everything within this loop
         headerSection = readHeaderSection(f)
         ProtocolSection = readProtocolSection(f, headerSection["ProtocolSection"]...) #Read the binary info for the ProtocolSection
@@ -1004,6 +994,15 @@ function readABFHeader(::Type{T}, filename::String;
         
         #We want to try to read more info from the DAC
     end
+
+    if length(file_dir) > 1
+        headerSection["abfPath"] = filename 
+        headerSection["abfFolder"] = joinpath(file_dir[1:end-1]...)
+    else
+        headerSection["abfPath"] = filename 
+        headerSection["abfFolder"] = "\\"
+    end
+
     return headerSection #Finally return the headerSection as a dictionary
 end
 
@@ -1051,34 +1050,21 @@ function StimulusProtocol(type::Symbol, sweep::Int64, channel::Union{Int64, Stri
 end
 
 """
-    extract_abf(T, path::String, 
-        [, 
-            stim_ch, stim_name, stim_threshold, keep_stimulus_channel, 
-            swps, chs, 
-            continuous, average_sweeps, verbose
-        ]
-    ) where T <: Real
+this function utilizes all julia to extract ABF file data
+"""
 
-Extracts the abf file by utilizing the pyABF function. In order for this to work, 
-miniconda must have installed pyABF. T specified at the beginning is the type in which
-the data will be converted into once it is extracted. This defaults to Float64. 
+function extract_stimulus(abfInfo::Dict{String, Any}, sweep::Int64; stimulus_name = "IN 7", stimulus_threshold::Float64 = 2.5)
+    dt = abfInfo["dataSecPerPoint"]
+    stimulus_waveform = getWaveform(abfInfo, stimulus_name)
+    idx1 = findfirst(stimulus_waveform[sweep, :] .> stimulus_threshold)
+    idx2 = findlast(stimulus_waveform[sweep, :] .> stimulus_threshold)
+    StimulusProtocol(:test, sweep, stimulus_name, (idx1, idx2), (idx1*dt, idx2*dt))
+end
 
-The data extracted will be in the size of 
-    (sweeps, datapoints, channels)
-and the data file can be indexed by simply calling the datafile and then providing the indexes. 
+extract_stimulus(abf_path::String, sweep::Int64; kwargs...) = extract_stimulus(readABFHeader(abf_path), sweep; kwargs...)
 
-...
-#Arguments
-    -'swps':The sweeps chosen to extract. If sweeps is set to -1, this extracts all sweeps (Default behavior)
-    -'chs':The channels that will be extracted from the datafile. If chs is set to -1, this extracts all channels
-    -'stim_ch': The channel which is set to be the explicit stimulus 
-    -'stim_name': This is the type of stimulus that will be included in the datafile
-    -'stim_threshold::T = 0.2': This is the threshold set for determining the stimulus. In some cases this might need to be higher
-    -'keep_stimulus_channel::Bool': In some cases, it may be useful for keeping the stimulus channel, but most of the time it can be stored in a different file
-    -'continuous::Bool': Some recordings are large files broken down as gap-free sweeps. This mode places all data points in one sweep. By default this is false
-    -'average_sweeps::Bool':In some cases all of the sweeps can be averaged from opening the file. (in terms of concatenations). By default this is false. 
-    -'verbose::Bool': With ease of debugging, this can be activated to print more detailed reports of how the function is working. 
-...
+"""
+   Edit this documentation
 """
 function readABF(::Type{T}, abf_path::String; 
         sweeps = -1, 
@@ -1116,12 +1102,13 @@ function readABF(::Type{T}, abf_path::String;
 
     stim_protocol_by_sweep = StimulusProtocol{Float64}[]
     if !isnothing(stimulus_name)
-        stimulus_waveform = getWaveform(abfInfo, stimulus_name)
-        for swp in 1:size(stimulus_waveform, 1)
-            idx1 = findfirst(stimulus_waveform[swp, :] .> stimulus_threshold)
-            idx2 = findlast(stimulus_waveform[swp, :] .> stimulus_threshold)
-            stimulus_protocol = StimulusProtocol(:test, swp, stimulus_name, (idx1, idx2), t)
-            push!(stim_protocol_by_sweep, stimulus_protocol)
+        for swp in 1:size(data,1)
+            push!(stim_protocol_by_sweep, 
+                extract_stimulus(
+                        abfInfo, swp; 
+                        stimulus_name = stimulus_name, stimulus_threshold = stimulus_threshold
+                    )
+                )
         end
     end
     #This section we will rework to include getting analog and digital inputs
@@ -1135,10 +1122,8 @@ end
 
 readABF(abf_path::String; kwargs...) = readABF(Float64, abf_path ; kwargs...)
 
-#macro readABF()
-
 """
-This function opens the ABF file for analysis
+This function opens the ABF file in clampfit
 """
 function openABF(abf_path::String)
     try
@@ -1149,7 +1134,9 @@ function openABF(abf_path::String)
     end
 end
 
-openABF(abf_obj::Dict{String, Any}) = openABF()
+openABF(abfDict::Dict{String, Any}) = openABF(abfDict["abfPath"])
+openABF(exp::Experiment) = openABF(exp.infoDict)
+
 """
 Begin writing a new extractABF function
 """
