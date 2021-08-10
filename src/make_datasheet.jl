@@ -150,11 +150,18 @@ function update_datasheet(
                                         else
                                              photoreceptor = "Rods"
                                         end
+
+                                        if haskey(nt, :Wavelength) #This happens in some rod files, the wavelength is 525
+                                             wavelength = 525
+                                        else
+                                             wavelength = nt.Wavelength
+                                        end 
+
                                         stim_protocol = extract_stimulus(new_file, 1)
                                         tstops = stim_protocol.timestamps
                                         stim_time = round((tstops[2]-tstops[1])*1000)
                                         photon = photon_lookup(
-                                             nt.Wavelength, nt.ND, nt.Percent, 1.0, calibration_file
+                                             wavelength, nt.ND, nt.Percent, 1.0, calibration_file
                                         )
                                         if isnothing(photon)
                                              photon = 0.0
@@ -163,7 +170,7 @@ function update_datasheet(
                                         push!(all_files, (
                                                        new_file, 
                                                        nt.Year, nt.Month, nt.Date, 
-                                                       nt.Animal, nt.Age, nt.Genotype, nt.Condition, nt.Wavelength,
+                                                       nt.Animal, nt.Age, nt.Genotype, nt.Condition, wavelength,
                                                        photoreceptor, 
                                                        nt.ND, nt.Percent, stim_time, 
                                                        photon*stim_time
@@ -178,11 +185,17 @@ function update_datasheet(
                                    else
                                         photoreceptor = "Rods"
                                    end
+
+                                   if haskey(nt, :Wavelength) #This happens in some rod files, the wavelength is 525
+                                        wavelength = 525
+                                   else
+                                        wavelength = nt.Wavelength
+                                   end 
                                    stim_protocol = extract_stimulus(new_file, 1)
                                    tstops = stim_protocol.timestamps
                                    stim_time = round((tstops[2]-tstops[1])*1000)
                                    photon = photon_lookup(
-                                        nt.Wavelength, nt.ND, nt.Percent, stim_time, calibration_file
+                                        wavelength, nt.ND, nt.Percent, stim_time, calibration_file
                                    )
                                    if isnothing(photon)
                                         photon = 0.0
@@ -191,7 +204,7 @@ function update_datasheet(
                                    push!(all_files, (
                                                   new_file, 
                                                   nt.Year, nt.Month, nt.Date, 
-                                                  nt.Animal, nt.Age, nt.Genotype, nt.Condition, nt.Wavelength,
+                                                  nt.Animal, nt.Age, nt.Genotype, nt.Condition, wavelength,
                                                   photoreceptor, 
                                                   nt.ND, nt.Percent, stim_time, 
                                                   photon
