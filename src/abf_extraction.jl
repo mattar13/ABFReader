@@ -826,10 +826,17 @@ function readABFHeader(::Type{T}, filename::String;
     ) where T <: Real
     data = T[]
     #Can we go through and convert anything before loading
-    headerSection = Dict{String, Any}(        
-        "abfPath" => filename, 
-        "abfFolder" => joinpath(splitpath(filename)[1:end-1]...)
-    ) 
+    file_dir = splitpath(filename)
+    if length(file_dir) > 1
+        headerSection = Dict{String, Any}(        
+            "abfPath" => filename, 
+            "abfFolder" => joinpath(file_dir[1:end-1]...)
+        ) 
+    else
+        headerSection = Dict{String, Any}(        
+            "abfPath" => filename, 
+            "abfFolder" => "\\"
+        ) 
 
     open(filename, "r") do f #Do everything within this loop
         headerSection = readHeaderSection(f)
