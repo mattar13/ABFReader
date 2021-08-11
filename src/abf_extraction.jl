@@ -3,8 +3,8 @@ ByteDict = Dict(
     :L => Int64, :l => UInt64,
     :I => Int32, :i => UInt32,
     :H => Int16, :h => UInt16,
+    :B => Int8, :b => UInt8,
     :s => String, :f => Float32, 
-    :b => :Hex, :B => :Byte
 )
 
 digitizers = Dict(
@@ -576,28 +576,20 @@ function readStruct(f::IOStream, byteType::String)
         end
     else
         type_conv = ByteDict[Symbol(byteType)]
-        if type_conv == String || type_conv == :Hex || type_conv == :Byte
+        if type_conv == String
             n_bytes = 1
         else
             n_bytes = sizeof(type_conv)
         end
     end
+
     readbytes!(f, b, n_bytes)
     if type_conv == String
         val = b |> String
-    elseif type_conv == :Hex || type_conv == Int16 ||type_conv == UInt16
+    elseif type_conv == Int16 || type_conv == UInt16 
+        val = Vector{type_conv}(b)[1]
+    elseif type_conv == Int8 || type_conv == UInt8
         val = bytes2hex(b)
-        if type_conv == Int16 || type_conv == UInt16
-            val_try = tryparse(Int32, val[1:2]) #This always adds 2 extra spots onto the end
-            if !isnothing(val_try) #Don't know why this fails sometimes
-                val = val_try
-            else
-                #print the scenario where this fails
-            end
-        end 
-    elseif type_conv == :Byte
-        #This returns just teh byte values
-        val = b
     else
         val = reinterpret(type_conv, b) |> Array
     end
@@ -717,7 +709,9 @@ function readHeaderSection(f::IOStream;
         # GROUP 16 - Miscellaneous variables (82 bytes)
         # missing entries
         # EXTENDED GROUP 2 - File Structure (16 bytes)
+        #These are causing issues
         headerSection["lDACFilePtr"] = readStruct(f, "2i", 2048)
+        println(headerSection["lDACFilePtr"])
         headerSection["lDACFileNumEpisodes"] = readStruct(f, "2i", 2056)
         # EXTENDED GROUP 3 - Trial Hierarchy
         # missing entries
@@ -747,7 +741,38 @@ function readHeaderSection(f::IOStream;
         # EXTENDED GROUP 11 - Presweep (conditioning) pulse train (100 bytes)
         # missing entries
         # EXTENDED GROUP 12 - Variable parameter user list (1096 bytes)
+        if self.fFileVersionNumber > 1.6
+            headerSection["nULEnable"] = readStruct(f, "4i", 3360)
+            headerSection["nULParamToVary"] = readStruct(f, "4i", 3360)
+            headerSection["sULParamValueList"] = readStruct(f, "1024s", 3360)
+            headerSection["nULRepeat"] = readStruct(f, "1024s", 4400)
+        else
+            headerSection["nULEnable"] = []
+            headerSection["nULParamToVary"] = []
+            headerSection["sULParamValueList"] = []
+            headerSection["nULRepeat"] = []
+        end
 
+        # EXTENDED GROUP 15 - On-line subtraction (56 bytes)
+        # missing entries
+        # EXTENDED GROUP 6 Environmental Information  (898 bytes)
+        headerSection["nTelegraphEnable"] = readStruct(f, "16h", 4512)
+        headerSection["nTelegraphInstrument"] = readStruct(f, "16h", 4544)
+        headerSection["fTelegraphAdditGain"] = readStruct(f, "16f", 4576)
+        headerSection["fTelegraphFilter"] = readStruct(f, "16f", 4640)
+        headerSection["fTelegraphMembraneCap"] = readStruct(f, "16f", 4704)
+        headerSection["nTelegraphMode"] = readStruct(f, "16h", 4768)
+        headerSection["nTelegraphDACScaleFactorEnable"] = readStruct(f, "4h", 4800)
+        # missing entries
+        headerSection["sProtocolPath"] = readStruct(f, "256s", 4898)
+        headerSection["sFileCommentNew"] = readStruct(f, "128s", 5154)
+        headerSection["fInstrumentHoldingLevel"] = readStruct(f, "4f", 5298)
+        headerSection["ulFileCRC"] = readStruct(f, "I", 5314)
+        # missing entries
+        headerSection["nCreatorMajorVersion"] = readStruct(f, "h", 5798)
+        headerSection["nCreatorMinorVersion"] = readStruct(f, "h", 5800)
+        headerSection["nCreatorBugfixVersion"] = readStruct(f, "h", 5802)
+        headerSection["nCreatorBuildVersion"] = readStruct(f, "h", 5804)
         return headerSection 
 
     elseif sFileSignature == "ABF2"
@@ -955,7 +980,7 @@ function readProtocolSection(f::IOStream, blockStart, entrySize, entryCount;
         val = readStruct(f, byte_format)
         protocolSection[key] = val
     end
-    protocolSection["sDigitizerType"] = digitizers[protocolSection["nDigitizerType"]]
+    protocolSection["sDigitizerType"] = digitizers[protocolSection["nDigitizerType"][1]]
     return protocolSection
 end
 
@@ -1159,7 +1184,7 @@ function readABFInfo(::Type{T}, filename::String;
     return headerSection #Finally return the headerSection as a dictionary
 end
 
-readABFInfo(filename::String; kwargs...) = readABFHeader(Float64, filename::String; kwargs...)
+readABFInfo(filename::String; kwargs...) = readABFInfo(Float64, filename::String; kwargs...)
 
 """
 This file contains the ABF data traces. It is a generic experiment which doesn't include any other specifics. 
