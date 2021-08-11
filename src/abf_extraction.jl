@@ -844,13 +844,12 @@ function readHeaderSection(f::IOStream;
             physicalChannel = headerSection["nADCSamplingSeq"][i]+1
             logicalChannel = headerSection["nADCPtoLChannelMap"][physicalChannel]
             push!(headerSection["channelList"], i)
-            push!(headerSection["adcUnits"], headerSection["sADCUnits"][physicalChannel])
-            push!(headerSection["adcNames"], headerSection["sADCChannelName"][physicalChannel])
+            push!(headerSection["adcUnits"], rstrip(headerSection["sADCUnits"][physicalChannel]))
+            push!(headerSection["adcNames"], rstrip(headerSection["sADCChannelName"][physicalChannel]))
         end
         
-        headerSection["dacUnits"] = headerSection["sDACChannelUnit"]
-        headerSection["dacNames"] = headerSection["sDACChannelName"]
-        
+        headerSection["dacUnits"] = rstrip.(headerSection["sDACChannelUnit"])
+        headerSection["dacNames"] = rstrip.(headerSection["sDACChannelName"])
         headerSection["dataGain"] = []
         headerSection["dataOffset"] = []
         for i in 1:channelCount
@@ -1011,7 +1010,7 @@ function readHeaderSection(f::IOStream;
         #get the holding command section
         headerSection["holdingCommand"] = DACSection["fDACHoldingLevel"] 
 
-        headerSection["sweepPointCount"] = Int64(dataPointCount/sweepCount/channelCount)
+        headerSection["sweepPointCount"] = sweepPointCount = Int64(dataPointCount/sweepCount/channelCount)
         headerSection["sweepLengthSec"] = sweepPointCount/dataRate
         headerSection["sweepList"] = collect(1:sweepCount)
         #Once we have both adc info and dac info as well as data, we can start actually parsing data
