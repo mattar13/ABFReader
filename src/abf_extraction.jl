@@ -677,7 +677,6 @@ function readHeaderSection(f::IOStream;
         # GROUP 7 - Multi-channel information (1044 bytes)
         headerSection["nADCPtoLChannelMap"] = readStruct(f, "16h", 378)
         headerSection["nADCSamplingSeq"] = readStruct(f, "16h", 410)
-        #seek(f, 442) #set the marker here
         #headerSection["sADCChannelName"] = map(x -> readStruct(f, "10s"), 1:16)
         headerSection["sADCChannelName"] = readStruct(f, "10s", 442, repeat = 16)
         headerSection["sADCUnits"] = readStruct(f, "8s", 602, repeat = 16)
@@ -1110,7 +1109,7 @@ end
 """
 This scans the axon binary and extracts all the most useful header information
 """
-function readABFHeader(::Type{T}, filename::String; 
+function readABFInfo(::Type{T}, filename::String; 
         loadData = true
     ) where T <: Real
     data = T[]
@@ -1160,7 +1159,7 @@ function readABFHeader(::Type{T}, filename::String;
     return headerSection #Finally return the headerSection as a dictionary
 end
 
-readABFHeader(filename::String; kwargs...) = readABFHeader(Float64, filename::String; kwargs...)
+readABFInfo(filename::String; kwargs...) = readABFHeader(Float64, filename::String; kwargs...)
 
 """
 This file contains the ABF data traces. It is a generic experiment which doesn't include any other specifics. 
@@ -1230,7 +1229,7 @@ function readABF(::Type{T}, abf_path::String;
         continuous::Bool = false, #this can be achieved in gap free mode, I will work on that next
         verbose::Bool = false
     ) where T <: Real
-    abfInfo = readABFHeader(abf_path)
+    abfInfo = readABFInfo(abf_path)
 
     dt = abfInfo["dataSecPerPoint"]
     t = collect(1:abfInfo["sweepPointCount"]).*dt
