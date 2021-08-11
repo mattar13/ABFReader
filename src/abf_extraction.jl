@@ -571,8 +571,12 @@ function readStruct(f::IOStream, byteType::String)
             vals = map(c -> readStruct(f, string(c))[1], collect(byteType))
             return vals #Return statement vs continuing
         else
-            n_bytes = parse(Int64, byteType[1:end-1])
             type_conv = ByteDict[Symbol(byteType[end])]
+            if type_conv == String
+                n_bytes = parse(Int64, byteType[1:end-1])
+            else
+                n_bytes = parse(Int64, byteType[1:end-1])*sizeof(type_conv)
+            end
         end
     else
         type_conv = ByteDict[Symbol(byteType)]
@@ -711,7 +715,6 @@ function readHeaderSection(f::IOStream;
         # EXTENDED GROUP 2 - File Structure (16 bytes)
         #These are causing issues
         headerSection["lDACFilePtr"] = readStruct(f, "2i", 2048)
-        println(headerSection["lDACFilePtr"])
         headerSection["lDACFileNumEpisodes"] = readStruct(f, "2i", 2056)
         # EXTENDED GROUP 3 - Trial Hierarchy
         # missing entries
@@ -741,7 +744,7 @@ function readHeaderSection(f::IOStream;
         # EXTENDED GROUP 11 - Presweep (conditioning) pulse train (100 bytes)
         # missing entries
         # EXTENDED GROUP 12 - Variable parameter user list (1096 bytes)
-        if self.fFileVersionNumber > 1.6
+        if headerSection["fFileVersionNumber"][1] > Float32(1.6)
             headerSection["nULEnable"] = readStruct(f, "4i", 3360)
             headerSection["nULParamToVary"] = readStruct(f, "4i", 3360)
             headerSection["sULParamValueList"] = readStruct(f, "1024s", 3360)
