@@ -591,7 +591,7 @@ function readStruct(f::IOStream, byteType::String)
     if type_conv == String
         val = b |> String
     elseif type_conv == Int16 || type_conv == UInt16 
-        val = Vector{type_conv}(b)[1]
+        val = Vector{type_conv}(b)
     elseif type_conv == Int8 || type_conv == UInt8
         val = bytes2hex(b)
     else
@@ -776,6 +776,106 @@ function readHeaderSection(f::IOStream;
         headerSection["nCreatorMinorVersion"] = readStruct(f, "h", 5800)
         headerSection["nCreatorBugfixVersion"] = readStruct(f, "h", 5802)
         headerSection["nCreatorBuildVersion"] = readStruct(f, "h", 5804)
+        
+         # EXTENDED GROUP 13 - Statistics measurements (388 bytes)
+        # missing entries
+        # GROUP 18 - Application version data (16 bytes)
+        headerSection["uFileGUID"] = readStruct(f, "16B", 5282)
+        # missing entries
+        # GROUP 19 - LTP protocol (14 bytes)
+        # missing entries
+        # GROUP 20 - Digidata 132x Trigger out flag. (8 bytes)
+        # missing entries
+        # GROUP 21 - Epoch resistance (56 bytes) // TODO old value of 40 correct??
+        # missing entries
+        # GROUP 22 - Alternating episodic mode (58 bytes)
+        # missing entries
+        # GROUP 23 - Post-processing actions (210 bytes)
+        # missing entries
+        # format version number
+        versionPartsInt = digits(Int64(headerSection["fFileVersionNumber"][1]*1000), base = 10) |> reverse
+        versionParts = map(x -> "$(string(x)).", collect(versionPartsInt)) |> join
+        headerSection["abfVersion"] = versionPartsInt
+        headerSection["abfVersionString"] = versionParts
+        abfVersionDict = Dict{String, Int}()
+
+        abfVersionDict["major"] = versionPartsInt[1]
+        abfVersionDict["minor"] = versionPartsInt[2]
+        abfVersionDict["bugfix"] = versionPartsInt[3]
+        abfVersionDict["build"] = versionPartsInt[4]
+        headerSection["abfVersionDict"] = abfVersionDict
+        #Format the Creater Info Dict
+        headerSection["creatorVersionDict"] = Dict{String, Any}()
+        headerSection["creatorVersionDict"]["major"] = headerSection["nCreatorMajorVersion"]
+        headerSection["creatorVersionDict"]["minor"] = headerSection["nCreatorMinorVersion"]
+        headerSection["creatorVersionDict"]["bugfix"] = headerSection["nCreatorBugfixVersion"]
+        headerSection["creatorVersionDict"]["build"] = headerSection["nCreatorBuildVersion"]
+
+        # Format the FileGUID
+        guid = []
+        for i in [4, 3, 2, 1, 6, 5, 8, 7, 9, 10, 11, 12, 13, 14, 15, 16]
+            push!(guid, headerSection["uFileGUID"][i] |> string)
+        end
+        headerSection["sFileGUID"] = join(guid)
+        d = DateTime(headerSection["lFileStartDate"][1]|>string, DateFormat("yyyymmdd"))
+        t = Millisecond(headerSection["lFileStartTime"][1])
+        headerSection["FileStartDateTime"] = d+t
+        headerSection["dataByteStart"] = (headerSection["lDataSectionPtr"][1] * 512) + headerSection["nNumPointsIgnored"][1]
+        headerSection["dataPointCount"] = dataPointCount = headerSection["lActualAcqLength"][1] |> Int64
+        headerSection["channelCount"] = channelCount = headerSection["nADCNumChannels"][1]|>Int64
+        headerSection["nDataPoints"] =  Int64(dataPointCount/channelCount)
+        headerSection["sweepCount"] = sweepCount = headerSection["lActualEpisodes"][1]|>Int64
+        headerSection["sweepPointCount"] = Int64(dataPointCount/sweepCount/channelCount)
+        headerSection["dataRate"] = (1e6/headerSection["fADCSampleInterval"][1])/channelCount
+        
+        if headerSection["nDataFormat"][1] == 0
+            headerSection["dataType"] = Int16
+        elseif headerSection["nDataFormat"][1] == 1
+            throw("Support for Float64 is not supported")
+            #headerSection["dataType"] = Float32
+        else
+            throw("unknown data format")
+        end
+
+        headerSection["adcUnits"] = []
+        headerSection["adcNames"] = []
+        headerSection["channelList"] = []
+        for i in 1:channelCount
+            physicalChannel = headerSection["nADCSamplingSeq"][i]+1
+            logicalChannel = headerSection["nADCPtoLChannelMap"][physicalChannel]
+            push!(headerSection["channelList"], i)
+            push!(headerSection["adcUnits"], headerSection["sADCUnits"][physicalChannel])
+            push!(headerSection["adcNames"], headerSection["sADCChannelName"][physicalChannel])
+        end
+        
+        headerSection["dacUnits"] = headerSection["sDACChannelUnit"]
+        headerSection["dacNames"] = headerSection["sDACChannelName"]
+        
+        headerSection["dataGain"] = []
+        headerSection["dataOffset"] = []
+        for i in 1:channelCount
+            gain = 1
+            offset = 0
+            gain /= (headerSection["fInstrumentScaleFactor"][i])
+            gain /= (headerSection["fSignalGain"][i])
+            gain /= (headerSection["fADCProgrammableGain"][i])
+            if headerSection["nTelegraphEnable"][i] == 1
+                gain /= (headerSection["fTelegraphAdditGain"][i])
+            end
+            gain *= headerSection["fADCRange"][1]
+            gain /= headerSection["lADCResolution"][1]
+
+            offset += headerSection["fInstrumentOffset"][i]
+            offset -= headerSection["fSignalOffset"][i]
+
+            push!(headerSection["dataGain"], gain)
+            push!(headerSection["dataOffset"],  offset)
+        end
+
+        if headerSection["nOperationMode"] == 3 #This means that sweeps are gap-free
+            headerSection["sweepCount"] = 1
+        end
+        
         return headerSection 
 
     elseif sFileSignature == "ABF2"
@@ -820,10 +920,10 @@ function readHeaderSection(f::IOStream;
         abfVersionDict["build"] = parse(Int64,versionPartsInt[4])
         headerSection["abfVersionDict"] = abfVersionDict
         #Format the Creater Info Dict
-        versionPartsInt = reverse(headerSection["uCreatorVersion"])
-        versionParts = map(x -> "$(string(x)).", collect(versionPartsInt)) |> join
-        headerSection["creatorVersion"] = versionPartsInt
-        headerSection["creatorVersionString"] = versionParts
+        creatorPartsInt = reverse(headerSection["uCreatorVersion"])
+        creatorParts = map(x -> "$(string(x)).", collect(versionPartsInt)) |> join
+        headerSection["creatorVersion"] = creatorPartsInt
+        headerSection["creatorVersionString"] = creatorParts
 
         # Format the FileGUID
         guid = []
@@ -857,15 +957,13 @@ function readHeaderSection(f::IOStream;
             sweepCount = 1 #This is gap-free mode
         end
         headerSection["sweepCount"] = sweepCount
-        if headerSection["nDataFormat"] == 0
-            dataType = Int16
-        elseif headerSection["nDataFormat"] == 1
-            dataType = Float32
+        if headerSection["nDataFormat"][1] == 0
+            headerSection["dataType"] = Int16
+        elseif headerSection["nDataFormat"][1] == 1
+            headerSection["dataType"] = Float32
         else
             throw("unknown data format")
         end
-
-        headerSection["dataType"] = dataType
         
         #Start decoding the sections
         FileInfoSize = headerSection["uFileInfoSize"][1] #This is the block size for all sections
@@ -912,19 +1010,12 @@ function readHeaderSection(f::IOStream;
         headerSection["dacUnits"] = map(i -> StringSection[i+1], DACSection["lDACChannelUnitsIndex"])
         #get the holding command section
         headerSection["holdingCommand"] = DACSection["fDACHoldingLevel"] 
-        
 
-        
-        sweepPointCount = Int64(
-            dataPointCount/sweepCount/channelCount
-        )
-        headerSection["sweepPointCount"] = sweepPointCount
+        headerSection["sweepPointCount"] = Int64(dataPointCount/sweepCount/channelCount)
         headerSection["sweepLengthSec"] = sweepPointCount/dataRate
         headerSection["sweepList"] = collect(1:sweepCount)
         #Once we have both adc info and dac info as well as data, we can start actually parsing data
-        seek(f, dataByteStart) #put the data loc onto the dataByteStart
-        nDataPoints = Int64(dataPointCount/channelCount)
-        headerSection["nDataPoints"] = nDataPoints
+        headerSection["nDataPoints"] = Int64(dataPointCount/channelCount)
         
         #The EpochTable Item will extract all stimuli only when it is called
         EpochTableByChannel = []
@@ -933,7 +1024,11 @@ function readHeaderSection(f::IOStream;
             push!(EpochTableByChannel, et)
         end
         headerSection["EpochTableByChannel"] = EpochTableByChannel
-
+        
+        if ProtocolSection["nOperationMode"] == 3 #This means that sweeps are gap-free
+            headerSection["sweepCount"] = 1
+        end
+        
         return headerSection
     end
 end
@@ -1128,8 +1223,8 @@ function readEpochSection(f::IOStream, blockStart, entrySize, entryCount;
     )
     for i in 1:entryCount
         seek(f, byteStart + (i-1)*entrySize)
-        push!(EpochSection["nEpochNum"], readStruct(f, "H"))
-        push!(EpochSection["nEpochDigitalOutput"], readStruct(f, "H"))
+        push!(EpochSection["nEpochNum"], readStruct(f, "H")[1])
+        push!(EpochSection["nEpochDigitalOutput"], readStruct(f, "H")[1])
     end
     return EpochSection
 end
@@ -1147,8 +1242,9 @@ function readABFInfo(::Type{T}, filename::String;
     headerSection = Dict{String, Any}()
     open(filename, "r") do f #Do everything within this loop
         #the first 4 bytes contain the version 
-        headerSection = readHeaderSection(f) #version is automatically determined
         
+        headerSection = readHeaderSection(f) #version is automatically determined
+        dataByteStart = headerSection["dataByteStart"]
         dataPointCount = headerSection["dataPointCount"]
         nDataPoints = headerSection["nDataPoints"]
         sweepPointCount = headerSection["sweepPointCount"]
@@ -1160,6 +1256,7 @@ function readABFInfo(::Type{T}, filename::String;
         #Read the raw data
         #y = Vector{dataType}(undef, dataPointCount)
         if loadData
+            seek(f, dataByteStart)
             raw = read(f, dataPointCount*sizeof(dataType)) #Read the raw data into a byte array
             raw = reinterpret(dataType, raw) #convert the byte array into the dataType
             raw = reshape(raw,  (channelCount, nDataPoints)) #Reshape the raw data array
