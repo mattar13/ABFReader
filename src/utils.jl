@@ -438,13 +438,6 @@ function split_data(exp::Experiment; split_by = :channel)
 end
 
 exclude(A, exclusions) = A[filter(x -> !(x ∈ exclusions), eachindex(A))]
-"""
-This function opens the .abf file in clampfit if it is installed
-"""
-function openABF(trace::Experiment)
-    pyABF = pyimport("pyabf")
-    pyABF.ABF(trace.filename).launchInClampFit()
-end
 
 """
     photon_lookup(wavelength, nd, percent, stim_time, calibration_file[,sheet_name])
