@@ -591,7 +591,7 @@ function readStruct(f::IOStream, byteType::String)
     if type_conv == String
         val = b |> String
     elseif type_conv == Int16 || type_conv == UInt16 
-        val = Vector{type_conv}(b)
+        val = Vector{type_conv}(b)[1:2:end]
     elseif type_conv == Int8 || type_conv == UInt8
         val = bytes2hex(b)
     else
@@ -673,6 +673,7 @@ function readHeaderSection(f::IOStream;
         # GROUP 7 - Multi-channel information (1044 bytes)
         headerSection["nADCPtoLChannelMap"] = readStruct(f, "16h", 378)
         headerSection["nADCSamplingSeq"] = readStruct(f, "16h", 410)
+        #it seems every other byte is 0
         #headerSection["sADCChannelName"] = map(x -> readStruct(f, "10s"), 1:16)
         headerSection["sADCChannelName"] = readStruct(f, "10s", 442, repeat = 16)
         headerSection["sADCUnits"] = readStruct(f, "8s", 602, repeat = 16)
@@ -826,8 +827,12 @@ function readHeaderSection(f::IOStream;
         headerSection["nDataPoints"] =  Int64(dataPointCount/channelCount)
         headerSection["sweepCount"] = sweepCount = headerSection["lActualEpisodes"][1]|>Int64
         headerSection["sweepPointCount"] = Int64(dataPointCount/sweepCount/channelCount)
-        headerSection["dataRate"] = (1e6/headerSection["fADCSampleInterval"][1])/channelCount
         
+        headerSection["dataRate"] = dataRate = (1e6/headerSection["fADCSampleInterval"][1])
+        headerSection["dataRate"] = round(Int64, dataRate/channelCount)
+        headerSection["dataSecPerPoint"] = 1.0/dataRate
+        headerSection["dataPointsPerMS"] = round(Int64, dataRate/1000)
+
         if headerSection["nDataFormat"][1] == 0
             headerSection["dataType"] = Int16
         elseif headerSection["nDataFormat"][1] == 1
@@ -1252,8 +1257,7 @@ function readABFInfo(::Type{T}, filename::String;
         dataType = headerSection["dataType"]
         dataGain = headerSection["dataGain"]
         dataOffset = headerSection["dataOffset"]
-        #Read the raw data
-        #y = Vector{dataType}(undef, dataPointCount)
+
         if loadData
             seek(f, dataByteStart)
             raw = read(f, dataPointCount*sizeof(dataType)) #Read the raw data into a byte array
@@ -1350,7 +1354,7 @@ function readABF(::Type{T}, abf_path::String;
         stimulus_name = "IN 7",  #One of the best places to store digital stimuli
         stimulus_threshold::T = 2.5, #This is the normal voltage rating on digital stimuli
         warn_bad_channel = false, #This will warn if a channel is improper
-        continuous::Bool = false, #this can be achieved in gap free mode, I will work on that next
+        flatten_episodic::Bool = false, #If the stimulation is episodic and you want it to be continuous
         verbose::Bool = false
     ) where T <: Real
     abfInfo = readABFInfo(abf_path)
@@ -1378,7 +1382,10 @@ function readABF(::Type{T}, abf_path::String;
     elseif sweeps != -1 && channels == -1
         data = abfInfo["data"][sweeps, :, :]
     end
-
+    if flatten_episodic
+        n_size = size(data)
+        data = reshape(data, (1, n_size[1] * n_size[2], n_size[3]))
+    end
     stim_protocol_by_sweep = StimulusProtocol{Float64}[]
     if !isnothing(stimulus_name)
         for swp in 1:size(data,1)
@@ -1416,7 +1423,7 @@ function openABF(abf_path::String)
 end
 
 openABF(abfDict::Dict{String, Any}) = openABF(abfDict["abfPath"])
-openABF(exp::Experiment) = openABF(exp.infoDict)
+openABF(exp::Experiment{T}) where T<:Real = openABF(exp.infoDict)
 
 """
 Begin writing a new extractABF function
