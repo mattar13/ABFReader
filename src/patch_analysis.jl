@@ -6,8 +6,8 @@ This takes the threshold of the datapoints:
 function calculate_threshold(exp::Experiment{T}; 
         Z::Int64 = 4
     ) where T <: Real
-    sum_data = sum(data, dims = 2)
-	std_data = std(data.data_array, dims = 2) * Z
+    sum_data = sum(exp, dims = 2)
+	std_data = std(exp.data_array, dims = 2) * Z
     return sum_data .+ std_data
 end
 
