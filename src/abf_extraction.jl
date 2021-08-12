@@ -1384,7 +1384,9 @@ function readABF(::Type{T}, abf_path::String;
     end
     if flatten_episodic
         n_size = size(data)
-        data = reshape(data, (1, n_size[1] * n_size[2], n_size[3]))
+        reshape_data = permutedims(data, (3,2,1))
+        reshape_data = reshape(reshape_data, 1, n_size[3], :)
+        data = permutedims(reshape_data, (1,3,2))
     end
     stim_protocol_by_sweep = StimulusProtocol{Float64}[]
     if !isnothing(stimulus_name)
