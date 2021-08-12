@@ -4,24 +4,11 @@ This takes the threshold of the datapoints:
     It adds 4x the standard deviation to the mean
 """
 function calculate_threshold(exp::Experiment{T}; 
-        Z::Int64 = 4, sweeps = -1
+        Z::Int64 = 4
     ) where T <: Real
-    thresh = zeros(size(exp,1), size(exp,3))
-    
-    if isa(sweeps, Real) && sweeps == -1
-        swp_rng = 1:size(exp,1)
-    elseif isa(sweeps, Real)
-        swp_rng = [sweeps]
-    elseif isa(sweeps, AbstractArray)
-        swp_rng = sweeps
-    end
-
-    for swp in swp_rng
-        for ch in 1:size(exp,3)
-            thresh[swp, ch] = sum(exp.data_array[swp,:,ch])/length(exp.data_array[swp,:,ch]) + Z*std(exp.data_array[swp,:,ch])
-        end
-    end
-    thresh
+    sum_data = sum(data, dims = 2)
+	std_data = std(data.data_array, dims = 2) * Z
+    return sum_data .+ std_data
 end
 
 """

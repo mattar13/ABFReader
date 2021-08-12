@@ -41,8 +41,6 @@ export concat, concat!
 export photon_lookup
 #These will be disabled eventually
 
-
-
 #filtering are any functions that return a Experiment file and alter the old one
 include("filtering.jl") 
 export baseline_cancel, baseline_cancel! 

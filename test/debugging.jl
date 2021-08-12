@@ -5,12 +5,19 @@ dotenv("D\\.env")
 using Dates, Plots
 
 #%% Lets try making gap-free files
-abf1_test = "E:\\Data\\Jordans_Patch_Data\\2_27_2011_Y\\11227000.abf"
-abf1Info = NeuroPhys.readABFInfo(abf1_test) #test an ABF file format
-
+abf_test = "E:\\Data\\Jordans_Patch_Data\\UsuableData\\11227008.abf"
+data_patch = readABF(abf_test; channels = ["Im_scaled"], stimulus_name = nothing, flatten_episodic = true) #test an ABF file format#%%
+#%%
+data_patch[1, 1:1000:size(data_patch,2), 1]
+plot(data_patch[1, 1:1000:size(data_patch,2), 1])
+#%%
+openABF(data_patch)
+#%%
 abf2_test = "test\\to_filter.abf"
 abf2Info = NeuroPhys.readABFInfo(abf2_test) #Test an ABF2 file format
-
+abf2Info["dataRate"]
+#%%
+abf2Info["fFileVersionNumber"]
 #%% define a single function for filtering
 function filter_data(data; t_pre = 1.0, t_post = 2.0) 
 	truncate_data!(data, t_pre = t_pre, t_post = t_post);
