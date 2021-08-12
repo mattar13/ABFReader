@@ -35,7 +35,7 @@ function get_timestamps(spike_array::BitVector, tseries::Vector{T}) where T <: R
 end
 
 function get_timestamps(spike_array::BitArray{N}, timestamps::Vector{T}) where N where T <: Real
-    tstamps = Vector{Matrix{Float32}}(undef, size(spike_array,1))
+    tstamps = Vector{Matrix{T}}(undef, size(spike_array,1))
     for i in 1:size(spike_array, 1)
         tstamps[i] = get_timestamps(spike_array[i, :], timestamps)
     end
@@ -93,7 +93,7 @@ This function uses the Maximum Interval Sorting method to sort bursts in a singl
 A multiple dispatch of this function allows the max_interval to be calculated on a 3D array (x, y, and time) 
 """
 function max_interval_algorithim(timestamps::Matrix{T}; 
-        ISIstart::Int64 = 500, ISIend::Int64 = 500, IBImin::Int64 = 1000, DURmin::Int64 = 100, SPBmin::Int64 = 4, 
+        ISIstart::T = 0.500, ISIend::T = 0.500, IBImin::T = 1.000, DURmin::T = 0.500, SPBmin::Int64 = 4, 
         verbose = false
     ) where T <: Real
     burst_timestamps = Tuple[]
@@ -118,13 +118,18 @@ function max_interval_algorithim(timestamps::Matrix{T};
             if bursting == false && intervals[i] <= ISIstart #If the cell does not start as bursting and the interval is under ISI start
                 bursting = true #Begin the burst
                 burst_start = timestamps[i, 1] #Record the burst start
-            elseif bursting == true && intervals[i] >= ISIend #If the cell is bursting, and the interval to the next spike is greater than ISI thresh
+            elseif bursting == true && intervals[i] >= ISIend || i == length(intervals) #If the cell is bursting, and the interval to the next spike is greater than ISI thresh
                 bursting = false #The bursting can stop
                 burst_end = timestamps[i, 2] #The burst end can be recorded
-
                 if intervals[i] >= IBImin && (burst_end - burst_start) >= DURmin && SPB >= SPBmin #If the burst meets all the correct qualifications
                     if verbose
-                        println("Timestamp $idx: $burst_start -> $burst_end, DUR $idx: $DUR,  SPB $idx: $SPB, IBI $idx: $intervals[i],")
+                        println("
+                        Burst #$idx successfully added at timestamp : $burst_start -> $burst_end 
+                            Duration: $(burst_end - burst_start) >  $DURmin  
+                            Spikes per burst: $SPB > $SPBmin
+                            IBI to burst #$(idx+1): $(intervals[i])
+                            "
+                            )
                     end
                     push!(burst_start_list, burst_start)
                     push!(burst_end_list, burst_end)
@@ -132,13 +137,41 @@ function max_interval_algorithim(timestamps::Matrix{T};
                     push!(SPB_list, SPB)
                     SPB = 0
                     idx+=1
-                end  
+                elseif i == length(intervals) && (burst_end - burst_start) >= DURmin && SPB >= SPBmin
+                    #a weird caveat, bursting has finished but interval has never cleared the ISIend
+                    if verbose
+                        println("
+                        Burst #$idx successfully added at timestamp : $burst_start -> $burst_end 
+                            Duration: $(burst_end - burst_start) >  $DURmin  
+                            Spikes per burst: $SPB > $SPBmin
+                            "
+                            )
+                    end
+                    push!(burst_start_list, burst_start)
+                    push!(burst_end_list, burst_end)
+                    #push!(burst_timestamps, (burst_start, burst_end)) #Record it
+                    push!(SPB_list, SPB)
+                    SPB = 0
+                    idx+=1
+                else
+                    if verbose
+                        println("
+                        Burst did not fit recommended qualities
+                            Timestamp $idx: $burst_start -> $burst_end, 
+                            DUR $idx: $(burst_end - burst_start) <  $DURmin 
+                            SPB $idx: $SPB < $SPBmin
+                            IBI $idx: $(intervals[i])
+                            "
+                        )
+                    end                    
+                end
             end
-
             if bursting == true
                 SPB += 1
             end
         end
+        
+
         if length(burst_start_list) > length(burst_end_list)
             #This algorithim usually leaves one last burst off because it has no end point. We can add this
             push!(burst_end_list, burst_start_list[end] + intervals[end])
@@ -151,22 +184,17 @@ function max_interval_algorithim(timestamps::Matrix{T};
     end
 end
 
-function max_interval_algorithim(timestamp_arr::Vector{Matrix{T}}; 
-        flatten = true, kwargs...
-    ) where T <: Real
-    if flatten
-        #In this case we don't necessarily need to preserve the structure data and can collapse all entries into one
-        bursts = Matrix{Float32}[]
-        spd = T[]
-        for idx in 1:length(timestamp_arr)
-            result = max_interval_algorithim(timestamp_arr[idx], kwargs...)
-            if !isnothing(result)
-                push!(bursts, result[1])
-                push!(spd, result[2]...)
-            end
+function max_interval_algorithim(timestamp_arr::Vector{Matrix{T}}; kwargs...) where T <: Real
+    #In this case we don't necessarily need to preserve the structure data and can collapse all entries into one
+    bursts = Matrix{T}[]
+    spd = T[]
+    for idx in 1:length(timestamp_arr)
+        
+        result = max_interval_algorithim(timestamp_arr[idx]; kwargs...)
+        if !isnothing(result)
+            push!(bursts, result[1])
+            push!(spd, result[2]...)
         end
-        return bursts, spd
-    else
-        println("Not implemented")
     end
+    return bursts, spd
 end
