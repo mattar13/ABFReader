@@ -290,14 +290,14 @@ function EpochTable(abf::Dict{String, Any}, channel::Int64)
     holdingLevel = abf["holdingCommand"][channel]
     sweepPointCount = abf["sweepPointCount"]
     epochs = Epoch[]
-    
+
     returnToHold = false
-    if abf["abfVersionDict"]["major"] == 1
+    if abf["abfVersionDict"]["major"] == 1 && abf["nWaveformEnable"][channel] == 1
         if channel > 1
             channel = 0
         end
         #not fully implemented yet
-    elseif abf["abfVersionDict"]["major"] == 2
+    elseif abf["abfVersionDict"]["major"] == 2 && abf["DACSection"]["nWaveformEnable"][channel] == 1
 
         #Create a list of Epochs
         for (i, epochDACNum) in enumerate(abf["EpochPerDACSection"]["nDACNum"])
@@ -825,7 +825,11 @@ function readHeaderSection(f::IOStream;
         headerSection["dataPointCount"] = dataPointCount = headerSection["lActualAcqLength"][1] |> Int64
         headerSection["channelCount"] = channelCount = headerSection["nADCNumChannels"][1]|>Int64
         headerSection["nDataPoints"] =  Int64(dataPointCount/channelCount)
-        headerSection["sweepCount"] = sweepCount = headerSection["lActualEpisodes"][1]|>Int64
+        if headerSection["nOperationMode"][1] |> Int64 == 3 #This means that sweeps are gap-free
+            headerSection["sweepCount"] = sweepCount = 1
+        else
+            headerSection["sweepCount"] = sweepCount = headerSection["lActualEpisodes"][1]|>Int64
+        end
         headerSection["sweepPointCount"] = Int64(dataPointCount/sweepCount/channelCount)
         
         headerSection["dataRate"] = dataRate = (1e6/headerSection["fADCSampleInterval"][1])
@@ -876,9 +880,7 @@ function readHeaderSection(f::IOStream;
             push!(headerSection["dataOffset"],  offset)
         end
 
-        if headerSection["nOperationMode"] == 3 #This means that sweeps are gap-free
-            headerSection["sweepCount"] = 1
-        end
+
         
         return headerSection 
 
@@ -953,14 +955,15 @@ function readHeaderSection(f::IOStream;
         headerSection["dataRate"] = dataRate
         headerSection["dataSecPerPoint"] = 1.0/dataRate
         headerSection["dataPointsPerMS"] = Int64(dataRate/1000)
-        headerSection["channelCount"] = ADCSection["entryCount"]
+        headerSection["channelCount"] = channelCount = ADCSection["entryCount"]
         headerSection["channelList"] = ADCSection["channelList"] 
         
-        sweepCount = headerSection["lActualEpisodes"][1]
-        if headerSection["ProtocolSection"]["nOperationMode"] == 3
-            sweepCount = 1 #This is gap-free mode
+        if ProtocolSection["nOperationMode"][1] |> Int64 == 3
+            headerSection["sweepCount"] = sweepCount = 1 #This is gap-free mode
+        else
+            headerSection["sweepCount"] = sweepCount = headerSection["lActualEpisodes"][1]
         end
-        headerSection["sweepCount"] = sweepCount
+
         if headerSection["nDataFormat"][1] == 0
             headerSection["dataType"] = Int16
         elseif headerSection["nDataFormat"][1] == 1
@@ -973,8 +976,6 @@ function readHeaderSection(f::IOStream;
         FileInfoSize = headerSection["uFileInfoSize"][1] #This is the block size for all sections
         
         #data section
-        channelCount = headerSection["channelCount"]
-        sweepCount = headerSection["sweepCount"]
         blockStart, dataPointByteSize, dataPointCount = headerSection["DataSection"]
         dataByteStart = blockStart*FileInfoSize
         headerSection["dataByteStart"] = dataByteStart
@@ -985,7 +986,19 @@ function readHeaderSection(f::IOStream;
         headerSection["adcNames"] = map(i -> StringSection[i+1], ADCSection["lADCChannelNameIndex"])
         headerSection["adcUnits"] = map(i -> StringSection[i+1], ADCSection["lADCUnitsIndex"])
         #The data should have a gain and an offset
-        dataGain = zeros(channelCount)
+
+        
+        #Parse DAC channel names
+        headerSection["dacNames"] = map(i -> StringSection[i+1], DACSection["lDACChannelNameIndex"])
+        headerSection["dacUnits"] = map(i -> StringSection[i+1], DACSection["lDACChannelUnitsIndex"])
+        #get the holding command section
+        headerSection["holdingCommand"] = DACSection["fDACHoldingLevel"] 
+        headerSection["sweepPointCount"] = sweepPointCount = Int64(dataPointCount/sweepCount/channelCount)
+        headerSection["sweepLengthSec"] = sweepPointCount/dataRate
+        headerSection["sweepList"] = collect(1:sweepCount)
+        #Once we have both adc info and dac info as well as data, we can start actually parsing data
+        headerSection["nDataPoints"] = Int64(dataPointCount/channelCount)
+                dataGain = zeros(channelCount)
         dataOffset = zeros(channelCount)
         
         for i in 1:channelCount
@@ -1008,19 +1021,6 @@ function readHeaderSection(f::IOStream;
         end
         headerSection["dataGain"] = dataGain
         headerSection["dataOffset"] = dataOffset
-        
-        #Parse DAC channel names
-        headerSection["dacNames"] = map(i -> StringSection[i+1], DACSection["lDACChannelNameIndex"])
-        headerSection["dacUnits"] = map(i -> StringSection[i+1], DACSection["lDACChannelUnitsIndex"])
-        #get the holding command section
-        headerSection["holdingCommand"] = DACSection["fDACHoldingLevel"] 
-
-        headerSection["sweepPointCount"] = sweepPointCount = Int64(dataPointCount/sweepCount/channelCount)
-        headerSection["sweepLengthSec"] = sweepPointCount/dataRate
-        headerSection["sweepList"] = collect(1:sweepCount)
-        #Once we have both adc info and dac info as well as data, we can start actually parsing data
-        headerSection["nDataPoints"] = Int64(dataPointCount/channelCount)
-        
         #The EpochTable Item will extract all stimuli only when it is called
         EpochTableByChannel = []
         for ch in headerSection["channelList"]
@@ -1029,9 +1029,7 @@ function readHeaderSection(f::IOStream;
         end
         headerSection["EpochTableByChannel"] = EpochTableByChannel
         
-        if ProtocolSection["nOperationMode"] == 3 #This means that sweeps are gap-free
-            headerSection["sweepCount"] = 1
-        end
+
         
         return headerSection
     end
