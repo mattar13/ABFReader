@@ -8,7 +8,7 @@ is_working() = println("Test this push, for some reason it's not working")
 #Imports
 using PyCall
 using Plots
-using StatsBase
+using StatsBase, Statistics
 using Polynomials, Distributions #Used for polynomial fitting
 using DSP, Wavelets, FFTW #Used for filtering
 using LsqFit #Used for fitting amplification and Intensity Response models
