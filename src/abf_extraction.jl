@@ -1354,11 +1354,7 @@ function readABF(::Type{T}, abf_path::String;
         flatten_episodic::Bool = false, #If the stimulation is episodic and you want it to be continuous
         verbose::Bool = false
     ) where T <: Real
-    abfInfo = readABFInfo(abf_path)
-
-    dt = abfInfo["dataSecPerPoint"]
-    t = collect(1:abfInfo["sweepPointCount"]).*dt
-    
+    abfInfo = readABFInfo(abf_path)    
     #Pull out the requested channels
     if isa(channels, Vector{String}) #If chs is a vector of channel names extract it as such
         ch_idxs = findall(ch -> ch ∈ channels, abfInfo["adcNames"])
@@ -1398,6 +1394,10 @@ function readABF(::Type{T}, abf_path::String;
         reshape_data = reshape(reshape_data, 1, n_size[3], :)
         data = permutedims(reshape_data, (1,3,2))
     end
+
+    dt = abfInfo["dataSecPerPoint"]
+    t = collect(0:size(data,2)).*dt
+
     stim_protocol_by_sweep = StimulusProtocol{Float64}[]
     if !isnothing(stimulus_name)
         for swp in 1:size(data,1)

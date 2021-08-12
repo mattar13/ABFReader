@@ -104,7 +104,9 @@ function sub_exp(exp1::Experiment, exp2::Experiment)
     return data
 end
 
-import Base: size, length, getindex, setindex, sum, std, copy, maximum, minimum, push!, cumsum, argmin, argmax
+import Base: size, length, getindex, setindex, sum, copy, maximum, minimum, push!, cumsum, argmin, argmax
+import Statistics.std
+
 #Extending for Experiment
 size(trace::Experiment) = size(trace.data_array)
 size(trace::Experiment, dim::Int64) = size(trace.data_array, dim)
@@ -147,7 +149,7 @@ setindex!(trace::Experiment, v, I...) = trace.data_array[I...] = v
 
 sum(trace::Experiment; kwargs...) = sum(trace.data_array; kwargs...)
 
-std(trace::Experiment; kwargs...) = std(trace.data_arrat; kwargs...)
+std(trace::Experiment; kwargs...) = std(trace.data_array; kwargs...)
 
 copy(nt::Experiment) = Experiment([getfield(nt, fn) for fn in fieldnames(nt |> typeof)]...)
 

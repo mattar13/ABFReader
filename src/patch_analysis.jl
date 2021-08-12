@@ -3,220 +3,170 @@
 This takes the threshold of the datapoints: 
     It adds 4x the standard deviation to the mean
 """
-function calculate_threshold(exp::Experiment{T}; 
-        Z::Int64 = 4
-    ) where T <: Real
-    sum_data = sum(exp, dims = 2)
-	std_data = std(exp.data_array, dims = 2) * Z
+function calculate_threshold(exp::Experiment{T}; Z::Int64 = 4) where T <: Real
+    sum_data = sum(exp, dims = 2)/size(exp, 2)
+	std_data = std(exp, dims = 2) * Z
     return sum_data .+ std_data
 end
 
 """
 This function returns all the time stamps in a spike or burst array
     The same function exists in RetinalChaos
-    The dt comes from the experiment file
 """
-function get_timestamps(exp::Experiment{T}, threshold::Array{T}, rng::Tuple{T,T};
-        sweeps = -1
-    ) where T <: Real
-    #First we need to extract the spike array
-    points = Tuple[]
-    dt = exp.dt
-    rng = map(t -> round(Int64, t./exp.dt)+1, rng)
-    
-    if exp.tUnits == "sec" #convert all data into ms
-        factor = 1000
-    else
-        factor = 1
+
+function get_timestamps(spike_array::BitVector, tseries::Vector{T}) where T <: Real
+    diff_vals = map(i -> (spike_array[i]-spike_array[i+1]), 1:length(spike_array)-1)
+    #println(diff_vals)
+    diff_starts = findall(x -> x==-1, diff_vals) #This is a list of all the starting points in the array
+    diff_ends = findall(x -> x==1, diff_vals) #This is a list of all the ending points in the array
+    #If there is one more end than start than we have to remove the last point from the diff_starts
+
+    if spike_array[1] #This means we start out in a spike and will most likely end o
+        #println("We started out in a spike, the first value will be an end spike")
+        diff_ends = diff_ends[2:end]
+    end
+    if length(diff_starts) > length(diff_ends)  #This happens because an end point was cutoff
+        diff_starts = diff_starts[1:length(diff_ends)]
+    elseif length(diff_starts) < length(diff_ends) #This happens because a start point was cutoff
+        diff_ends = diff_ends[2:end]
     end
 
-    if isa(sweeps, Real) && sweeps == -1
-        swp_rng = 1:size(exp,1)
-    elseif isa(sweeps, Real)
-        swp_rng = [sweeps]
-    elseif isa(sweeps, AbstractArray)
-        swp_rng = sweeps
+    return hcat(tseries[diff_starts], tseries[diff_ends])
+end
+
+function get_timestamps(spike_array::BitArray{N}, timestamps::Vector{T}) where N where T <: Real
+    tstamps = Vector{Matrix{Float32}}(undef, size(spike_array,1))
+    for i in 1:size(spike_array, 1)
+        tstamps[i] = get_timestamps(spike_array[i, :], timestamps)
     end
-    
-    for swp in swp_rng
-        for ch in 1:size(exp,3)
-            data_select = exp.data_array[swp, rng[1]:rng[2], ch] #extract the data array from the experiment
-            spike_array = (data_select .> threshold[swp, ch])
-            idx_array = findall(x -> x==1, spike_array)
-            
-            if !isempty(idx_array)
-                start_point = idx_array[1]
-                end_point = idx_array[2]
-                for i in 1:length(idx_array)-1
-                    if (idx_array[i+1] - idx_array[i]) != 1
-                        end_point = idx_array[i]
-                        push!(points, (exp.t[start_point], exp.t[end_point]))
-                        start_point = idx_array[i+1]
-                    end
-                end
+    return tstamps
+end
+
+# For if no range has been provided but a threshold has
+function get_timestamps(exp::Experiment{T}, threshold::AbstractArray{T}, rng::Tuple; dt = :exp) where T <: Real
+    if dt == :exp
+        dt = exp.dt
+    end
+    tseries = collect(rng[1]:dt:rng[2]-dt)
+    tidxs = round.(Int64, (tseries./dt).+1)
+    spike_array = exp.data_array[:, tidxs, :] .> threshold
+    get_timestamps(spike_array, tseries)
+end
+
+get_timestamps(exp::Experiment{T}, threshold::AbstractArray{T}; dt = :exp) where T <: Real = get_timestamps(exp, threshold, (exp.t[1], exp.t[end]), dt = dt)
+get_timestamps(exp::Experiment{T}, rng::Tuple; dt = :exp, kwargs...) where T <: Real = get_timestamps(exp, calculate_threshold(exp; kwargs...), rng, dt = dt)
+get_timestamps(exp::Experiment{T}; dt = :exp, kwargs...) where T <: Real = get_timestamps(exp, calculate_threshold(exp; kwargs...), (exp.t[1], exp.t[end]), dt = dt)
+
+function extract_interval(timestamps::Matrix{T}; 
+        max_duration = 10e5, max_interval = 10e5
+    ) where T <: Real
+    durations = timestamps[:, 2] .- timestamps[:,1]
+    lagged_starts = timestamps[2:end,1]
+    lagged_ends = timestamps[1:end-1,2]
+    intervals = lagged_starts .- lagged_ends
+    return durations[durations .< max_duration], intervals[intervals .< max_interval]
+end
+
+function extract_interval(timestamp_arr::Vector{Matrix{T}}; 
+        flatten = true, kwargs...
+    ) where T <: Real
+    if flatten
+        #In this case we don't necessarily need to preserve the structure data and can collapse all entries into one
+        durations = T[]
+        intervals = T[]
+        for idx in 1:length(timestamp_arr)
+            result = extract_interval(timestamp_arr[idx]; kwargs...)
+            if !isnothing(result)
+                push!(durations, result[1]...)
+                push!(intervals, result[2]...)
             end
         end
+        return durations, intervals
+    else
+        println("Not implemented")
     end
-    points
-end
-
-function get_timestamps(exp::Experiment{T}, rng::Tuple{T,T}; 
-        sweeps = -1, Z::Int64 = 4
-    ) where T <: Real
-    #First we need to calculate the threshold
-    threshold = calculate_threshold(exp, Z = Z, sweeps = sweeps)
-    get_timestamps(exp, threshold, rng; sweeps = sweeps)
-end
-
-function get_timestamps(exp::Experiment{T}, threshold::Array{T}; 
-        sweeps = -1, Z::Int64 = 4
-    ) where T <: Real
-    #First we need to calculate the threshold
-    rng = (exp.t[1], exp.t[end])
-    get_timestamps(exp, threshold, rng; sweeps = sweeps)
-end
-
-function get_timestamps(exp::Experiment{T}; 
-        sweeps = -1, Z::Int64 = 4
-    ) where T <: Real
-    #First we need to calculate the threshold
-    rng = (exp.t[1], exp.t[end])
-    threshold = calculate_threshold(exp, Z = Z, sweeps = sweeps)
-    get_timestamps(exp, threshold, rng; sweeps = sweeps)
 end
 
 """
 This function uses the Maximum Interval Sorting method to sort bursts in a single trace. 
+    It takes in timestamps and returns the burst durations and the spikes per burst
 A multiple dispatch of this function allows the max_interval to be calculated on a 3D array (x, y, and time) 
 """
-function max_interval_algorithim(exp::Experiment{T}, threshold::Array{T}, rng::Tuple{T,T}; 
+function max_interval_algorithim(timestamps::Matrix{T}; 
         ISIstart::Int64 = 500, ISIend::Int64 = 500, IBImin::Int64 = 1000, DURmin::Int64 = 100, SPBmin::Int64 = 4, 
-        dt::T = 0.1, verbose = false
+        verbose = false
     ) where T <: Real
-
-    dt = exp.dt
-
-    burst_timestamps = Array{Tuple,1}([])
-    DUR_list = Array{Float64,1}([])
-    SPB_list = Array{Float64,1}([])
-    IBI_list = Array{Float64,1}([])
-    #Detect the spikes first
-    timestamps = get_timestamps(exp, threshold, rng) #Add in arguments for sweeps later
+    burst_timestamps = Tuple[]
+    SPB_list = Float64[]
     if isempty(timestamps)
         if verbose >= 1
             println("No spikes detected")
         end
-        return fill(nothing, 4)
+        return nothing
     else
-        #println("Times detected")
         #Lets organize the spipkes into intervals spikes and not spikes
-        spike_durs = map(i -> timestamps[i][2]-timestamps[i][1], 1:length(timestamps))
-        intervals = map(i -> timestamps[i][1] - timestamps[i-1][2], 2:length(timestamps))
-        #intervals = count_intervals(spike_array) .* dt
+        results = extract_interval(timestamps)
+        intervals = results[2]
         bursting = false
+        burst_start_list = T[]
+        burst_end_list = T[]
         burst_start = 0.0
         burst_end = 0.0
-        IBI = 0.0
         SPB = 0
         idx = 1
         for i = 1:length(intervals)
-            if bursting == false && intervals[i] <= ISIstart
-                bursting = true
-                burst_start = timestamps[i][1]
-            elseif bursting == true && intervals[i] >= ISIend
-                bursting = false
-                burst_end = timestamps[i][2]
-                IBI = intervals[i]
-                DUR = (burst_end - burst_start)
-                if IBI >= IBImin && DUR >= DURmin && SPB >= SPBmin
+            if bursting == false && intervals[i] <= ISIstart #If the cell does not start as bursting and the interval is under ISI start
+                bursting = true #Begin the burst
+                burst_start = timestamps[i, 1] #Record the burst start
+            elseif bursting == true && intervals[i] >= ISIend #If the cell is bursting, and the interval to the next spike is greater than ISI thresh
+                bursting = false #The bursting can stop
+                burst_end = timestamps[i, 2] #The burst end can be recorded
+
+                if intervals[i] >= IBImin && (burst_end - burst_start) >= DURmin && SPB >= SPBmin #If the burst meets all the correct qualifications
                     if verbose
-                        println("Timestamp $idx: $burst_start -> $burst_end, DUR $idx: $DUR,  SPB $idx: $SPB, IBI $idx: $IBI,")
+                        println("Timestamp $idx: $burst_start -> $burst_end, DUR $idx: $DUR,  SPB $idx: $SPB, IBI $idx: $intervals[i],")
                     end
-                    push!(burst_timestamps, (burst_start, burst_end))
-                    push!(DUR_list, DUR)
+                    push!(burst_start_list, burst_start)
+                    push!(burst_end_list, burst_end)
+                    #push!(burst_timestamps, (burst_start, burst_end)) #Record it
                     push!(SPB_list, SPB)
-                    push!(IBI_list, IBI)
                     SPB = 0
                     idx+=1
                 end  
             end
+
             if bursting == true
                 SPB += 1
             end
         end
-        #This algorithim usually leaves one last burst off because it has no end point. We can add this
-        DUR = (timestamps[end][2] - burst_start)
-        if DUR >= DURmin && SPB >= SPBmin && bursting == true
-            if verbose
-                println("Timestamp  $idx: $burst_start -> $(timestamps[end][2]), DUR $idx: $DUR, SPB $idx: $SPB, IBI $idx: Unknown")
-            end
-            push!(burst_timestamps, (burst_start, timestamps[end][2]))
-            push!(DUR_list, DUR)
-            push!(SPB_list, SPB)
+        if length(burst_start_list) > length(burst_end_list)
+            #This algorithim usually leaves one last burst off because it has no end point. We can add this
+            push!(burst_end_list, burst_start_list[end] + intervals[end])
+        end        
+        burst_timestamps = hcat(burst_start_list, burst_end_list)
+        if isempty(burst_start_list)
+            return nothing
         end
-        return burst_timestamps, DUR_list, SPB_list, IBI_list
+        return burst_timestamps, SPB_list
     end
 end
 
-function max_interval_algorithim(exp::Experiment{T}, rng::Tuple{T,T}; 
-        Z::Int64, sweeps = -1,
-        kwargs...
+function max_interval_algorithim(timestamp_arr::Vector{Matrix{T}}; 
+        flatten = true, kwargs...
     ) where T <: Real
-    threshold = calculate_threshold(exp, Z = Z, sweeps = sweeps)
-    max_interval_algorithim(exp, threshold, rng; kwargs...)
-end
-
-function max_interval_algorithim(exp::Experiment{T}, threshold::Array{T}; 
-        Z::Int64=4, sweeps = -1, 
-        kwargs...
-    ) where T <: Real
-    rng = (exp.t[1], exp.t[end])
-    max_interval_algorithim(exp, threshold, rng; kwargs...)
-end
-
-function max_interval_algorithim(exp::Experiment{T}; 
-        Z::Int64=4, sweeps = -1, 
-        kwargs...
-    ) where T <: Real
-    rng = (exp.t[1], exp.t[end])
-    threshold = calculate_threshold(exp, Z = Z, sweeps = sweeps)
-    max_interval_algorithim(exp, threshold, rng; kwargs...)
-end
-
-function timescale_analysis(exp::Experiment{T}, threshold::Array{T}, rng::Tuple{T,T};
-        DURmax::Int64 = 100,
-        kwargs...
-    ) where T <: Real
-
-    timestamps = get_timestamps(exp, threshold, rng);
-    durations = map(x -> x[2]-x[1], timestamps)
-
-    trimmed_durations = findall(durations .< DURmax)
-    #println(trimmed_durations)
-    durations = durations[trimmed_durations]
-
-    if durations == Any[]
-        #This essentially means that no spikes are detected, therefore no bursts occur
-        return fill(NaN, 3)
+    if flatten
+        #In this case we don't necessarily need to preserve the structure data and can collapse all entries into one
+        bursts = Matrix{Float32}[]
+        spd = T[]
+        for idx in 1:length(timestamp_arr)
+            result = max_interval_algorithim(timestamp_arr[idx], kwargs...)
+            if !isnothing(result)
+                push!(bursts, result[1])
+                push!(spd, result[2]...)
+            end
+        end
+        return bursts, spd
+    else
+        println("Not implemented")
     end
-    burst_idxs, dur_list, spb_list, ibi_list = max_interval_algorithim(exp, threshold, rng, kwargs...);
-    #Remove all spikes that are close in length to the minimum burst
-    return durations, dur_list, ibi_list
-end
-
-function timescale_analysis(exp::Experiment{T}, rng::Tuple{T,T}; 
-        Z::Int64 = 4, sweeps = -1,
-        kwargs...
-    ) where T <: Real
-    threshold = calculate_threshold(exp, Z = Z, sweeps = sweeps)
-    timescale_analysis(exp, threshold, rng; kwargs...)
-end
-
-function timescale_analysis(exp::Experiment{T}; 
-        Z::Int64 = 4, sweeps = -1,
-        kwargs...
-    ) where T <: Real
-    rng = (exp.t[1], exp.t[end])
-    threshold = calculate_threshold(exp, Z = Z, sweeps = sweeps)
-    timescale_analysis(exp, threshold, rng; kwargs...)
 end
