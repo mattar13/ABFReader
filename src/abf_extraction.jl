@@ -616,7 +616,6 @@ function readHeaderSection(f::IOStream;
     #check the version
     headerSection = Dict{String, Any}()
     sFileSignature = readStruct(f, "4s")
-
     headerSection["sFileSignature"] = sFileSignature
     if sFileSignature == "ABF "
         # GROUP 1 - File ID and size information. (40 bytes)
@@ -833,9 +832,9 @@ function readHeaderSection(f::IOStream;
         headerSection["sweepPointCount"] = Int64(dataPointCount/sweepCount/channelCount)
         
         headerSection["dataRate"] = dataRate = (1e6/headerSection["fADCSampleInterval"][1])
-        headerSection["dataRate"] = round(Int64, dataRate/channelCount)
+        headerSection["dataRate"] = dataRate/channelCount
+        headerSection["dataPointsPerMS"] = dataRate/1000
         headerSection["dataSecPerPoint"] = 1.0/dataRate
-        headerSection["dataPointsPerMS"] = round(Int64, dataRate/1000)
 
         if headerSection["nDataFormat"][1] == 0
             headerSection["dataType"] = Int16
@@ -954,7 +953,7 @@ function readHeaderSection(f::IOStream;
         dataRate = 1e6/ProtocolSection["fADCSequenceInterval"][1] #This is the data rate as
         headerSection["dataRate"] = dataRate
         headerSection["dataSecPerPoint"] = 1.0/dataRate
-        headerSection["dataPointsPerMS"] = Int64(dataRate/1000)
+        headerSection["dataPointsPerMS"] = dataRate/1000
         headerSection["channelCount"] = channelCount = ADCSection["entryCount"]
         headerSection["channelList"] = ADCSection["channelList"] 
         
@@ -1380,8 +1379,21 @@ function readABF(::Type{T}, abf_path::String;
     elseif sweeps != -1 && channels == -1
         data = abfInfo["data"][sweeps, :, :]
     end
+    #We need to throw an error if a dimension is empty
+    if any(size(data) .== 0)
+        @warn begin
+            "There is in issue with the channels selected. 
+            Ensure you are picking one of the following channels:
+            $(abfInfo["adcNames"]) 
+            or
+            $(abfInfo["dacNames"])
+            "        
+        end
+        throw(DimensionMismatch)
+    end
     if flatten_episodic
         n_size = size(data)
+        println(n_size)
         reshape_data = permutedims(data, (3,2,1))
         reshape_data = reshape(reshape_data, 1, n_size[3], :)
         data = permutedims(reshape_data, (1,3,2))
