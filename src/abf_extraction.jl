@@ -1412,7 +1412,7 @@ function readABF(::Type{T}, abf_path::String;
     
 
     dt = abfInfo["dataSecPerPoint"]
-    t = collect(0:size(data,2)).*dt #Time is usually in seconds, but works better in ms
+    t = collect(0:size(data,2)-1).*dt #Time is usually in seconds, but works better in ms
     if time_unit == :ms
         dt *= 1000
         t .*= 1000
