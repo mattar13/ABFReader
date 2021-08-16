@@ -1366,6 +1366,7 @@ function readABF(::Type{T}, abf_path::String;
         stimulus_threshold::T = 2.5, #This is the normal voltage rating on digital stimuli
         warn_bad_channel = false, #This will warn if a channel is improper
         flatten_episodic::Bool = false, #If the stimulation is episodic and you want it to be continuous
+        time_unit = :ms, #The time unit is s, change to ms
         verbose::Bool = false
     ) where T <: Real
     abfInfo = readABFInfo(abf_path)    
@@ -1408,9 +1409,14 @@ function readABF(::Type{T}, abf_path::String;
         reshape_data = reshape(reshape_data, 1, n_size[3], :)
         data = permutedims(reshape_data, (1,3,2))
     end
+    
 
     dt = abfInfo["dataSecPerPoint"]
-    t = (collect(0:size(data,2)).*dt)*1000 #Time is usually in seconds, but works better in ms
+    t = collect(0:size(data,2)).*dt #Time is usually in seconds, but works better in ms
+    if time_unit == :ms
+        dt *= 1000
+        t .*= 1000
+    end
 
     stim_protocol_by_sweep = StimulusProtocol{Float64}[]
     if !isnothing(stimulus_name)
