@@ -58,7 +58,7 @@ get_timestamps(exp::Experiment{T}, rng::Tuple; dt = :exp, kwargs...) where T <: 
 get_timestamps(exp::Experiment{T}; dt = :exp, kwargs...) where T <: Real = get_timestamps(exp, calculate_threshold(exp; kwargs...), (exp.t[1], exp.t[end]), dt = dt)
 
 function extract_interval(timestamps::Matrix{T}; 
-        max_duration = 10e5, max_interval = 10e5
+        max_duration = 10e5, max_interval = 10e5,
         min_duration = 1.0, min_interval = 1.0
     ) where T <: Real
     durations = timestamps[:, 2] .- timestamps[:,1]
