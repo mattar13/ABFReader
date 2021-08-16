@@ -10,8 +10,8 @@ target_path1 = "test\\to_filter.abf"
 target_path2 = "test\\to_analyze.abf"
 #%% First test some things related to extracting the headerSection info
 println("Testing base functionality of ABF extraction")
-abf_1swp = NeuroPhys.readABFHeader(target_path1)
-abf_12swp = NeuroPhys.readABFHeader(target_path2)
+abf_1swp = NeuroPhys.readABFInfo(target_path1)
+abf_12swp = NeuroPhys.readABFInfo(target_path2)
 
 NeuroPhys.getWaveform(abf_1swp, 1, 1; channel_type = :analog) #Test get waveform of analog 0
 NeuroPhys.getWaveform(abf_1swp, 1, 1; channel_type = :digital) #Get waveform of digital 0
