@@ -59,7 +59,7 @@ get_timestamps(exp::Experiment{T}; dt = :exp, kwargs...) where T <: Real = get_t
 
 function extract_interval(timestamps::Matrix{T}; 
         max_duration = 10e5, max_interval = 10e5,
-        min_duration = 1.0, min_interval = 1.0
+        min_duration = 0.0, min_interval = 0.0
     ) where T <: Real
     durations = timestamps[:, 2] .- timestamps[:,1]
     lagged_starts = timestamps[2:end,1]
