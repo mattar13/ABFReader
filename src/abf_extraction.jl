@@ -235,7 +235,29 @@ EpochPerDAC_bytemap = [
     ("lEpochPulseWidth", "I")  # 26
 ]
 
+"""
+This object contains information about the stimulus Epoch coming from the Cmd
 
+To initialize an Epoch use this function: 
+    julia> Epoch()
+Epochs will have a type associated {T} with the type of numerical data being T. 
+For Julia this can be Float64, but for older files this may be Float32. 
+
+### Epoch is a struct that contains: 
+    1) 'epochLetter::String' -> The alphabetical label of the Epoch
+    2) 'epochType::String' -> The type of epoch. Comes in terms of Step, Pulse, Ramp, Triangle, Saw.  
+    3) 'dacNum::T' -> The Digital to Analog channel that contains the stimulus. 
+    4) 'epochNumber::T' -> The number ID related to the Epoch
+    5) 'level::T' -> The holding level of the Epoch. The value related to the command is found in the "dacUnits"
+    6) 'levelDelta::T' -> The change in level for each sweep. 
+    7) 'duration::T' -> How long the DAC will be held at a certai level
+    8) 'durationDelta::T' -> From sweep to sweep the change in the duration
+    9) 'digitalPattern::Vector'{T} -> If a digital channel is used, a digital bit pattern will be used (8 bits)
+    10) 'pulsePeriod::T' -> The length of the pulse 
+    11) 'pulseWidth::T' -> ??? 
+
+
+"""
 mutable struct Epoch{T}
     epochLetter::String
     epochType::String
@@ -1289,18 +1311,6 @@ readABFInfo(filename::String; kwargs...) = readABFInfo(Float64, filename::String
 """
 This file contains the ABF data traces. It is a generic experiment which doesn't include any other specifics. 
 
-To see all fields of the pyABF data: 
->> PyCall.inspect[:getmembers](trace_file)
-
-Fields: 
-    t: the time points contained within the traces
-    tUnits: the measurement of time
-    dt: the interval of the timepoints
-    data: The trace data organized by [Sweep, Datapoints, Channels]
-    chNames: The names for each of the channels
-    chUnits: The units of measurment for the channels
-    labels: The labels for [X (Time), Y (Membrane Voltage), Command, DigitalOut]
-    stimulus_ch: If there is a channel to set as the stimulus, this will remember that channel, otherwise, this is set to -1
 """
 mutable struct StimulusProtocol{T}
     type::Symbol
@@ -1309,6 +1319,7 @@ mutable struct StimulusProtocol{T}
     index_range::Tuple{Int64,Int64}
     timestamps::Tuple{T,T}
 end
+
 
 mutable struct Experiment{T}
     infoDict::Dict{String, Any}
@@ -1342,7 +1353,10 @@ end
 extract_stimulus(abf_path::String, sweep::Int64; kwargs...) = extract_stimulus(readABFHeader(abf_path), sweep; kwargs...)
 
 """
-   Edit this documentation
+    julia> using NeuroPhys
+    julia> target_path1 = "test\\to_filter.abf"
+    julia> readABF(target_path1)
+
 """
 function readABF(::Type{T}, abf_path::String; 
         sweeps = -1, 
@@ -1396,7 +1410,7 @@ function readABF(::Type{T}, abf_path::String;
     end
 
     dt = abfInfo["dataSecPerPoint"]
-    t = collect(0:size(data,2)).*dt
+    t = (collect(0:size(data,2)).*dt)*1000 #Time is usually in seconds, but works better in ms
 
     stim_protocol_by_sweep = StimulusProtocol{Float64}[]
     if !isnothing(stimulus_name)
