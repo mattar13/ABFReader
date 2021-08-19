@@ -25,8 +25,6 @@ function update_datasheet(
                     :ND => 0, :Percent => 1, :Stim_time => 1.0, :Photons => 0.0
                )
 
-
-
                delete_after = Int64[]
                for (idx, path) in enumerate(all_paths)
                     if verbose
@@ -48,6 +46,11 @@ function update_datasheet(
                          stim_time = round((tstops[2]-tstops[1])*1000)
                          all_files[idx, :Stim_time] = stim_time
                          #Now we want to apply photons using the photon lookup
+                         if haskey(nt, :Wavelength) #This happens in some rod files, the wavelength is 525
+                              wavelength = nt.Wavelength
+                         else
+                              wavelength = 525
+                         end 
                          photon = photon_lookup(
                               nt.Wavelength, nt.ND, nt.Percent, 1.0, calibration_file
                          )
