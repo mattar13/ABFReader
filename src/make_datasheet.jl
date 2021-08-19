@@ -52,7 +52,7 @@ function update_datasheet(
                               wavelength = 525
                          end 
                          photon = photon_lookup(
-                              nt.Wavelength, nt.ND, nt.Percent, 1.0, calibration_file
+                              wavelength, nt.ND, nt.Percent, 1.0, calibration_file
                          )
                          if !isnothing(photon)
                               all_files[idx, :Photons] = photon*stim_time
