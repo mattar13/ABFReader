@@ -1350,7 +1350,7 @@ function extract_stimulus(abfInfo::Dict{String, Any}, sweep::Int64; stimulus_nam
     StimulusProtocol(:test, sweep, stimulus_name, (idx1, idx2), (idx1*dt, idx2*dt))
 end
 
-extract_stimulus(abf_path::String, sweep::Int64; kwargs...) = extract_stimulus(readABFHeader(abf_path), sweep; kwargs...)
+extract_stimulus(abf_path::String, sweep::Int64; kwargs...) = extract_stimulus(readABFInfo(abf_path), sweep; kwargs...)
 
 """
     julia> using NeuroPhys

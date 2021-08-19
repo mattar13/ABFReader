@@ -251,6 +251,7 @@ function update_datasheet(
           println(error)
           if isa(error, UndefVarError)
                println("There is a posibility that $(error.var) was not defined in the overall script")
+               throw(error)
           else
                throw(error)
           end     
