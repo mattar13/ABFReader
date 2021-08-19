@@ -297,12 +297,12 @@ file_format = [
 format_bank_PAUL = [
     ("\\", ~, ~, ~, :Project, ~, 
           ("_", :Year, :Month, :Date, check_geno, check_age, :Animal), 
-          NeuroPhys.check_drugs, NeuroPhys.check_pc, NeuroPhys.check_color, 
+          NeuroPhys.check_drugs, check_pc, NeuroPhys.check_color, 
           NeuroPhys.file_format
      ),
      ("\\", ~, ~, ~, :Project, ~, 
           ("_", :Year, :Month, :Date, check_geno,  check_age, :Animal), 
-          NeuroPhys.check_drugs, NeuroPhys.check_pc, NeuroPhys.check_color, 
+          NeuroPhys.check_drugs, check_pc, NeuroPhys.check_color, 
           NeuroPhys.file_format, 
           (".", NeuroPhys.choose_words, ~)
      ),
@@ -319,13 +319,13 @@ format_bank_RS = [
     ("\\", :Drive, ~, :Method, :Project, 
             ("_", :Year, :Month, :Date, ~, ~), 
             ("_", :Animal, check_age, check_geno), 
-            condition_check, :Photoreceptor, check_color, file_format
+            condition_check, check_pc, check_color, file_format
     ),
 
     ("\\", :Drive, ~, :Method, :Project, 
             ("_", :Year, :Month, :Date, ~, ~), 
             ("_", :Animal, check_age, check_geno), 
-            condition_check, :Photoreceptor, file_format
+            condition_check, check_pc, file_format
     ),
     
     ("\\", :Drive, ~, :Method, :Project, 
