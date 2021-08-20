@@ -1014,6 +1014,12 @@ function readHeaderSection(f::IOStream;
         headerSection["dacUnits"] = map(i -> StringSection[i+1], DACSection["lDACChannelUnitsIndex"])
         #get the holding command section
         headerSection["holdingCommand"] = DACSection["fDACHoldingLevel"] 
+        if sweepCount == 0 || channelCount == 0
+            println("There is something going on here")
+            println(sweepCount)
+            println(channelCount)
+            throw("Divide By Zero error")
+        end
         headerSection["sweepPointCount"] = sweepPointCount = Int64(dataPointCount/sweepCount/channelCount)
         headerSection["sweepLengthSec"] = sweepPointCount/dataRate
         headerSection["sweepList"] = collect(1:sweepCount)
