@@ -272,6 +272,9 @@ mutable struct Epoch{T}
     pulseWidth::T
 end
 
+Epoch() =  Epoch(" ", "Off", 0, 0, 0.0, 0.0, 0.0, 0.0, zeros(Int64, 8), 0.0, 0.0)
+#EpochTable will be instantiated last
+
 mutable struct EpochSweepWaveform
     p1s::Vector
     p2s::Vector
@@ -291,8 +294,7 @@ mutable struct EpochTable
     epochWaveformBySweep::Vector{EpochSweepWaveform}
 end
 
-Epoch() =  Epoch(" ", "Off", -1, -1, -1, -1, -1, -1, zeros(Int64, 8), -1, -1)
-#EpochTable will be instantiated last
+
 EpochSweepWaveform() = EpochSweepWaveform([], [], [], [], [], [], [])
 
 function addEpoch(e::EpochSweepWaveform, pt1, pt2, level, type, pulseWidth, pulsePeriod, digitalState)
