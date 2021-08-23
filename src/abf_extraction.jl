@@ -261,13 +261,13 @@ For Julia this can be Float64, but for older files this may be Float32.
 mutable struct Epoch{T}
     epochLetter::String
     epochType::String
-    dacNum::T
-    epochNumber::T
+    dacNum::Int64
+    epochNumber::Int64
     level::T
     levelDelta::T
     duration::T
     durationDelta::T
-    digitalPattern::Vector{T}
+    digitalPattern::Vector{Int64}
     pulsePeriod::T
     pulseWidth::T
 end
