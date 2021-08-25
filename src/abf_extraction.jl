@@ -1374,7 +1374,7 @@ function readABF(::Type{T}, abf_path::String;
         stimulus_threshold::T = 2.5, #This is the normal voltage rating on digital stimuli
         warn_bad_channel = false, #This will warn if a channel is improper
         flatten_episodic::Bool = false, #If the stimulation is episodic and you want it to be continuous
-        time_unit = :ms, #The time unit is s, change to ms
+        time_unit = :s, #The time unit is s, change to ms
         verbose::Bool = false
     ) where T <: Real
     abfInfo = readABFInfo(abf_path)    
