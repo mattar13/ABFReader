@@ -5,6 +5,30 @@ using NeuroPhys
 using Distributions, StatsBase, StatsPlots, Polynomials
 println("Exporting succeeded")
 
+#%% Lets test all the fileformats in the RS file structure
+root_rs = "E:\\Data\\ERG\\Retinoschisis\\"
+rs_paths = root_rs |> parse_abf
+incorrect_formats = []
+for (i, file) in enumerate(rs_paths)
+     format = formatted_split(file, format_bank_RS)
+     if isnothing(format)
+          push!(incorrect_formats, file)
+     end
+end
+incorrect_formats
+
+#%% test all of pauls files roots
+root_wt = "F:\\Data\\ERG\\Pauls\\"
+wt_paths = root_wt |> parse_abf
+incorrect_formats = []
+for (i, file) in enumerate(wt_paths)
+     format = formatted_split(file, format_bank_PAUL)
+     if isnothing(format)
+          push!(incorrect_formats, file)
+     end
+end
+incorrect_formats
+
 #%% Test the exporting and filtering of .abf files
 target_path1 = "test\\to_filter.abf"
 target_path2 = "test\\to_analyze.abf"
