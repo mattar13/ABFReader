@@ -263,4 +263,44 @@ end
 
 update_datasheet(root::String, calibration_file; kwargs...) = update_RS_datasheet(root |> parse_abf, calibration_file; kwargs...)
 
+"""
+Working on this function to replace subsections in update datasheet
+"""
+function parse_entry(nt::NamedTuple)
+     if haskey(nt, :Photoreceptor)
+          photoreceptor = nt.Photoreceptor
+     else
+          photoreceptor = "Rods"
+     end
+
+     if haskey(nt, :Wavelength) #This happens in some rod files, the wavelength is 525
+          wavelength = nt.Wavelength
+     else
+          wavelength = 525
+     end 
+
+     stim_protocol = extract_stimulus(new_file, 1)
+     tstops = stim_protocol.timestamps
+     stim_time = round((tstops[2]-tstops[1])*1000)
+     photon = photon_lookup(
+          wavelength, nt.ND, nt.Percent, 1.0, calibration_file
+     )
+     if isnothing(photon)
+          photon = 0.0
+     end
+               
+     push!(all_files, (
+                    new_file, 
+                    nt.Year, nt.Month, nt.Date, 
+                    nt.Animal, nt.Age, nt.Genotype, nt.Condition, wavelength,
+                    photoreceptor, 
+                    nt.ND, nt.Percent, stim_time, 
+                    photon*stim_time
+               ) 
+          )
+end
+
+"""
+Working on this function to replace making individual trace extractions. 
+"""
 #function run_data_analysis(data_file::String; )
