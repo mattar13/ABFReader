@@ -1381,7 +1381,7 @@ function readABF(::Type{T}, abf_path::String;
     #Pull out the requested channels
     if isa(channels, Vector{String}) #If chs is a vector of channel names extract it as such
         ch_idxs = findall(ch -> ch ∈ channels, abfInfo["adcNames"])
-    elseif isa(chs, Vector{Int64}) #If chs is a vector of ints
+    elseif isa(channels, Vector{Int64}) #If chs is a vector of ints
         ch_idxs = channels
     elseif chs == -1 #if chs is -1 extract all channels
         ch_idxs = headerSection["channelList"]
