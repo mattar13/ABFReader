@@ -232,3 +232,12 @@ function fft_spectrum(t, data::Array{T, 1}) where T <: Real
     over_0 = findall(freqs .> 0);
     return freqs[over_0], x_fft[over_0] 
 end
+
+#%% a common filter function for simplification
+function filter_data(data; t_pre = 0.2, t_post = 4.0) 
+	truncate_data!(data, t_pre = t_pre, t_post = t_post);
+	baseline_cancel!(data, mode = :slope); 
+	data * 1000.0
+	lowpass_filter!(data)
+	return data
+end

@@ -43,6 +43,7 @@ export photon_lookup
 
 #filtering are any functions that return a Experiment file and alter the old one
 include("filtering.jl") 
+export filter_data
 export baseline_cancel, baseline_cancel! 
 export lowpass_filter, lowpass_filter!
 export notch_filter, notch_filter!
