@@ -1383,7 +1383,7 @@ function readABF(::Type{T}, abf_path::String;
         ch_idxs = findall(ch -> ch ∈ channels, abfInfo["adcNames"])
     elseif isa(channels, Vector{Int64}) #If chs is a vector of ints
         ch_idxs = channels
-    elseif chs == -1 #if chs is -1 extract all channels
+    elseif channels == -1 #if chs is -1 extract all channels
         ch_idxs = headerSection["channelList"]
     end
     #Extract info for the adc names and units
