@@ -19,7 +19,10 @@ end
 This function walks through the directory tree and locates any .abf file. 
 The extension can be changed with the keyword argument extension
 """
-function parse_abf(super_folder::String; extension::String = ".abf", verbose = false)
+function parse_abf(super_folder::String; 
+        extension::String = ".abf", 
+        verbose = false
+    )
     file_list = String[]
     for (root, dirs, files) in walkdir(super_folder)
         for file in files
@@ -83,8 +86,11 @@ This is the formatted_split function.
             [:Wavelength, x -> x == "Green" || x == 594 ? 594 : 365]
 """
 function formatted_split(string::String, format::Tuple; 
-        dlm = "_", parse_numbers = true, verbose = false
+        dlm = "_", parse_numbers = true, verbose = false, 
+        default_keys = (Photoreceptor = "Rods", Wavelength = 525)
         )
+    nt_keys = nothing
+    nt_vals = nothing
     #If the first item in the format tuple is a string, it is the delimiter
     if isa(format[1], String)
         #If the first object in the format is a string, it becomes the new delimiter
@@ -125,8 +131,8 @@ function formatted_split(string::String, format::Tuple;
                     push!(nt_vals, f_val)
                 end
             elseif isa(nt_key, Tuple) || isa(nt_key, Array{T} where T <: Tuple)
-                #Nested formats
-                inside_split = formatted_split(nt_val, nt_key)
+                #Nested formats also can't contain defaults
+                inside_split = formatted_split(nt_val, nt_key, default_keys = nothing)
                 #println(inside_split)
                 if !isnothing(inside_split) && !isa(inside_split, Symbol)
                     for in_key in keys(inside_split)
@@ -154,12 +160,26 @@ function formatted_split(string::String, format::Tuple;
             push!(nt_vals, split_str[length(format)+1:length(split_str)]...)
             push!(nt_keys, :misc)
         end
-        return NamedTuple{Tuple(nt_keys)}(nt_vals)
+     
     else
         if verbose
             print("The length of the formats do not match ")
             println("$(length(format)) ̸≠ $(length(split_str))")    
         end
+    end
+
+    if !isnothing(nt_keys) && !isnothing(nt_vals)
+        if !isnothing(default_keys)
+            new_keys = keys(default_keys)
+            new_values = values(default_keys)
+            for (i, k) in enumerate(new_keys)
+                if k ∉ nt_keys
+                    push!(nt_vals, new_values[i])
+                    push!(nt_keys, new_keys[i])
+                end
+            end
+        end
+        return NamedTuple{Tuple(nt_keys)}(nt_vals)   
     end
 end
 
