@@ -14,29 +14,27 @@ function update_datasheet(
           data_file::String; 
           verbose = false
      )
-     try #This only works if every directory is in the correct place
+     try 
           #First we check if the root file exists
-          if !isfile(data_file)
+          if !isfile(data_file) #If the root file does not exist we need to make it
 
-               #The file does not exist, so make the dataframe
                all_files = DataFrame(
                     :Path => all_paths, 
-                    :Year => 0, :Month => 0, :Date => 0,
+                    :Year => 0, :Month => 0, :Date => 0, 
                     :Animal => 0, :Age => 9, :Genotype => "", 
                     :Condition => "Nothing", :Wavelength => 525, 
                     :Photoreceptor => "Rods", 
                     :ND => 0, :Percent => 1, :Stim_time => 1.0, :Photons => 0.0
-               )
+               ) #Make the dataframe containing a basic summary of all files
 
-               delete_after = Int64[]
-               for (idx, path) in enumerate(all_paths)
+               delete_after = Int64[] #Some files we may want to skip, so we put those files here
+               for (idx, path) in enumerate(all_paths) #Look through all the files and record them. 
                     if verbose
                          print("Analyzing path number $idx of $(length(all_paths))")
                          println(path)
                     end
-                    #This works for pauls files and mine
-                    nt = formatted_split(path, format_bank)
-                    if !isnothing(nt)
+                    nt = formatted_split(path, format_bank) #At this time all necessary information is contained in the path name
+                    if !isnothing(nt) 
                          for field in Symbol.(DataFrames.names(all_files))
                               if haskey(nt, field)
                                    all_files[idx, field] = nt[field] 
@@ -59,7 +57,7 @@ function update_datasheet(
                          push!(delete_after, idx)
                     end
                end
-               if !isempty(delete_after)
+               if !isempty(delete_after) #After we have made a list of skipped files, place them here
                     println("Delete extra files")
                     delete!(all_files, delete_after)
                end                    
@@ -69,20 +67,21 @@ function update_datasheet(
                     @thenby(_.Animal)|> @thenby(_.Genotype) |> @thenby(_.Condition) |> 
                     @thenby(_.Wavelength) |> @thenby(_.Photons)|> 
                     DataFrame
-               #save the file as a excel file
+               
                
                if verbose
                     print("Dataframe created, saving...")
                end
 
+               #save the file as a excel file
                XLSX.openxlsx(data_file, mode = "w") do xf 
-                    XLSX.rename!(xf["Sheet1"], "All_Files")
+                    XLSX.rename!(xf["Sheet1"], "All_Files") #The first sheet needs to be renamed
                     XLSX.writetable!(xf["All_Files"], 
                          collect(DataFrames.eachcol(all_files)), 
                          DataFrames.names(all_files)
-                         )	
+                    ) #Write the analysis we just did into the excel file	
 
-                    for sn in dataframe_sheets
+                    for sn in dataframe_sheets #Make empty dataframes as above
                          XLSX.addsheet!(xf, sn)
                     end						
                end
@@ -93,29 +92,30 @@ function update_datasheet(
                end
                
                return all_files
-          else
-               #The file exists, we need to check for changes now
+          else #If the file does exist, then we give it a quick check for changes
+
                if verbose 
                     print("The file previously exists, checking for changes...") 
                end
                
+               #Open the old dataframe
                all_files = DataFrame(
                     XLSX.readtable(data_file, "All_Files")...
                )
 
-               added_files = []
-               for path in all_paths
-                    if path ∉ all_files.Path 
-                         secondary_nt = splitpath(path)[end][1:end-4] |> number_seperator
-                         nt2 = formatted_split(splitpath(path)[end], file_format)
-                         if secondary_nt[2] == ["Average"] || !isnothing(nt2)
+               added_files = [] #Make an empty list of files that were added since the dataframe was saved
+               for path in all_paths #Walk through all the paths
+                    if path ∉ all_files.Path #If the path in the file list is not in the dataframe, we need to add it
+                         secondary_nt = splitpath(path)[end][1:end-4] |> number_seperator #check if the new path contains average
+                         nt2 = formatted_split(splitpath(path)[end], file_format) #make sure the file contains the format 
+                         if secondary_nt[2] == ["Average"] || !isnothing(nt2) 
                               #these files need to be added
                               push!(added_files, path)
                          end
                     end
                end
 
-               removed_files = []
+               removed_files = [] #If a entry in the dataframe was deleted in the file tree, then remove it 
                for (idx, path) in enumerate(all_files.Path)
                     if path ∉ all_paths
                          push!(removed_files, idx)
@@ -126,25 +126,29 @@ function update_datasheet(
                     println(" Completed")
                end
 
-               if !isempty(added_files)
+               if !isempty(added_files) #We only need to do this part when we have added files to the analysis
                     if verbose
                          println("$(length(added_files)) Files have been added ")
                     end
                     for new_file in added_files
-                         nt = formatted_split(new_file, format_bank)
+                         nt = formatted_split(new_file, format_bank) #extract the new file details
                          if verbose
                               println(new_file)
                          end
-                         if !isnothing(nt)
-                              if haskey(nt, :flag)
+                         if !isnothing(nt) #If the file details don't match what we are expecting, then we move on from this entry
+                              if haskey(nt, :flag) #Sometimes if we want the analysis to skip over a file, we include the remove flag
                                    if nt.flag == "remove"
                                         #this is actually a file we should remove from the analysis
-                                        all_files_idx = findall(all_files.Path == new_file)
-                                        if !isempty(all_files_idx)
+                                        all_files_idx = findall(all_files.Path == new_file) #This is a redundancy 
+                                        if !isempty(all_files_idx) #If somehow the flagged file is found in the analysis
                                              println("Removing file $all_files_idx")
-                                             push!(removed_files, all_files_idx)
+                                             push!(removed_files, all_files_idx) #We add it to the removed files list
                                         end
-                                   else
+                                   else #If there is no relevant flag, then move on to the analysis
+                                        if verbose
+                                             print("Analyzing added path number $idx of $(length(added_files))")
+                                             println(path)
+                                        end
                                         stim_protocol = extract_stimulus(new_file, 1)
                                         tstops = stim_protocol.timestamps
                                         stim_time = round((tstops[2]-tstops[1])*1000)
@@ -161,17 +165,21 @@ function update_datasheet(
                                                   nt.Animal, nt.Age, nt.Genotype, nt.Condition, nt.Wavelength,
                                                   nt.Photoreceptor, 
                                                   nt.ND, nt.Percent, stim_time, 
-                                                  photon
+                                                  photon*stim_time
                                              ) 
                                         )                                      
                                    end
-                              else
-                                   stim_protocol = extract_stimulus(new_file, 1)
+                              else #If there is no flag, then continue to add the new files
+                                   if verbose
+                                        print("Analyzing added path number $idx of $(length(added_files))")
+                                        println(path)
+                                   end
+                                   stim_protocol = extract_stimulus(new_file, 1) #Extract the stimulus time from the analysis
                                    tstops = stim_protocol.timestamps
-                                   stim_time = round((tstops[2]-tstops[1])*1000)
+                                   stim_time = round((tstops[2]-tstops[1])*1000) #Calculate the stimulus time
                                    photon = photon_lookup(
                                         nt.Wavelength, nt.ND, nt.Percent, 1.0, calibration_file
-                                   )
+                                   ) #Enter the data into the photon table to get the amount of photons for each trace
                                    if isnothing(photon)
                                         photon = 0.0
                                    end
@@ -182,7 +190,7 @@ function update_datasheet(
                                              nt.Animal, nt.Age, nt.Genotype, nt.Condition, nt.Wavelength,
                                              nt.Photoreceptor, 
                                              nt.ND, nt.Percent, stim_time, 
-                                             photon
+                                             photon*stim_time
                                         ) 
                                    )
                               end
@@ -190,9 +198,7 @@ function update_datasheet(
                     end
                end
 
-               if !isempty(removed_files)
-                    #This is a catch for if files are removed but none are added
-                    #println(removed_files)
+               if !isempty(removed_files) #This is a catch for if files are removed but none are added
                     delete!(all_files, removed_files)
 
                     if verbose
@@ -200,7 +206,7 @@ function update_datasheet(
                     end
                end
 
-               if !isempty(added_files) || !isempty(removed_files)
+               if !isempty(added_files) || !isempty(removed_files) #If the file hierarchy is changed, we need to adjust the all files
                     if verbose
                          println("Data Analysis has been modified")
                          println("File rewritten")
@@ -210,7 +216,7 @@ function update_datasheet(
                          @thenby(_.Animal)|> @thenby(_.Genotype) |> @thenby(_.Condition) |> 
                          @thenby(_.Wavelength) |> @thenby(_.Photons)|> 
                          DataFrame
-                    #overwrite the All_Files datasheet
+                    #overwrite the All_Files datasheet only (This will leave all other sheets intact, but they probably shouldn't be)
                     XLSX.openxlsx(data_file, mode = "rw") do xf 
                          sheet = xf["All_Files"]
 		               XLSX.writetable!(sheet, 
