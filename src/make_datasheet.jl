@@ -426,25 +426,26 @@ function run_B_wave_analysis(all_files::DataFrame)
      trace_A = all_files |> @filter(_.Condition == "BaCl_LAP4" || _.Condition == "LAP4_BaCl") |> DataFrame
      trace_AB = all_files |> @filter(_.Condition == "BaCl") |> DataFrame
      trace_B = trace_A |> @join(trace_AB, 
-               {_.Year, _.Month, _.Date, _.Animal, _.Photons}, 
-               {_.Year, _.Month, _.Date, _.Animal, _.Photons}, 
-               {
-                    A_Path = _.Path, AB_Path = __.Path, 
-                    A_condition = _.Condition, AB_condition = __.Condition,
-                    __.Year,__.Month,__.Date,__.Animal,__.Photoreceptor,__.Wavelength,
-                    __.Age, __.Genotype, __.Condition, __.Photons, 
-                    Channel = "Vm_prime",
-                    Response = 0.0, Peak_Time = 0.0, Int_Time = 0.0, 
-                    Tau_Rec = 0.0, Tau_GOF = 0.0
-               }
-          ) |> 
-          DataFrame
+          {_.Year, _.Month, _.Date, _.Animal, _.Photons, _.Photoreceptor, _.Wavelength}, 
+          {_.Year, _.Month, _.Date, _.Animal, _.Photons, _.Photoreceptor, _.Wavelength},
+          {
+               A_Path = _.Path, AB_Path = __.Path, 
+               A_condition = _.Condition, AB_condition = __.Condition,
+               __.Year,__.Month,__.Date,__.Animal,__.Photoreceptor,__.Wavelength,
+               __.Age, __.Genotype, __.Condition, __.Photons, 
+               Channel = "Vm_prime",
+               Response = 0.0, Peak_Time = 0.0, Int_Time = 0.0, 
+               Tau_Rec = 0.0, Tau_GOF = 0.0
+          }
+     ) |> DataFrame
      
      #Directly add B-wave responses
      n_files = size(trace_B, 1)
      for (idx, exp) in enumerate(eachrow(trace_B))
           #we want to extract the response for each trace here
           println("Extracting B-wave for experiment $idx of $n_files.")
+          println(exp.A_Path)
+          println(exp.AB_Path)
           println("Total traces: $(size(trace_B, 1))")
           A_data = readABF(exp.A_Path, 
                average_sweeps = true, time_unit = :s
@@ -596,8 +597,8 @@ function run_G_wave_analysis(all_files::DataFrame)
      trace_AB = all_files |> @filter(_.Condition == "BaCl") |> DataFrame
      trace_ABG = all_files |> @filter(_.Condition == "NoDrugs") |> DataFrame
      trace_G = trace_AB |> @join(trace_ABG, 
-          {_.Year, _.Month, _.Date, _.Animal, _.Photons}, 
-          {_.Year, _.Month, _.Date, _.Animal, _.Photons}, 
+          {_.Year, _.Month, _.Date, _.Animal, _.Photons, _.Photoreceptor, _.Wavelength}, 
+          {_.Year, _.Month, _.Date, _.Animal, _.Photons, _.Photoreceptor, _.Wavelength}, 
           {__.Path, 
                AB_Path = _.Path, ABG_Path = __.Path, 
                AB_Condition = _.Condition, ABG_Condition = __.Condition, 
@@ -607,8 +608,7 @@ function run_G_wave_analysis(all_files::DataFrame)
                Response = 0.0, Peak_Time = 0.0, Int_Time = 0.0, 
                Tau_Rec = 0.0, Tau_GOF = 0.0
           }
-          ) |> 
-          DataFrame
+     ) |> DataFrame
 
      # Directly add the Glial component response
      n_files = size(trace_G, 1)
@@ -764,7 +764,7 @@ Working on this function to replace making individual trace extractions.
 function run_analysis(all_files::DataFrame, data_file::String)
      #make the A-wave files
      trace_A, experiments_A, conditions_A = run_A_wave_analysis(all_files)
-     BotNotify("{ERG GNAT}: Completed extraction of A-wave")
+     #BotNotify("{ERG GNAT}: Completed extraction of A-wave")
      XLSX.openxlsx(data_file, mode = "rw") do xf 
           sheet = xf["trace_A"]
           XLSX.writetable!(sheet, 
@@ -789,7 +789,7 @@ function run_analysis(all_files::DataFrame, data_file::String)
 
      #make the B-wave files
      trace_B, experiments_B, conditions_B = run_B_wave_analysis(all_files)
-     BotNotify("{ERG GNAT}: Completed extraction of B-wave")
+    # BotNotify("{ERG GNAT}: Completed extraction of B-wave")
      XLSX.openxlsx(data_file, mode = "rw") do xf 
           sheet = xf["trace_B"]
           XLSX.writetable!(sheet, 
@@ -812,7 +812,7 @@ function run_analysis(all_files::DataFrame, data_file::String)
      end
      #make the G-wave files
      trace_G, experiments_G, conditions_G = run_G_wave_analysis(all_files)
-     BotNotify("{ERG GNAT}: Completed extraction of G-component")
+     #BotNotify("{ERG GNAT}: Completed extraction of G-component")
      XLSX.openxlsx(data_file, mode = "rw") do xf 
           sheet = xf["trace_G"]
           XLSX.writetable!(sheet, 
