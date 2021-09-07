@@ -444,8 +444,8 @@ function run_B_wave_analysis(all_files::DataFrame)
      for (idx, exp) in enumerate(eachrow(trace_B))
           #we want to extract the response for each trace here
           println("Extracting B-wave for experiment $idx of $n_files.")
-          println(exp.A_Path)
-          println(exp.AB_Path)
+          #println(exp.A_Path)
+          #println(exp.AB_Path)
           println("Total traces: $(size(trace_B, 1))")
           A_data = readABF(exp.A_Path, 
                average_sweeps = true, time_unit = :s
@@ -478,8 +478,8 @@ function run_B_wave_analysis(all_files::DataFrame)
           #Extract the integrated time
           tInt = NeuroPhys.integral(B_data)
           #Extract the recovery time constant
-          println(size(B_data))
-          println(size(resp))
+          #println(size(B_data))
+          #println(size(resp))
           tRec, tau_gofs = recovery_tau(B_data, resp) 
           println(tRec)
           if size(B_data, 3) > 1
@@ -613,7 +613,9 @@ function run_G_wave_analysis(all_files::DataFrame)
      # Directly add the Glial component response
      n_files = size(trace_G, 1)
      for (idx, exp) in enumerate(eachrow(trace_G))
-          println("Extracting B-wave for experiment $idx of $n_files.")
+          println("Extracting Glial component for experiment $idx of $n_files.")
+          #println(exp.ABG_Path)
+          #println(exp.AB_Path)
           println("Total traces: $(size(trace_G, 1))")
           #we want to extract the response for each trace here
           AB_data = readABF(exp.AB_Path, 
