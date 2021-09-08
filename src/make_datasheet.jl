@@ -842,3 +842,32 @@ function run_analysis(all_files::DataFrame, data_file::String)
                DataFrames.names(conditions_G))						
      end
 end
+
+#
+const footnote = false #When exporting these files, this will ensure the analysis is not run
+if footnote #Basically this is only for running the analysis. 
+     using Revise #, OhMyREPL, DoctorDocstrings
+     using NeuroPhys
+     param_file = "F:\\Projects\\2021_Retinoschisis\\parameters.xlsx"
+
+     #%% Lets make a dataframe that does not alter the other dataframe categories
+     calibration_file = "E:\\Data\\Calibrations\\photon_lookup.xlsx"
+     rs_root = "F:\\Data\\ERG\\Retinoschisis\\"
+     wt_root = "E:\\Data\\ERG\\Paul\\" #This comes from my portable hardrive
+     gnat_root = "F:\\Data\\ERG\\Gnat"
+     wt_paths = wt_root |> parse_abf
+     rs_paths = rs_root |> parse_abf
+     gnat_paths = gnat_root |> parse_abf
+
+     #%% This analysis is for the Retinoschisis data analysis
+     all_paths = vcat(wt_paths, rs_paths)
+     data_file = "F:\\Projects\\2021_Retinoschisis\\data_analysis.xlsx"
+     all_files = update_datasheet(all_paths, calibration_file, data_file, verbose = true)
+     run_analysis(all_files, data_file)
+
+     #%% This analysis is for the Gnat data analysis
+     all_paths = vcat(wt_paths, gnat_paths)
+     data_file = "F:\\Projects\\2020_JGP_Gnat\\data_analysis.xlsx"
+     all_files = update_datasheet(all_paths, calibration_file, data_file, verbose = true)
+     run_analysis(all_files, data_file)
+end
