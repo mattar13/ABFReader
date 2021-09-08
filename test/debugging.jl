@@ -1,92 +1,52 @@
-using Revise
+using Revise #, OhMyREPL, DoctorDocstrings
 using NeuroPhys
-using DataFrames, XLSX, Query, Statistics, StatsBase
-dotenv("D\\.env")
-using Dates, Plots
+using Query, DataFrames, XLSX, StatsPlots
+param_file = "F:\\Projects\\2021_Retinoschisis\\parameters.xlsx"
 
-#%% Lets try making gap-free files
-abf_test = "E:\\Data\\Jordans_Patch_Data\\UsuableData\\11227008.abf"
-data_patch = readABF(abf_test; channels = ["Im_scaled"], stimulus_name = nothing, flatten_episodic = true) #test an ABF file format#%%
-#%%
-data_patch[1, 1:1000:size(data_patch,2), 1]
-plot(data_patch[1, 1:1000:size(data_patch,2), 1])
-#%%
-openABF(data_patch)
-#%%
-abf2_test = "test\\to_filter.abf"
-abf2Info = NeuroPhys.readABFInfo(abf2_test) #Test an ABF2 file format
-abf2Info["dataRate"]
-#%%
-abf2Info["fFileVersionNumber"]
-#%% define a single function for filtering
-function filter_data(data; t_pre = 1.0, t_post = 2.0) 
-	truncate_data!(data, t_pre = t_pre, t_post = t_post);
-	baseline_cancel!(data, mode = :slope); 
-	data * 1000.0
-	lowpass_filter!(data)
-	return data
-end
+#%% Eventually you should make a Pluto notebook that runs this analysis
+q_file = all_files |> 
+     @filter(_.Month == 3 && _.Date == 12 && _.Animal == 1 && _.Photons > 6000.0) |> 
+     DataFrame
+target_file = q_file.Path[1]
+target_file = "F:\\Data\\ERG\\Gnat\\2021_06_24_ERG_GNAT\\Mouse2_Adult_GNAT-KO\\BaCl\\Green\\nd1_100p_0002.abf"
+data = readABF(target_file, channels = ["Vm_prime"], average_sweeps = true) |> filter_data
+plot!(data, c = :red, dpi = 300, xlims = (-Inf, 2.0))
+savefig("F:\\Proposal\\gnat_fig.png")
 
-AB_Path = "E:\\Data\\ERG\\Retinoschisis\\2021_08_03_ERG_RS\\Mouse2_P13_C59S\\BaCl\\Rods\\nd2_1p_0000.abf"
-ABG_Path = "E:\\Data\\ERG\\Retinoschisis\\2021_08_03_ERG_RS\\Mouse2_P13_C59S\\NoDrugs\\Rods\\nd2_1p_0000.abf"
-AB_data = readABF(AB_Path, average_sweeps = true) |> filter_data
-ABG_data = readABF(ABG_Path, average_sweeps = true) |> filter_data
-G_data = ABG_data - AB_data 
-plot(AB_data, c = :red, linewidth = 2.0)
-plot!(ABG_data; c = :green, linewidth = 2.0)
-plot!(G_data, c = :black, linewidth = 2.0)
-
-#%%
-rs_root = "E:\\Data\\ERG\\Retinoschisis\\"
-wt_root = "E:\\Data\\ERG\\Paul\\"
-wt_paths = wt_root |> parse_abf
-rs_paths = rs_root |> parse_abf
-all_paths = vcat(wt_paths, rs_paths)
-calibration_file = "E:\\Data\\Calibrations\\photon_lookup.xlsx"
-param_file = "E:\\Projects\\2021_Retinoschisis\\parameters.xlsx"
-data_file = "E:\\Projects\\2021_Retinoschisis\\data_analysis.xlsx"
-
-#This is a long script which simply makes a dataframe
-all_files = update_datasheet(
-     all_paths, calibration_file, data_file, 
-     verbose = true
+#%% Plot IR curve for 2021-03-12-n1
+model(x, p) = map(I -> IR(I, p[1], p[2]) * p[3], x)
+q_WT30a = trace_A|>@filter(_.Month==3 && _.Date==12 && _.Animal==1)|>DataFrame
+@df q_WT30a plot(:Photons, :Response, st = :scatter, xaxis = :log, c = :black)
+#fit the IR curve
+fit_sect = NeuroPhys.curve_fit(model, 
+q_WT30a.Photons, q_WT30a.Response, [100.0, 1.0, 100], 
+lower = [0.01, 0.01, 0.01], upper = [Inf, Inf, 400]
 )
-#%% Lets make a dataframe that does not alter the other dataframe categories
-root1 = "E:\\Data\\ERG\\Gnat\\"
-root2 = "E:\\Data\\ERG\\Paul\\"
-gnat_paths = root1 |> parse_abf
-pauls_paths = root2 |> parse_abf
-#concatenate all files in a single array
-all_paths = vcat(gnat_paths, pauls_paths)
-#specify the calibration and the location of the data output
-calibration_file = "E:\\Data\\Calibrations\\photon_lookup.xlsx"
-data_file = "E:\\Projects\\2020_JGP_Gnat\\data_analysis.xlsx"
+I_range = LinRange(0.2, 1e4, 1000000)
+plot!(x -> model(x, fit_sect.param), I_range, 
+c = :jet, line_z = I_range, lw = 3.0, legend = false, 
+xaxis = :log, 
+xlabel = "log(Photons)/μm²", ylabel = "Response (μV)",
+grid = false, 
+margin = 0.0Plots.mm,
+)
+#%%
+savefig("F:\\Proposal\\example_IR.png")
 
-#%% Save the new datasheet
-update_datasheet(all_paths, calibration_file, data_file, verbose = true)
+#%% Make a trace with each stimulus intensity a different color
+data = readABF(String.(q_WT30a.Path), channels = ["Vm_prime"]) |> filter_data
+plot(data, c = :jet, line_z = log.(q_WT30a.Photons)')
+savefig("F:\\Proposal\\example_FlashFamily.png")
 
-#%% Lets test all the fileformats in the RS file structure
-root_rs = "E:\\Data\\ERG\\Retinoschisis\\"
-rs_paths = root_rs |> parse_abf
-incorrect_formats = []
-for (i, file) in enumerate(rs_paths)
-     format = formatted_split(file, format_bank_RS)
-     if isnothing(format)
-          push!(incorrect_formats, file)
-     end
-end
-incorrect_formats
 
-#%% test all of pauls files roots
-root_wt = "F:\\Data\\ERG\\Pauls\\"
-wt_paths = root_wt |> parse_abf
-incorrect_formats = []
-for (i, file) in enumerate(wt_paths)
-     format = formatted_split(file, format_bank_PAUL)
-     if isnothing(format)
-          push!(incorrect_formats, file)
-     end
-end
-incorrect_formats
 
-formatted_split(incorrect_formats[1], format_bank_PAUL, verbose = true)
+#%% We want to run each function at least once to document it
+target_file = "E:\\Data\\Patching\\2019_11_03_Patch\\Animal_2\\Cell_3\\19n03042.abf"
+data = readABF(target_file, channels = ["Vm_prime4"], stimulus_name = nothing)
+
+tidxs = round(Int64, 150e3/data.dt):round(Int64, 250e3/data.dt)
+tseries = (data.t[tidxs].-data.t[tidxs[1]])
+plot(tseries, data[1, tidxs, 1])
+#%%
+target_file = "F:\\Data\\ERG\\Retinoschisis\\2021_08_08_ERG_RS\\Mouse1_P13_R141C\\BaCl\\Cones\\Green\\nd1_100p_0000.abf"
+data = readABF(target_file)

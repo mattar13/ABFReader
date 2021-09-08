@@ -846,7 +846,7 @@ end
 #
 const footnote = false #When exporting these files, this will ensure the analysis is not run
 if footnote #Basically this is only for running the analysis. 
-     using Revise #, OhMyREPL, DoctorDocstrings
+     using Revise
      using NeuroPhys
      param_file = "F:\\Projects\\2021_Retinoschisis\\parameters.xlsx"
 
