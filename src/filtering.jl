@@ -138,6 +138,35 @@ end
 
 lowpass_filter(trace::Experiment, freq; pole = 8) = lowpass_filter(trace; freq = freq, pole = pole)
 
+function highpass_filter(trace::Experiment; freq = 40.0, pole = 8)
+    
+    responsetype = Highpass(freq; fs =  1/trace.dt)
+    designmethod = Butterworth(8)
+    digital_filter = digitalfilter(responsetype, designmethod)
+    data = deepcopy(trace)
+    for swp in 1:size(trace,1)
+        for ch in 1:size(trace,3)
+        #never adjust the stim
+            data.data_array[swp,:,ch] .= filt(digital_filter, trace[swp, :, ch])
+        end
+    end
+    return data
+end
+
+function highpass_filter!(trace::Experiment; freq = 40.0, pole = 8)
+    
+    responsetype = Highpass(freq; fs =  1/trace.dt)
+    designmethod = Butterworth(pole)
+    digital_filter = digitalfilter(responsetype, designmethod)
+    for swp in 1:size(trace,1)
+        for ch in 1:size(trace,3)
+            trace.data_array[swp,:,ch] .= filt(digital_filter, trace[swp, :, ch])
+        end
+    end
+end
+
+highpass_filter(trace::Experiment, freq; pole = 8) = highpass_filter(trace; freq = freq, pole = pole)
+
 function notch_filter(trace::Experiment; pole = 8, center = 60.0, std = 0.1)
     
     responsetype = Bandstop(center-std, center+std; fs = 1/trace.dt)
