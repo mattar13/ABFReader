@@ -94,18 +94,6 @@ import Base: +, -, *, / #Import these basic functions to help
 *(trace::Experiment, val::Real) = trace.data_array = trace.data_array .* val
 /(trace::Experiment, val::Real) = trace.data_array = trace.data_array ./ val
 
--(exp1::Experiment, exp2::Experiment) = sub_exp(exp1, exp2)
-
-function sub_exp(exp1::Experiment, exp2::Experiment)
-    @assert size(exp1) == size(exp2)
-    data = deepcopy(exp1)
-    #return a new experiment? make a new exp
-    data.data_array = exp1.data_array - exp2.data_array
-    return data
-end
-
-
-
 import Base: size, length, getindex, setindex, sum, copy, maximum, minimum, push!, cumsum, argmin, argmax
 import Statistics.std
 
@@ -266,6 +254,28 @@ function match_channels(exp1::Experiment, exp2::Experiment)
 	end	
 	return (exp1, exp2)
 end
+
+"""
+This is just a convinent way to write subtraction as a function
+"""
+function sub_exp(exp1::Experiment, exp2::Experiment)
+    if size(exp1) == size(exp2)
+        data = deepcopy(exp1)
+        #return a new experiment? make a new exp
+        data.data_array = exp1.data_array - exp2.data_array
+        return data
+    else #If the channels don't match, we will automatically drop the unmatching one by default
+        exp1, exp2 = match_channels(exp1, exp2)
+        data = deepcopy(exp1)
+        #return a new experiment? make a new exp
+        data.data_array = exp1.data_array - exp2.data_array
+        return data
+    end
+end
+
+-(exp1::Experiment, exp2::Experiment) = sub_exp(exp1, exp2)
+
+
 """
 This gets the channel based on either the name or the index of the channel
 """
