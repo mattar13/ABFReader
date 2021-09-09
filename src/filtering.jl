@@ -127,7 +127,7 @@ end
 function lowpass_filter!(trace::Experiment; freq = 40.0, pole = 8)
     
     responsetype = Lowpass(freq; fs =  1/trace.dt)
-    designmethod = Butterworth(8)
+    designmethod = Butterworth(pole)
     digital_filter = digitalfilter(responsetype, designmethod)
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
@@ -141,7 +141,7 @@ lowpass_filter(trace::Experiment, freq; pole = 8) = lowpass_filter(trace; freq =
 function notch_filter(trace::Experiment; pole = 8, center = 60.0, std = 0.1)
     
     responsetype = Bandstop(center-std, center+std; fs = 1/trace.dt)
-	designmethod = Butterworth(8)
+	designmethod = Butterworth(pole)
 	digital_filter = digitalfilter(responsetype, designmethod)
     data = deepcopy(trace)
     for swp in 1:size(trace,1)
@@ -156,7 +156,7 @@ end
 function notch_filter!(trace::Experiment; pole = 8, center = 60.0, std = 0.1)
     
     responsetype = Bandstop(center-std, center+std; fs = 1/trace.dt)
-	designmethod = Butterworth(8)
+	designmethod = Butterworth(pole)
 	digital_filter = digitalfilter(responsetype, designmethod)
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
