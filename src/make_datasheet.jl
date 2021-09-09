@@ -130,7 +130,7 @@ function update_datasheet(
                     if verbose
                          println("$(length(added_files)) Files have been added ")
                     end
-                    for new_file in added_files
+                    for (idx, new_file) in enumerate(added_files)
                          nt = formatted_split(new_file, format_bank) #extract the new file details
                          if verbose
                               println(new_file)
