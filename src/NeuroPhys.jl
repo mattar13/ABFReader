@@ -36,7 +36,7 @@ export get_stim_channels
 export getchannel, getsweep, getstim, findstimRng
 export eachchannel, eachsweep
 export truncate_data, truncate_data!
-export split_data, drop!
+export split_data, drop!, drop 
 export concat, concat!
 export photon_lookup
 #These will be disabled eventually

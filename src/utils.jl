@@ -96,12 +96,35 @@ import Base: +, -, *, / #Import these basic functions to help
 
 -(exp1::Experiment, exp2::Experiment) = sub_exp(exp1, exp2)
 
-function sub_exp(exp1::Experiment, exp2::Experiment)
-    @assert size(exp1) == size(exp2)
-    data = deepcopy(exp1)
-    #return a new experiment? make a new exp
-    data.data_array = exp1.data_array - exp2.data_array
-    return data
+function sub_exp(exp1::Experiment, exp2::Experiment; if_channels_not_equal = :drop)
+    
+    if if_channels_not_equal == :throw
+        @assert size(exp1) == size(exp2)
+        data = deepcopy(exp1)
+        #return a new experiment? make a new exp
+        data.data_array = exp1.data_array - exp2.data_array
+        return data
+    elseif if_channels_not_equal == :drop #This automatically drops the missing channel
+
+end
+
+"""
+If two experiments are being compared, then this function drops the second channel
+"""
+function match_channels(exp1::Experiment, exp2::Experiment)
+    if size(ab_data) != size(a_data)
+		#we want to drop the extra channel
+		match_ch = findall(a_data.chNames.==ab_data.chNames)
+		if size(ab_data,3) > size(a_data,3) 
+			drop!(ab_data, drop_idx = match_ch[1])
+		else
+			drop!(a_data, drop_idx = match_ch[1])
+		end
+		B_data = ab_data - a_data
+	else
+		#Now we can subtract the A response from the AB response
+		B_data = ab_data - a_data 
+	end	
 end
 
 import Base: size, length, getindex, setindex, sum, copy, maximum, minimum, push!, cumsum, argmin, argmax
@@ -240,6 +263,13 @@ function drop!(trace::Experiment; dim = 3, drop_idx = 1)
     perm_data = permutedims(perm_data, sortperm(n_dims))
     trace.data_array = perm_data
 end
+
+function drop(trace::Experiment; kwargs...)
+    trace_copy = copy(trace)
+    drop!(trace_copy; kwargs...)
+    return trace_copy
+end
+
 
 
 """
