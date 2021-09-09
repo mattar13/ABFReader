@@ -46,6 +46,7 @@ include("filtering.jl")
 export filter_data
 export baseline_cancel, baseline_cancel! 
 export lowpass_filter, lowpass_filter!
+export highpass_filter, highpass_filter!
 export notch_filter, notch_filter!
 export cwt_filter, cwt_filter!
 export average_sweeps, average_sweeps!
