@@ -39,6 +39,7 @@ export truncate_data, truncate_data!
 export split_data, drop!, drop 
 export concat, concat!
 export photon_lookup
+export match_channels
 #These will be disabled eventually
 
 #filtering are any functions that return a Experiment file and alter the old one
