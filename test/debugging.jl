@@ -1,7 +1,75 @@
-using Revise #, OhMyREPL, DoctorDocstrings
+using Revise 
 using NeuroPhys
-using Query, DataFrames, XLSX, StatsPlots
+using Query, DataFrames, XLSX, JLD2
+using StatsPlots
 param_file = "F:\\Projects\\2021_Retinoschisis\\parameters.xlsx"
+
+#%% We want to make a section for creating JSON files all in one
+format_file = "test.xlsx"
+rs_root = "F:\\Data\\ERG\\Retinoschisis\\"
+rs_paths = rs_root |> parse_abf
+test_path = rs_paths[1]
+
+#%%
+BANK = Dict(
+     "GNAT" => (
+          FMTCategory{String}(:Drive), 
+          FMTCategory{String}(:Root), 
+          FMTCategory{String}(:Project),
+          FMTBank("DATE_DETAILS"), 
+          FMTBank("ANIMAL_DETAILS"), 
+          FMTCategory{String}(:Condition),
+          FMTDefault(:Photoreceptor, "Rods"),
+          FMTSwitch(
+               FMTSequence(
+                    FMTRequired(["Green", "UV"], :Wavelength), 
+                    FMTFunction(
+                         x -> x == "Green" ? 525 : 365, 
+                         :Wavelength
+                    )
+               ),
+               FMTRequired([525, 365], :Wavelength)
+          )
+
+     ), 
+     "DATE_DETAILS" => (
+          FMTSeperator("_"),
+          FMTCategory{Int64}(:Year), 
+          FMTCategory{Int64}(:Month), 
+          FMTCategory{Int64}(:Date), 
+          FMTCategory(:Technique), 
+          FMTCategory{String}(:Genotype)
+     ), 
+     "ANIMAL_DETAILS" => (
+          FMTSeperator("_"), 
+          FMTCategory{Int64}(:ND), 
+          FMTCategory{Int64}(:Percent),
+          FMTCategory(:Nothing),
+          FMTCategory(:Nothing)
+     )
+)
+#%% check if a key has a seperator at the beginning
+filename = "test.jld"
+write_format(BANK, filename)
+#%%
+bank, ids, lengths = read_format(filename)
+formatted_split(test_path, bank, ids, lengths)
+#%%
+import NeuroPhys: check_age, check_geno, check_drugs, check_color
+format_bank_GNAT = ("\\", 
+          :~, :~, :~, :Project, 
+          ("_", :Year, :Month, :Date, ~), 
+          ("_", :Animal, :age, :genotype), 
+          :drugs, :wavelength, 
+          ("_", :ND, :Percent)
+     )
+
+#%%
+
+#%%
+jldopen(filename, "r") do file
+
+end
 
 #%% Eventually you should make a Pluto notebook that runs this analysis
 q_file = all_files |> 
@@ -50,3 +118,10 @@ plot(tseries, data[1, tidxs, 1])
 #%%
 target_file = "F:\\Data\\ERG\\Retinoschisis\\2021_08_08_ERG_RS\\Mouse1_P13_R141C\\BaCl\\Cones\\Green\\nd1_100p_0000.abf"
 data = readABF(target_file)
+
+#%% lets play around with some hypothesis testing and p-value Statistics
+using StatsBase, Statistics, HypothesisTests
+a = rand(1000)
+b = rand(1000)
+OneSampleTTest(a, b)
+
