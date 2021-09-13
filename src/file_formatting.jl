@@ -85,6 +85,12 @@ struct FMTSeperator
     value::String
 end
 
+"""
+The FMT is the basic type here. All formats will be based on category
+
+FMT stands for format
+"""
+abstract type FMT end
 
 """
 A category is the basic type. 
@@ -94,7 +100,7 @@ EXAMPLE
 
 FMTCategory(:Year, 2021) => (Year = 2021)
 """
-mutable struct FMTCategory{T} #We can set the type as well
+mutable struct FMTCategory{T} <: FMT #We can set the type as well
     key::Symbol
     value::T
 end
@@ -102,6 +108,7 @@ FMTCategory(key) = FMTCategory(key, nothing)
 FMTCategory{T}(key) where T <: Real = FMTCategory{T}(key, T(-1))
 FMTCategory{String}(key)= FMTCategory{String}(key, "")
 extractFMT(fmt::FMTCategory) = (fmt.key => fmt.value)
+
 """
 A check is a category that has some kind of internal file_formatting
 The convert function changes the answer into something else
@@ -110,7 +117,7 @@ check> x -> x == "Green" ? 595 : 365
 key> :Wavelength
 value> 
 """
-mutable struct FMTFunction{T} <: FMTCategory{T}
+mutable struct FMTFunction{T} <: FMT
     fxn::Function
     key::Symbol
     value::T
@@ -126,7 +133,7 @@ A default key is a category that defaults to a specific value and is included
 The difference between this and a category, is that a category will not return empty, 
 whereas a default will return a default value if it is not filled. 
 """
-mutable struct FMTDefault{T} <: FMTCategory{T}
+mutable struct FMTDefault{T} <: FMT
     key::Symbol
     value::T
 end
@@ -135,7 +142,7 @@ end
 A required key is a category that must be one of the following values
 in required
 """
-mutable struct FMTRequired{T} <: FMTCategory{T}
+mutable struct FMTRequired{T} <: FMT
     required::Vector{T}
     key::Symbol
     value::T
@@ -146,7 +153,7 @@ FMTRequired{String}(required, key)= FMTRequired{String}(required, key, "")
 """
 An excluded key means that the category will not be allowed if it contains a certain value
 """
-mutable struct FMTExcluded{T} <: FMTCategory{T}
+mutable struct FMTExcluded{T} <: FMT
     excluded::Vector{T}
     key::Symbol
     value::T
@@ -156,20 +163,20 @@ FMTExcluded{T}(excluded, key) where T <: Real = FMTExcluded{T}(excluded, key, T(
 FMTExcluded{String}(excluded, key)= FMTExcluded{String}(excluded, key, "")
 
 """
-A format is a category that has to be examined iteratively
+An Inner category is a recursive inner loop which contains it's own format bank
 """
-mutable struct FMTFormat 
+mutable struct FMTBANK
     pointer::String
     keys::Vector{Symbol}
     values::Vector
 end
-FMTFormat(pointer) = FMTFormat(pointer, Symbol[], [])
+FMTBANK(pointer) = FMTBANK(pointer, Symbol[], [])
 
 """
 This object will check multiple categories. It will treat each one as a exclusive this or that
 """
 mutable struct FMTSwitch
-    categories
+    categories::Vector{FMT}
 end
 
 """
@@ -187,7 +194,7 @@ FMTSequence(                                            #The sequence...
 
 """
 mutable struct FMTSequence
-    categories
+    categories::Vector{FMT} 
 end
 
 function read_format(filename)
