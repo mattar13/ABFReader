@@ -1,3 +1,29 @@
+struct FMTSeperator
+     value::String
+end
+
+#Category is mutable because the value will change
+mutable struct FMTCategory
+     key::Symbol
+     value
+end
+FMTCategory(key) = FMTCategory(key, nothing) 
+
+struct FMTCheck
+     key::Symbol
+     value
+end
+
+struct FMTFormat
+     pointer::String
+end
+
+#A default key never changes
+struct FMTDefault
+     key::Symbol
+     value
+end
+
 
 function get_root(path::T, experimenter::T) where T <: DataFrame 
     if experimenter.value == "Matt"
