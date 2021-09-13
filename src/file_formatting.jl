@@ -1,46 +1,3 @@
-struct FMTSeperator
-     value::String
-end
-
-#Category is mutable because the value will change
-mutable struct FMTCategory
-     key::Symbol
-     value
-end
-FMTCategory(key) = FMTCategory(key, nothing) 
-
-struct FMTCheck
-     key::Symbol
-     value
-end
-
-struct FMTFormat
-     pointer::String
-end
-
-#A default key never changes
-struct FMTDefault
-     key::Symbol
-     value
-end
-
-
-function get_root(path::T, experimenter::T) where T <: DataFrame 
-    if experimenter.value == "Matt"
-        return joinpath(split(path.value, "\\")[1:end-1]...)
-    elseif experimenter.value == "Paul"
-        return joinpath(split(path.value, "\\")[1:end-2]...)
-    end
-end
-
-function get_root(path::String, experimenter::String)
-    if experimenter == "Matt"
-        return joinpath(split(path, "\\")[1:end-1]...)
-    elseif experimenter == "Paul"
-        return joinpath(split(path, "\\")[1:end-2]...)
-    end
-end
-
 """
 This function walks through the directory tree and locates any .abf file. 
 The extension can be changed with the keyword argument extension
@@ -62,6 +19,22 @@ function parse_abf(super_folder::String;
         end
     end
     file_list
+end
+
+function get_root(path::T, experimenter::T) where T <: DataFrame 
+    if experimenter.value == "Matt"
+        return joinpath(split(path.value, "\\")[1:end-1]...)
+    elseif experimenter.value == "Paul"
+        return joinpath(split(path.value, "\\")[1:end-2]...)
+    end
+end
+
+function get_root(path::String, experimenter::String)
+    if experimenter == "Matt"
+        return joinpath(split(path, "\\")[1:end-1]...)
+    elseif experimenter == "Paul"
+        return joinpath(split(path, "\\")[1:end-2]...)
+    end
 end
 
 """
@@ -102,6 +75,174 @@ function number_seperator(str)
     return numerical, text
 end
 
+########################## Format Extraction ####################
+"""
+A seperator is a item that splits the format. 
+
+In most cases this changes the delimiter in the format
+"""
+struct FMTSeperator
+    value::String
+end
+
+
+"""
+A category is the basic type. 
+A category contains a value and can be set to a value either a Real number or a string
+
+EXAMPLE
+
+FMTCategory(:Year, 2021) => (Year = 2021)
+"""
+mutable struct FMTCategory{T} #We can set the type as well
+    key::Symbol
+    value::T
+end
+FMTCategory(key) = FMTCategory(key, nothing) 
+FMTCategory{T}(key) where T <: Real = FMTCategory{T}(key, T(-1))
+FMTCategory{String}(key)= FMTCategory{String}(key, "")
+extractFMT(fmt::FMTCategory) = (fmt.key => fmt.value)
+"""
+A check is a category that has some kind of internal file_formatting
+The convert function changes the answer into something else
+EXAMPLE: 
+check> x -> x == "Green" ? 595 : 365
+key> :Wavelength
+value> 
+"""
+mutable struct FMTFunction{T} <: FMTCategory{T}
+    fxn::Function
+    key::Symbol
+    value::T
+end
+FMTFunction(fxn, key) = FMTFunction(fxn, key, nothing) 
+FMTFunction{T}(fxn, key) where T <: Real = FMTFunction{T}(fxn, key, T(-1))
+FMTFunction{String}(fxn, key)= FMTFunction{String}(fxn, key, "")
+
+
+"""
+A default key is a category that defaults to a specific value and is included
+
+The difference between this and a category, is that a category will not return empty, 
+whereas a default will return a default value if it is not filled. 
+"""
+mutable struct FMTDefault{T} <: FMTCategory{T}
+    key::Symbol
+    value::T
+end
+
+"""
+A required key is a category that must be one of the following values
+in required
+"""
+mutable struct FMTRequired{T} <: FMTCategory{T}
+    required::Vector{T}
+    key::Symbol
+    value::T
+end
+FMTRequired(required, key) = FMTRequired(required, key, value)
+FMTRequired{T}(required, key) where T <: Real = FMTRequired{T}(required, key, T(-1))
+FMTRequired{String}(required, key)= FMTRequired{String}(required, key, "")
+"""
+An excluded key means that the category will not be allowed if it contains a certain value
+"""
+mutable struct FMTExcluded{T} <: FMTCategory{T}
+    excluded::Vector{T}
+    key::Symbol
+    value::T
+end
+FMTExcluded(excluded, key) = FMTExcluded(excluded, key, value)
+FMTExcluded{T}(excluded, key) where T <: Real = FMTExcluded{T}(excluded, key, T(-1))
+FMTExcluded{String}(excluded, key)= FMTExcluded{String}(excluded, key, "")
+
+"""
+A format is a category that has to be examined iteratively
+"""
+mutable struct FMTFormat 
+    pointer::String
+    keys::Vector{Symbol}
+    values::Vector
+end
+FMTFormat(pointer) = FMTFormat(pointer, Symbol[], [])
+
+"""
+This object will check multiple categories. It will treat each one as a exclusive this or that
+"""
+mutable struct FMTSwitch
+    categories
+end
+
+"""
+This object will check multiple categories. It will treat each one as a sequence
+
+EXAMPLE: 
+Check for wavelength: 
+FMTSequence(                                            #The sequence...
+    FMTRequired(:Wavelength, ["Green", "UV"]),          #requires the wavelength to be the word "green" or "UV"
+    FMTFunction(                                        #Then is modified by the function
+            x -> x == "Green" || x == 525 ? 525 : 365,  #which looks for the word green and sets the value to 525 or 365
+            :Wavelength
+    )
+)
+
+"""
+mutable struct FMTSequence
+    categories
+end
+
+function read_format(filename)
+    bank = nothing; ids = nothing; lengths = nothing
+    jldopen(filename, "r") do file
+        println(file)
+        ids = file["ids"]
+        lengths = file["lengths"]
+        return bank, ids, lengths
+    end
+end
+
+function write_format(bank, filename; reset = false)
+     #We need to check to see if the file exists already
+    if isfile(filename) #This means that we first need to read the old file
+        println("append data")
+    end
+    if isa(bank, Dict)
+        ids = [keys(bank)...]
+        lengths = map(entry -> length(bank[entry]), ids)
+    else
+        println("This will be for single entries")
+    end
+
+    jldopen(filename, "w") do file
+        println(file)
+        file["ids"] = ids
+        file["lengths"] = lengths
+        for entry in ids
+            file["BANK/$(entry)"] = bank[entry]
+            println(entry)
+            println(bank[entry])
+            println(file["BANK"])
+        end              
+    end
+end
+
+function formatted_split(string::String, format::Dict; dlm = "\\")
+    nt_keys = nothing
+    nt_vals = nothing
+    #If the first item in the format tuple is a string, it is the delimiter
+    if isa(format[1], FMTSeperator)
+        #If the first object in the format is a string, it becomes the new delimiter
+        dlm = format[1].value
+        format = format[2:end]
+    end
+    split_str = split(string, dlm)
+    print("Format size: ")
+    println(length(format))
+    print("String size: ")
+    println(length(split_str))
+end
+
+
+##################### OLD STUFF ##########################
 """
 This is the formatted_split function. 
     You use this as an expression that breaks down info in strings
