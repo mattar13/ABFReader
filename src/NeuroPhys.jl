@@ -19,7 +19,7 @@ using Telegram, Telegram.API, ConfigEnv
 include("file_formatting.jl") #We may make this into it's own package one day
 export read_format, write_format
 export extractFMT
-export FMTSeperator, FMTCategory, FMTFunction, FMTFormat, FMTDefault, FMTRequired, FMTExcluded, FMTor, FMTand
+export FMTSeperator, FMTCategory, FMTFunction, FMTBank, FMTDefault, FMTRequired, FMTExcluded, FMTSwitch, FMTSequence
 export formatted_split, format_bank_PAUL, format_bank_RS, format_bank_GNAT
 #export check_age, check_color, check_pc, check_geno, get_root, contains_words, condition_check
 export parse_abf
