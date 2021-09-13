@@ -12,7 +12,7 @@ using StatsBase, Statistics
 using Polynomials, Distributions #Used for polynomial fitting
 using DSP, Wavelets, FFTW #Used for filtering
 using LsqFit #Used for fitting amplification and Intensity Response models
-using JSON2, DataFrames, Query, XLSX #Used for saving data
+using JLD2, DataFrames, Query, XLSX #Used for saving data
 using Dates
 using Telegram, Telegram.API, ConfigEnv
 #Functions that can help with file extraction
