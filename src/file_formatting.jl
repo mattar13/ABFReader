@@ -89,25 +89,31 @@ end
 The FMT is the basic type here. All formats will be based on category
 
 FMT stands for format
+
+Every FMT object will have the ability to extract the internal components into a pair
 """
 abstract type FMT end
+extractFMT(fmt::FMT) = (fmt.key => fmt.value)
 
 """
 A category is the basic type. 
 A category contains a value and can be set to a value either a Real number or a string
 
-EXAMPLE
+EXAMPLE: 
 
-FMTCategory(:Year, 2021) => (Year = 2021)
+julia> b = FMTCategory(:Test, "Test")
+FMTCategory{String}(:Test, "Test")
+
+julia> NeuroPhys.extractFMT(b)
+:Test => "Test"
 """
 mutable struct FMTCategory{T} <: FMT #We can set the type as well
     key::Symbol
     value::T
 end
-FMTCategory(key) = FMTCategory(key, nothing) 
-FMTCategory{T}(key) where T <: Real = FMTCategory{T}(key, T(-1))
-FMTCategory{String}(key)= FMTCategory{String}(key, "")
-extractFMT(fmt::FMTCategory) = (fmt.key => fmt.value)
+FMTCategory(key::Symbol) = FMTCategory(key, nothing) 
+FMTCategory{T}(key::Symbol) where T <: Real = FMTCategory{T}(key, T(-1))
+FMTCategory{String}(key::Symbol)= FMTCategory{String}(key, "")
 
 """
 A check is a category that has some kind of internal file_formatting
@@ -122,9 +128,9 @@ mutable struct FMTFunction{T} <: FMT
     key::Symbol
     value::T
 end
-FMTFunction(fxn, key) = FMTFunction(fxn, key, nothing) 
-FMTFunction{T}(fxn, key) where T <: Real = FMTFunction{T}(fxn, key, T(-1))
-FMTFunction{String}(fxn, key)= FMTFunction{String}(fxn, key, "")
+FMTFunction(fxn::Function, key::Symbol) = FMTFunction(fxn, key, nothing) 
+FMTFunction{T}(fxn::Function, key::Symbol) where T <: Real = FMTFunction{T}(fxn, key, T(-1))
+FMTFunction{T}(fxn::Function, key::Symbol) where T <: String = FMTFunction{T}(fxn, key, "")
 
 
 """
@@ -147,9 +153,9 @@ mutable struct FMTRequired{T} <: FMT
     key::Symbol
     value::T
 end
-FMTRequired(required, key) = FMTRequired(required, key, value)
-FMTRequired{T}(required, key) where T <: Real = FMTRequired{T}(required, key, T(-1))
-FMTRequired{String}(required, key)= FMTRequired{String}(required, key, "")
+#FMTRequired(required, key::Symbol) = FMTRequired(required, key, nothing)
+FMTRequired(required::Vector{T}, key::Symbol) where T <: Real = FMTRequired{T}(required, key, T(-1))
+FMTRequired(required::Vector{T}, key::Symbol) where T <: String = FMTRequired{T}(required, key, "")
 """
 An excluded key means that the category will not be allowed if it contains a certain value
 """
@@ -158,26 +164,28 @@ mutable struct FMTExcluded{T} <: FMT
     key::Symbol
     value::T
 end
-FMTExcluded(excluded, key) = FMTExcluded(excluded, key, value)
-FMTExcluded{T}(excluded, key) where T <: Real = FMTExcluded{T}(excluded, key, T(-1))
-FMTExcluded{String}(excluded, key)= FMTExcluded{String}(excluded, key, "")
+FMTExcluded(excluded, key::Symbol) = FMTExcluded(excluded, key, value)
+FMTExcluded{T}(excluded, key::Symbol) where T <: Real = FMTExcluded{T}(excluded, key, T(-1))
+FMTExcluded{String}(excluded, key::Symbol)= FMTExcluded{String}(excluded, key, "")
 
 """
 An Inner category is a recursive inner loop which contains it's own format bank
 """
-mutable struct FMTBANK
+mutable struct FMTBank
     pointer::String
     keys::Vector{Symbol}
     values::Vector
 end
-FMTBANK(pointer) = FMTBANK(pointer, Symbol[], [])
+FMTBank(pointer) = FMTBank(pointer, Symbol[], [])
 
 """
 This object will check multiple categories. It will treat each one as a exclusive this or that
 """
-mutable struct FMTSwitch
+mutable struct FMTSwitch <: FMT
     categories::Vector{FMT}
 end
+FMTSwitch(fmts...) = FMTSwitch([fmts...])
+
 
 """
 This object will check multiple categories. It will treat each one as a sequence
@@ -193,16 +201,35 @@ FMTSequence(                                            #The sequence...
 )
 
 """
-mutable struct FMTSequence
+mutable struct FMTSequence <: FMT
     categories::Vector{FMT} 
 end
+FMTSequence(fmts...) = FMTSequence([fmts...])
 
-function read_format(filename)
-    bank = nothing; ids = nothing; lengths = nothing
+function read_format(filename; verbose = true)
+    bank = Dict(); ids = nothing; lengths = nothing
     jldopen(filename, "r") do file
-        println(file)
+        if verbose
+            print("File $filename has IDs:")
+        end
         ids = file["ids"]
+        if verbose
+            println(ids)
+            print("Each one has: ")
+        end
         lengths = file["lengths"]
+        if verbose
+            println("$lengths entries")
+        end
+        for id in ids
+            bank[id] = file["BANK/$(id)"]
+            if verbose
+                println("ID $id has this file structure:")
+                for inner in bank[id]
+                    println("\t $inner")
+                end
+            end
+        end
         return bank, ids, lengths
     end
 end
@@ -215,6 +242,8 @@ function write_format(bank, filename; reset = false)
     if isa(bank, Dict)
         ids = [keys(bank)...]
         lengths = map(entry -> length(bank[entry]), ids)
+        seperators = map(entry -> isa.(bank[entry], FMTSeperator) |> sum, ids) #
+        lengths = lengths .- seperators
     else
         println("This will be for single entries")
     end
@@ -225,25 +254,12 @@ function write_format(bank, filename; reset = false)
         file["lengths"] = lengths
         for entry in ids
             file["BANK/$(entry)"] = bank[entry]
-            println(entry)
-            println(bank[entry])
-            println(file["BANK"])
         end              
     end
 end
 
-function formatted_split(string::String, format::Dict; dlm = "\\")
-    nt_keys = nothing
-    nt_vals = nothing
-    #If the first item in the format tuple is a string, it is the delimiter
-    if isa(format[1], FMTSeperator)
-        #If the first object in the format is a string, it becomes the new delimiter
-        dlm = format[1].value
-        format = format[2:end]
-    end
+function formatted_split(string::String, format::Dict, ids::Vector{String}, lengths::Vector{Int64}; dlm = "\\")
     split_str = split(string, dlm)
-    print("Format size: ")
-    println(length(format))
     print("String size: ")
     println(length(split_str))
 end
