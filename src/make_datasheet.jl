@@ -1,5 +1,13 @@
-#everything in here is alot of code that does not necessarily need to be run every time 
-#using Query
+"""
+This file writes either a named tuple or a dictionary into a JSON file
+"""
+function write_JSON(data::T, filename::String) where T
+    string_data = JSON2.write(data)
+    open(filename, "w") do f
+        write(f, string_data)
+    end
+end
+
 dataframe_sheets = [
      "trace_A", "trace_B", "trace_G", 
      "experiments_A", "experiments_B", "experiments_G", 
