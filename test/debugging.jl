@@ -19,7 +19,7 @@ BANK = Dict(
           FMTBank("DATE_DETAILS"), 
           FMTBank("ANIMAL_DETAILS"), 
           FMTCategory{String}(:Condition),
-          FMTDefault(:Photoreceptor, "Rods"),
+          FMTCategory(:Photoreceptor, "Rods"),
           FMTSwitch(
                FMTSequence(
                     FMTRequired(["Green", "UV"], :Wavelength), 
@@ -30,7 +30,10 @@ BANK = Dict(
                ),
                FMTRequired([525, 365], :Wavelength)
           ),
-          FMTBank("STIMULUS_SETTINGS")
+          FMTBank("STIMULUS_SETTINGS"), 
+          FMTDefault(
+               []
+               )
 
      ), 
      "DATE_DETAILS" => (
