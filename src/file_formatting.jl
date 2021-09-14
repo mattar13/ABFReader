@@ -94,7 +94,6 @@ Every FMT object will have the ability to extract the internal components into a
 """
 abstract type FMT end
 extractFMT(fmt::FMT) = (fmt.key => fmt.value)
-
 """
 A category is the basic type. 
 A category contains a value and can be set to a value either a Real number or a string
@@ -111,9 +110,24 @@ mutable struct FMTCategory{T} <: FMT #We can set the type as well
     key::Symbol
     value::T
 end
-FMTCategory(key::Symbol) = FMTCategory(key, nothing) 
+FMTCategory{T}() where T <: Nothing = FMTCategory{T}(:nothing, nothing) 
+FMTCategory{T}(key::Symbol) where T <: Nothing = FMTCategory{T}(key, nothing) 
 FMTCategory{T}(key::Symbol) where T <: Real = FMTCategory{T}(key, T(-1))
-FMTCategory{String}(key::Symbol)= FMTCategory{String}(key, "")
+FMTCategory{T}(key::Symbol) where T <: String = FMTCategory{T}(key, "")
+
+#Now lets call the function post construction
+(F::FMTCategory{T})(value::String) where T<:String = F.value = value
+
+#This is an annoyign "feature" of julia. SubStrings a ̸= Strings
+(F::FMTCategory{T})(value::SubString{String}) where T<:String = F(string(value))
+"""
+Most of the answers are passed back in the form of a string
+This will parse any numbers from the string
+"""
+function (F::FMTCategory{T})(str_value::String) where T<:Real
+    value, str = str_value |> number_seperator
+    F.value = value[1]
+end
 
 """
 A check is a category that has some kind of internal file_formatting
@@ -128,7 +142,7 @@ mutable struct FMTFunction{T} <: FMT
     key::Symbol
     value::T
 end
-FMTFunction(fxn::Function, key::Symbol) = FMTFunction(fxn, key, nothing) 
+
 FMTFunction{T}(fxn::Function, key::Symbol) where T <: Real = FMTFunction{T}(fxn, key, T(-1))
 FMTFunction{T}(fxn::Function, key::Symbol) where T <: String = FMTFunction{T}(fxn, key, "")
 
@@ -164,9 +178,8 @@ mutable struct FMTExcluded{T} <: FMT
     key::Symbol
     value::T
 end
-FMTExcluded(excluded, key::Symbol) = FMTExcluded(excluded, key, value)
 FMTExcluded{T}(excluded, key::Symbol) where T <: Real = FMTExcluded{T}(excluded, key, T(-1))
-FMTExcluded{String}(excluded, key::Symbol)= FMTExcluded{String}(excluded, key, "")
+FMTExcluded{T}(excluded, key::Symbol) where T <: Real = FMTExcluded{T}(excluded, key, "")
 
 """
 An Inner category is a recursive inner loop which contains it's own format bank
@@ -201,6 +214,7 @@ FMTSequence(                                            #The sequence...
 )
 
 """
+
 mutable struct FMTSequence <: FMT
     categories::Vector{FMT} 
 end
@@ -234,7 +248,7 @@ function read_format(filename; verbose = true)
     end
 end
 
-function write_format(bank, filename; reset = false)
+function write_format(bank, filename)
      #We need to check to see if the file exists already
     if isfile(filename) #This means that we first need to read the old file
         println("append data")
@@ -258,13 +272,57 @@ function write_format(bank, filename; reset = false)
     end
 end
 
-function formatted_split(string::String, format::Dict, ids::Vector{String}, lengths::Vector{Int64}; dlm = "\\")
-    split_str = split(string, dlm)
-    print("String size: ")
-    println(length(split_str))
+function formatted_split(string::String, bank::Dict, ids::Vector{String}, lengths::Vector{Int64}; 
+        dlm = "\\", verbose = true
+    )
+    split_str = split(string, dlm) #first we split the string according to the delimiter
+    if verbose
+        print("String size: ")
+        println(length(split_str))
+        println(ids)
+        println(lengths)
+    end
+    match_sizes = map(n -> length(split_str)  == n, lengths) #We match the formats to see if we should continue
+    if any(match_sizes) #If there are matching formats, then we begin looking through them
+        nt_keys = Symbol[]
+        nt_vals = []
+        if verbose println("Matching formats: $(ids[match_sizes])") end
+        for fmt in ids[match_sizes] #iterate through all of the matching ids. There may only be one
+            for (idx, category) in enumerate(bank[fmt]) #Now walk through each category
+                if isa(category, FMTCategory{Nothing}) #If the category is nothing, we just skip it
+                    nothing
+                    println("This category is skipped")
+                elseif isa(category, FMTBank) #This means we have to step into the function deeper
+                    
+                elseif isa(category, FMTSwitch)
+                    println("Looking at a switch")
+                elseif isa(category, FMTSequence)
+                    println("Looking at a sequence")
+                elseif isa(category, FMT)
+                    value = split_str[idx] 
+                    category(value)
+                    key = category.key
+                    val = category.value
+                    
+                    push!(nt_keys, key)
+                    push!(nt_vals, val)
+                    #println(key)
+                    #println(value)
+                    #println(cat)
+                    #println(FMTCategory(sp))
+                end
+            end
+        end
+        return NamedTuple{Tuple(nt_keys)}(nt_vals)  
+    else
+        println("Currently no matching formats :(")
+    end
 end
 
+function formatted_split(string::String, bank)
 
+
+end
 ##################### OLD STUFF ##########################
 """
 This is the formatted_split function. 
