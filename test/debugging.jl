@@ -9,12 +9,12 @@ format_file = "test.xlsx"
 rs_root = "F:\\Data\\ERG\\Retinoschisis\\"
 rs_paths = rs_root |> parse_abf
 test_path = rs_paths[1]
-
 #%%
 BANK = Dict(
      "GNAT" => (
-          FMTCategory{String}(:Drive), 
-          FMTCategory{String}(:Root), 
+          FMTCategory{Nothing}(:Drive), 
+          FMTCategory{Nothing}(:Root), 
+          FMTCategory{Nothing}(:Technique),
           FMTCategory{String}(:Project),
           FMTBank("DATE_DETAILS"), 
           FMTBank("ANIMAL_DETAILS"), 
@@ -23,13 +23,14 @@ BANK = Dict(
           FMTSwitch(
                FMTSequence(
                     FMTRequired(["Green", "UV"], :Wavelength), 
-                    FMTFunction(
+                    FMTFunction{Int64}(
                          x -> x == "Green" ? 525 : 365, 
                          :Wavelength
                     )
                ),
                FMTRequired([525, 365], :Wavelength)
-          )
+          ),
+          FMTBank("STIMULUS_SETTINGS")
 
      ), 
      "DATE_DETAILS" => (
@@ -37,15 +38,21 @@ BANK = Dict(
           FMTCategory{Int64}(:Year), 
           FMTCategory{Int64}(:Month), 
           FMTCategory{Int64}(:Date), 
-          FMTCategory(:Technique), 
+          FMTCategory{Nothing}(:Nothing), 
           FMTCategory{String}(:Genotype)
      ), 
      "ANIMAL_DETAILS" => (
           FMTSeperator("_"), 
+          FMTCategory{Int64}(:Animal), 
+          FMTCategory{Int64}(:Age),
+          FMTCategory{String}(:Genotype),
+     ),
+     "STIMULUS_SETTINGS" => (
+          FMTSeperator("_"), 
           FMTCategory{Int64}(:ND), 
           FMTCategory{Int64}(:Percent),
-          FMTCategory(:Nothing),
-          FMTCategory(:Nothing)
+          FMTCategory{Nothing}(),
+          FMTCategory{Nothing}()
      )
 )
 #%% check if a key has a seperator at the beginning
