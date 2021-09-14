@@ -180,7 +180,7 @@ function update_datasheet(
                               else #If there is no flag, then continue to add the new files
                                    if verbose
                                         print("Analyzing added path number $idx of $(length(added_files))")
-                                        println(path)
+                                        println(new_file)
                                    end
                                    stim_protocol = extract_stimulus(new_file, 1) #Extract the stimulus time from the analysis
                                    tstops = stim_protocol.timestamps
