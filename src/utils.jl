@@ -244,7 +244,7 @@ If two experiments are being compared, then this function drops the second chann
 function match_channels(exp1::Experiment, exp2::Experiment)
     if size(exp1) != size(exp2)
 		#we want to drop the extra channel
-		match_ch = findall(a_data.chNames.==ab_data.chNames)
+		match_ch = findall(exp1.chNames.==exp2.chNames)
 		if size(exp1,3) > size(exp2,3) 
 			exp1 = drop(exp1, drop_idx = match_ch[1])
 		else
