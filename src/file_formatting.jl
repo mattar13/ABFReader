@@ -153,11 +153,10 @@ A default key is a category that defaults to a specific value and is included
 The difference between this and a category, is that a category will not return empty, 
 whereas a default will return a default value if it is not filled. 
 """
-mutable struct FMTDefault{T} <: FMT
-    key::Symbol
-    value::T
+mutable struct FMTDefault <: FMT
+    categories::Vector{FMT}
 end
-
+FMTDefault(fmts...) = FMTDefault([fmts...])
 """
 A required key is a category that must be one of the following values
 in required
@@ -194,7 +193,7 @@ FMTBank(pointer) = FMTBank(pointer, Symbol[], [])
 """
 This object will check multiple categories. It will treat each one as a exclusive this or that
 """
-mutable struct FMTSwitch <: FMT
+mutable struct FMTSwitch
     categories::Vector{FMT}
 end
 FMTSwitch(fmts...) = FMTSwitch([fmts...])
@@ -215,7 +214,7 @@ FMTSequence(                                            #The sequence...
 
 """
 
-mutable struct FMTSequence <: FMT
+mutable struct FMTSequence
     categories::Vector{FMT} 
 end
 FMTSequence(fmts...) = FMTSequence([fmts...])
