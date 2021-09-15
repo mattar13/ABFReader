@@ -217,24 +217,25 @@ This object will check multiple categories. It will treat each one as a exclusiv
 """
 mutable struct FMTSwitch{T} <: FMT
     categories::Vector{FMT}
+    key::Symbol
     value::T
 end
-FMTSwitch{T}(fmts::Vararg{FMT, N}) where {T <: Real, N} = FMTSwitch{T}([fmts...], T(-1))
-FMTSwitch{T}(fmts::Vararg{FMT, N}) where {T <: String, N} = FMTSwitch{T}([fmts...], "")
+FMTSwitch{T}(fmts::Vararg{FMT, N}) where {T <: Real, N} = FMTSwitch{T}([fmts...], :NotKnown, T(-1))
+FMTSwitch{T}(fmts::Vararg{FMT, N}) where {T <: String, N} = FMTSwitch{T}([fmts...], :NotKnown, "")
 
 function (F::FMTSwitch{T})(value::String) where T
-    result = nothing
     for cat in F.categories #We want to walk through each item checking to see if the answer completes
         cat(value)
         if cat.value == "" || cat.value == -1
             nothing
         else
+            F.key = cat.key
             F.value = cat.value
-            return #complete the loop
+            return #complete the loop on the first value to pass
         end
     end
 end
-
+(F::FMTSwitch)(value::SubString{String}) where T<:String = F(string(value))
 """
 This object will check multiple categories. It will treat each one as a sequence
 
@@ -251,24 +252,30 @@ FMTSequence(                                            #The sequence...
 """
 mutable struct FMTSequence{T} <: FMT
     categories::Vector{FMT} 
+    key::Symbol
     value::T
 end
-FMTSequence{T}(fmts::Vararg{FMT, N}) where {T <: Real, N} = FMTSequence{T}([fmts...], T(-1))
-FMTSequence{T}(fmts::Vararg{FMT, N}) where {T <: String, N} = FMTSequence{T}([fmts...], "")
+FMTSequence{T}(fmts::Vararg{FMT, N}) where {T <: Real, N} = FMTSequence{T}([fmts...], :NotKnown, T(-1))
+FMTSequence{T}(fmts::Vararg{FMT, N}) where {T <: String, N} = FMTSequence{T}([fmts...], :NotKnown, "")
 
 function (F::FMTSequence{T})(value::String) where T
     #The value from the last category is the final value
+    key = :NotKnown
     for cat in F.categories #Walk sequentially through the formats
         cat(value) #Check if the format passes its test
         if cat.value == "" || cat.value == -1 #The category has failed. Assign nothing
             nothing
         else #This means the category has passed
+            key = cat.key
             value = cat.value #If it passes then assign the value.
         end
         #The value will also be propagated through the chain of the sequence
     end
+    F.key = key
     F.value = value
 end
+
+(F::FMTSequence)(value::SubString{String}) where T<:String = F(string(value))
 
 function read_format(filename; verbose = true)
     bank = Dict(); ids = nothing; lengths = nothing
@@ -307,7 +314,8 @@ function write_format(bank, filename)
         ids = [keys(bank)...]
         lengths = map(entry -> length(bank[entry]), ids)
         seperators = map(entry -> isa.(bank[entry], FMTSeperator) |> sum, ids) #
-        lengths = lengths .- seperators
+        defaults = map(entry -> isa.(bank[entry], FMTDefault) |> sum, ids)
+        lengths = lengths .- (seperators .+ defaults)
     else
         println("This will be for single entries")
     end
@@ -348,16 +356,15 @@ function formatted_split(string::String, bank::Dict;
                     #println("This category is skipped")
                 elseif isa(category, FMTBank) #This means we have to step into the function deeper
                     println("Looking at a bank")
-                elseif isa(category, FMTSwitch)
-                    println("Looking at a switch")
-                elseif isa(category, FMTSequence)
-                    println("Looking at a sequence")
                 elseif isa(category, FMTDefault)
                     println("This category is treated differently")
                     if !(category.key ∈ nt_keys) #The default key is not in the list. Add It
                         push!(nt_keys, category.key)
                         push!(nt_vals, category.value)
                     end
+                elseif isa(category, FMTSwitch)
+                    value = split_str[idx] 
+                    category(value)
 
                 elseif isa(category, FMT)
                     value = split_str[idx] 
