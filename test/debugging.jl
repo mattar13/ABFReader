@@ -2,7 +2,25 @@ using Revise #, OhMyREPL, DoctorDocstrings
 using NeuroPhys
 using Query, DataFrames, XLSX, StatsPlots
 param_file = "F:\\Projects\\2021_Retinoschisis\\parameters.xlsx"
+#%%
+data_file = "F:\\Projects\\2021_Retinoschisis\\data_analysis.xlsx"
+trace_A = DataFrame(XLSX.readtable(data_file, "trace_A")...)
+trace_B = DataFrame(XLSX.readtable(data_file, "trace_B")...)
+trace_G = DataFrame(XLSX.readtable(data_file, "trace_G")...)
 
+#%%
+#we can use this convienience function to help us match the correct data
+function match_experiment(trace::DataFrame, date::Tuple, pc::String, ch::String)
+	trace|> 
+		@filter((_.Month, _.Date, _.Animal) == date)|>
+		@filter(_.Photoreceptor == pc) |> 
+		@filter(_.Channel == ch) |> 
+	DataFrame
+end
+#%%
+P13_WT = (5, 28, 2) #P13 WT (2021_5_28_n2_Vm_prime_Rods)
+q_WT13a = match_experiment(trace_B, P13_WT, "Rods", "Vm_prime")
+data = readABF(q_WT13a)
 #%% Eventually you should make a Pluto notebook that runs this analysis
 q_file = all_files |> 
      @filter(_.Month == 3 && _.Date == 12 && _.Animal == 1 && _.Photons > 6000.0) |> 
