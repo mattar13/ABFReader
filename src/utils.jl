@@ -85,8 +85,45 @@ function readABF(abf_folder::AbstractArray{String}; average_sweeps = false, kwar
     if average_sweeps == true
         average_sweeps!(sweeps)
     end
+
     return sweeps
 end
+
+"""
+This code is actually somewhat specific for my own needs, will be some way of making this more general later
+
+"""
+function readABF(df::DataFrame; kwargs...)
+    df_names = names(df)
+    #Check to make sure path is in the dataframe
+    #Check to make sure the dataframe contains channel info
+    @assert "Channel" ∈ df_names
+    if ("Path" ∈ df_names) #This is just the A-wave
+        paths = string.(df.Path)
+        ch = (df.Channel |> unique)[1]
+        data = readABF(paths, channels = [ch])
+        return data
+    elseif ("A_Path" ∈ df_names) && ("AB_Path" ∈ df_names) #This is a B subtraction
+        println("B wave subtraction")
+        A_paths = string.(df.A_Path)
+        AB_paths = string.(df.AB_Path)
+        ch = (df.Channel |> unique)[1]
+        A_data = readABF(A_paths, channels = [ch])
+        AB_data = readABF(AB_paths, channels = [ch])
+        return A_data, AB_data
+    elseif ("AB_Path" ∈ df_names) && ("ABG_Path" ∈ df_names) #This is the G-wave subtraction
+        println("G wave subtraction")
+        AB_paths = string.(df.AB_Path)
+        ABG_paths = string.(df.ABG_Path)
+        ch = (df.Channel |> unique)[1]
+        AB_data = readABF(AB_paths, channels = [ch])
+        ABG_data = readABF(ABG_paths, channels = [ch])
+        return AB_data, ABG_data
+    else
+        throw("There is no path key")
+    end
+end
+
 
 import Base: +, -, *, / #Import these basic functions to help 
 +(trace::Experiment, val::Real) = trace.data_array = trace.data_array .+ val
