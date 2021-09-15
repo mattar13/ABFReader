@@ -277,7 +277,7 @@ end
 
 (F::FMTSequence)(value::SubString{String}) where T<:String = F(string(value))
 
-function read_format(filename; verbose = true)
+function read_format(filename; verbose = false)
     bank = Dict(); ids = nothing; lengths = nothing
     jldopen(filename, "r") do file
         if verbose
@@ -309,6 +309,21 @@ function write_format(bank, filename)
      #We need to check to see if the file exists already
     if isfile(filename) #This means that we first need to read the old file
         println("append data")
+        
+        bank_old = read_format(filename) #first we need to read the old data
+        old_keys = [keys(bank_old)...] #we need to get all the old keys
+        for ks in old_keys #Check every old key to see if the format and key matches
+            upper_idxs = findall(c -> isuppercase(c), collect(ks)) #The uppercase words are the IDs
+            lower_idxs = findall(c -> islowercase(c), collect(ks)) #The lowercase represents duplicates
+            if !isempty(lower_idxs) #is the last letter lowercase
+                upper_id = collect(a)[upper_idxs] |> join
+                lower_id = collect(a)[lower_idxs] |> join 
+            else
+
+            end
+            println(bank_old[ks])
+            println(bank[ks])
+        end
     end
     if isa(bank, Dict)
         ids = [keys(bank)...]
@@ -355,6 +370,8 @@ function formatted_split(string::String, bank::Dict;
                     nothing
                 elseif isa(category, FMTBank) #This means we have to step into the function deeper
                     println("Looking at a bank")
+                    println(FMTBank)
+
                 elseif isa(category, FMTDefault)
                     if !(category.key ∈ nt_keys) #The default key is not in the list. Add It
                         push!(nt_keys, category.key)
