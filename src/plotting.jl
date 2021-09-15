@@ -52,10 +52,16 @@ Plotting function.
     
     #Set the basic characteristics of each plot
     grid := false
-    layout := (map(lay -> layout_helper(lay, size(exp)), layout))
+
     
     swp_rng, ch_rng = map(subp -> subplot_selector(subp, size(exp)), to_plot)
-    #println(ch_rng)
+    
+    if length(ch_rng) > 1
+        layout := (map(lay -> layout_helper(lay, size(exp)), layout))
+    else
+        layout := 1 #This may be a simplificaton
+    end
+    
     for swp in swp_rng, ch in ch_rng
         if label != ""&& swp == 1
             label := label
@@ -72,7 +78,7 @@ Plotting function.
         xguide := xlabels
         @series begin
             label := label
-            subplot := ch
+            subplot := length(ch_rng) == 1 ? 1 : ch
             x := exp.t #t_series
             y := exp[swp, :, ch]
             yguide := isnothing(ylabels) ? "$(exp.chNames[ch])($(exp.chUnits[ch]))" : ylabels
@@ -80,7 +86,7 @@ Plotting function.
         end
         if !isempty(exp.stim_protocol) && plot_stim_mode != :none
             @series begin
-                subplot := ch
+                subplot := length(ch_rng) == 1 ? 1 : ch
                 seriescolor := :yellow
                 
                 if label_stim && swp == 1
