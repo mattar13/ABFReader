@@ -63,13 +63,15 @@ ec_data * -1000
 abg_file = "F:\\Data\\ERG\\Eyecup\\2021_09_14_ERG_RS\\Mouse2_P15_WT\\NoDrugs\\Rods"
 abg_paths = abg_file |> parse_abf
 abg_data = concat(abg_paths, average_sweeps = true)
+drop!(abg_data)
 truncate_data!(abg_data, truncate_based_on = :stimulus_end, t_pre = 1.0, t_post = 3.0)
 baseline_cancel!(abg_data, mode = :slope)
 lowpass_filter!(abg_data)
 abg_data * 1000
-size(abg_data)
+
 #%% lets subtract the data
-eyecup_plt = plot(ec_data, ylims = (-300, 200), c = :black, title = ["Eyecup" ""]);
-abg_plt = plot(abg_data, ylims = (-300, 200), c = :red, title = ["Isolated Retina" ""]);
-fig = plot(eyecup_plt, abg_plt, dppi = 300, size = (1000, 1000));
+import Plots.mm
+eyecup_plt = plot(ec_data, ylims = (-200, 75), to_plot = (:sweeps, 2), c = :black, title = ["Eyecup" ""]);
+abg_plt = plot(abg_data, ylims = (-200, 75),  to_plot = (:sweeps, 2), c = :red, title = ["Isolated Retina" ""]);
+fig = plot(eyecup_plt, abg_plt, dpi = 300, size = (1000, 500), margin = 5mm);
 savefig(fig, "F:\\Projects\\2021_Retinoschisis\\eyecup_vs_nodrugs.png")
