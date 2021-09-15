@@ -118,7 +118,7 @@ FMTCategory{T}(key::Symbol) where T <: String = FMTCategory{T}(key, "")
 #Now lets call the function post construction
 (F::FMTCategory{T})(value::String) where T<:String = F.value = value
 
-#This is an annoyign "feature" of julia. SubStrings a ̸= Strings
+#This is an annoying "feature" of julia. SubStrings a ̸= Strings
 (F::FMTCategory{T})(value::SubString{String}) where T<:String = F(string(value))
 """
 Most of the answers are passed back in the form of a string
@@ -146,6 +146,8 @@ end
 FMTFunction{T}(fxn::Function, key::Symbol) where T <: Real = FMTFunction{T}(fxn, key, T(-1))
 FMTFunction{T}(fxn::Function, key::Symbol) where T <: String = FMTFunction{T}(fxn, key, "")
 
+#IN this case we can apply the function
+(F::FMTFunction)(value::T) where T = F.value = F.fxn(value)
 
 """
 A default key is a category that defaults to a specific value and is included
@@ -157,7 +159,7 @@ mutable struct FMTDefault{T} <: FMT
     key::Symbol
     value::T
 end
-FMTDefault(fmts...) = FMTDefault([fmts...])
+
 """
 A required key is a category that must be one of the following values
 in required
@@ -170,6 +172,16 @@ end
 #FMTRequired(required, key::Symbol) = FMTRequired(required, key, nothing)
 FMTRequired(required::Vector{T}, key::Symbol) where T <: Real = FMTRequired{T}(required, key, T(-1))
 FMTRequired(required::Vector{T}, key::Symbol) where T <: String = FMTRequired{T}(required, key, "")
+
+#Now lets call the function post construction
+function (F::FMTRequired)(value::String) where T<:String 
+    if value ∈ F.required
+        F.value = value
+    end
+end
+#This is an annoying "feature" of julia. SubStrings a ̸= Strings
+(F::FMTRequired)(value::SubString{String}) where T<:String = F(string(value))
+
 """
 An excluded key means that the category will not be allowed if it contains a certain value
 """
@@ -180,6 +192,15 @@ mutable struct FMTExcluded{T} <: FMT
 end
 FMTExcluded(excluded::Vector{T}, key::Symbol) where T <: Real = FMTExcluded{T}(excluded, key, T(-1))
 FMTExcluded(excluded::Vector{T}, key::Symbol) where T <: String = FMTExcluded{T}(excluded, key, "")
+
+#Now lets call the function post construction
+function (F::FMTExcluded)(value::String) where T<:String 
+    if value ∉ F.excluded
+        F.value = value
+    end
+end
+#This is an annoying "feature" of julia. SubStrings a ̸= Strings
+(F::FMTExcluded)(value::SubString{String}) where T<:String = F(string(value))
 
 """
 An Inner category is a recursive inner loop which contains it's own format bank
@@ -295,25 +316,29 @@ function formatted_split(string::String, bank::Dict;
             for (idx, category) in enumerate(bank[fmt]) #Now walk through each category
                 if isa(category, FMTCategory{Nothing}) #If the category is nothing, we just skip it
                     nothing
-                    println("This category is skipped")
+                    #println("This category is skipped")
+                elseif isa(category, FMTCategory)
+                    value = split_str[idx] 
+                    category(value)
+                    push!(nt_keys, category.key)
+                    push!(nt_vals, category.value)
+                    if verbose
+                        println("Format: $(category.key) | Value: $(category.value)")
+                    end
                 elseif isa(category, FMTBank) #This means we have to step into the function deeper
                     
                 elseif isa(category, FMTSwitch)
                     println("Looking at a switch")
                 elseif isa(category, FMTSequence)
                     println("Looking at a sequence")
-                elseif isa(category, FMT)
-                    value = split_str[idx] 
-                    category(value)
-                    key = category.key
-                    val = category.value
+                elseif isa(category, FMTRequired)
+                    println("Looking at a Required key")
                     
-                    push!(nt_keys, key)
-                    push!(nt_vals, val)
-                    #println(key)
-                    #println(value)
-                    #println(cat)
-                    #println(FMTCategory(sp))
+                elseif isa(category, FMTDefault)
+                    println("This category is treated differently")
+                    println(category.key)
+                    println(category.value)
+                    println(category.key ∈ nt_keys)
                 end
             end
         end
