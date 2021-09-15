@@ -98,12 +98,7 @@ function readABF(df::DataFrame; kwargs...)
     #Check to make sure path is in the dataframe
     #Check to make sure the dataframe contains channel info
     @assert "Channel" ∈ df_names
-    if ("Path" ∈ df_names) #This is just the A-wave
-        paths = string.(df.Path)
-        ch = (df.Channel |> unique)[1]
-        data = readABF(paths, channels = [ch])
-        return data
-    elseif ("A_Path" ∈ df_names) && ("AB_Path" ∈ df_names) #This is a B subtraction
+    if ("A_Path" ∈ df_names) && ("AB_Path" ∈ df_names) #This is a B subtraction
         println("B wave subtraction")
         A_paths = string.(df.A_Path)
         AB_paths = string.(df.AB_Path)
@@ -119,6 +114,11 @@ function readABF(df::DataFrame; kwargs...)
         AB_data = readABF(AB_paths, channels = [ch])
         ABG_data = readABF(ABG_paths, channels = [ch])
         return AB_data, ABG_data
+    elseif ("Path" ∈ df_names) #This is just the A-wave
+        paths = string.(df.Path)
+        ch = (df.Channel |> unique)[1]
+        data = readABF(paths, channels = [ch])
+        return data
     else
         throw("There is no path key")
     end
