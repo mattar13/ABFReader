@@ -31,9 +31,7 @@ BANK = Dict(
                FMTRequired([525, 365], :Wavelength)
           ),
           FMTBank("STIMULUS_SETTINGS"), 
-          FMTDefault(
-               []
-               )
+          FMTDefault(:Photoreceptor, "Rods")
 
      ), 
      "DATE_DETAILS" => (
@@ -62,8 +60,8 @@ BANK = Dict(
 filename = "test.jld"
 write_format(BANK, filename)
 #%%
-bank, ids, lengths = read_format(filename)
-formatted_split(test_path, bank, ids, lengths)
+bank = read_format(filename)
+formatted_split(test_path, bank)
 #%%
 import NeuroPhys: check_age, check_geno, check_drugs, check_color
 format_bank_GNAT = ("\\", 
