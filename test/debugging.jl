@@ -18,10 +18,10 @@ BANK = Dict(
           FMTCategory{String}(:Project),
           FMTBank("DATE_DETAILS"), 
           FMTBank("ANIMAL_DETAILS"), 
-          FMTCategory{String}(:Condition),
-          FMTCategory(:Photoreceptor, "Rods"),
-          FMTSwitch(
-               FMTSequence(
+          FMTRequired(["BaCl", "NoDrugs", "BaCl_LAP4"], :Condition),
+          FMTRequired(["Rods", "Cones"], :Photoreceptor),
+          FMTSwitch{Int64}(
+               FMTSequence{Int64}(
                     FMTRequired(["Green", "UV"], :Wavelength), 
                     FMTFunction{Int64}(
                          x -> x == "Green" ? 525 : 365, 
@@ -32,7 +32,6 @@ BANK = Dict(
           ),
           FMTBank("STIMULUS_SETTINGS"), 
           FMTDefault(:Photoreceptor, "Rods")
-
      ), 
      "DATE_DETAILS" => (
           FMTSeperator("_"),
@@ -56,12 +55,20 @@ BANK = Dict(
           FMTCategory{Nothing}()
      )
 )
-#%% check if a key has a seperator at the beginning
+
+#%% Each bank will have an appending on it. Those appendings will be a -> z, aa -> zz
+a = "GNAT"
+upper_idxs = findall(c -> isuppercase(c), collect(a))
+lower_idxs = findall(c -> islowercase(c), collect(a))
+upper_word = collect(a)[upper_idxs] |> join
+lower_word = collect(a)[lower_idxs] |> join
+
+#%%
 filename = "test.jld"
 write_format(BANK, filename)
 #%%
 bank = read_format(filename)
-formatted_split(test_path, bank)
+formatted_split(test_path, BANK)
 #%%
 import NeuroPhys: check_age, check_geno, check_drugs, check_color
 format_bank_GNAT = ("\\", 
@@ -73,11 +80,6 @@ format_bank_GNAT = ("\\",
      )
 
 #%%
-
-#%%
-jldopen(filename, "r") do file
-
-end
 
 #%% Eventually you should make a Pluto notebook that runs this analysis
 q_file = all_files |> 
