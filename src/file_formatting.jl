@@ -215,11 +215,25 @@ FMTBank(pointer) = FMTBank(pointer, Symbol[], [])
 """
 This object will check multiple categories. It will treat each one as a exclusive this or that
 """
-mutable struct FMTSwitch <: FMT
+mutable struct FMTSwitch{T} <: FMT
     categories::Vector{FMT}
+    value::T
 end
-FMTSwitch(fmts...) = FMTSwitch([fmts...])
+FMTSwitch{T}(fmts::Vararg{FMT, N}) where {T <: Real, N} = FMTSwitch{T}([fmts...], T(-1))
+FMTSwitch{T}(fmts::Vararg{FMT, N}) where {T <: String, N} = FMTSwitch{T}([fmts...], "")
 
+function (F::FMTSwitch{T})(value::String) where T
+    result = nothing
+    for cat in F.categories #We want to walk through each item checking to see if the answer completes
+        cat(value)
+        if cat.value == "" || cat.value == -1
+            nothing
+        else
+            F.value = cat.value
+            return #complete the loop
+        end
+    end
+end
 
 """
 This object will check multiple categories. It will treat each one as a sequence
@@ -235,11 +249,26 @@ FMTSequence(                                            #The sequence...
 )
 
 """
-
-mutable struct FMTSequence <: FMT
+mutable struct FMTSequence{T} <: FMT
     categories::Vector{FMT} 
+    value::T
 end
-FMTSequence(fmts...) = FMTSequence([fmts...])
+FMTSequence{T}(fmts::Vararg{FMT, N}) where {T <: Real, N} = FMTSequence{T}([fmts...], T(-1))
+FMTSequence{T}(fmts::Vararg{FMT, N}) where {T <: String, N} = FMTSequence{T}([fmts...], "")
+
+function (F::FMTSequence{T})(value::String) where T
+    #The value from the last category is the final value
+    for cat in F.categories #Walk sequentially through the formats
+        cat(value) #Check if the format passes its test
+        if cat.value == "" || cat.value == -1 #The category has failed. Assign nothing
+            nothing
+        else #This means the category has passed
+            value = cat.value #If it passes then assign the value.
+        end
+        #The value will also be propagated through the chain of the sequence
+    end
+    F.value = value
+end
 
 function read_format(filename; verbose = true)
     bank = Dict(); ids = nothing; lengths = nothing
@@ -317,7 +346,20 @@ function formatted_split(string::String, bank::Dict;
                 if isa(category, FMTCategory{Nothing}) #If the category is nothing, we just skip it
                     nothing
                     #println("This category is skipped")
-                elseif isa(category, FMTCategory)
+                elseif isa(category, FMTBank) #This means we have to step into the function deeper
+                    println("Looking at a bank")
+                elseif isa(category, FMTSwitch)
+                    println("Looking at a switch")
+                elseif isa(category, FMTSequence)
+                    println("Looking at a sequence")
+                elseif isa(category, FMTDefault)
+                    println("This category is treated differently")
+                    if !(category.key ∈ nt_keys) #The default key is not in the list. Add It
+                        push!(nt_keys, category.key)
+                        push!(nt_vals, category.value)
+                    end
+
+                elseif isa(category, FMT)
                     value = split_str[idx] 
                     category(value)
                     push!(nt_keys, category.key)
@@ -325,20 +367,6 @@ function formatted_split(string::String, bank::Dict;
                     if verbose
                         println("Format: $(category.key) | Value: $(category.value)")
                     end
-                elseif isa(category, FMTBank) #This means we have to step into the function deeper
-                    
-                elseif isa(category, FMTSwitch)
-                    println("Looking at a switch")
-                elseif isa(category, FMTSequence)
-                    println("Looking at a sequence")
-                elseif isa(category, FMTRequired)
-                    println("Looking at a Required key")
-                    
-                elseif isa(category, FMTDefault)
-                    println("This category is treated differently")
-                    println(category.key)
-                    println(category.value)
-                    println(category.key ∈ nt_keys)
                 end
             end
         end
