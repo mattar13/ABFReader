@@ -153,8 +153,9 @@ A default key is a category that defaults to a specific value and is included
 The difference between this and a category, is that a category will not return empty, 
 whereas a default will return a default value if it is not filled. 
 """
-mutable struct FMTDefault <: FMT
-    categories::Vector{FMT}
+mutable struct FMTDefault{T} <: FMT
+    key::Symbol
+    value::T
 end
 FMTDefault(fmts...) = FMTDefault([fmts...])
 """
@@ -177,13 +178,13 @@ mutable struct FMTExcluded{T} <: FMT
     key::Symbol
     value::T
 end
-FMTExcluded{T}(excluded, key::Symbol) where T <: Real = FMTExcluded{T}(excluded, key, T(-1))
-FMTExcluded{T}(excluded, key::Symbol) where T <: Real = FMTExcluded{T}(excluded, key, "")
+FMTExcluded(excluded::Vector{T}, key::Symbol) where T <: Real = FMTExcluded{T}(excluded, key, T(-1))
+FMTExcluded(excluded::Vector{T}, key::Symbol) where T <: String = FMTExcluded{T}(excluded, key, "")
 
 """
 An Inner category is a recursive inner loop which contains it's own format bank
 """
-mutable struct FMTBank
+mutable struct FMTBank <: FMT
     pointer::String
     keys::Vector{Symbol}
     values::Vector
@@ -193,7 +194,7 @@ FMTBank(pointer) = FMTBank(pointer, Symbol[], [])
 """
 This object will check multiple categories. It will treat each one as a exclusive this or that
 """
-mutable struct FMTSwitch
+mutable struct FMTSwitch <: FMT
     categories::Vector{FMT}
 end
 FMTSwitch(fmts...) = FMTSwitch([fmts...])
@@ -214,7 +215,7 @@ FMTSequence(                                            #The sequence...
 
 """
 
-mutable struct FMTSequence
+mutable struct FMTSequence <: FMT
     categories::Vector{FMT} 
 end
 FMTSequence(fmts...) = FMTSequence([fmts...])
@@ -243,7 +244,7 @@ function read_format(filename; verbose = true)
                 end
             end
         end
-        return bank, ids, lengths
+        return bank
     end
 end
 
@@ -271,17 +272,21 @@ function write_format(bank, filename)
     end
 end
 
-function formatted_split(string::String, bank::Dict, ids::Vector{String}, lengths::Vector{Int64}; 
+function formatted_split(string::String, bank::Dict; 
         dlm = "\\", verbose = true
     )
     split_str = split(string, dlm) #first we split the string according to the delimiter
     if verbose
         print("String size: ")
         println(length(split_str))
-        println(ids)
-        println(lengths)
     end
+    ids = [keys(bank)...]
+    lengths = map(entry -> length(bank[entry]), ids)
+    seperators = map(entry -> isa.(bank[entry], FMTSeperator) |> sum, ids) #
+    defaults = map(entry -> isa.(bank[entry], FMTDefault) |> sum, ids)
+    lengths = lengths .- (seperators .+ defaults)
     match_sizes = map(n -> length(split_str)  == n, lengths) #We match the formats to see if we should continue
+    
     if any(match_sizes) #If there are matching formats, then we begin looking through them
         nt_keys = Symbol[]
         nt_vals = []
