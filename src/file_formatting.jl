@@ -331,7 +331,7 @@ function write_format(bank, filename)
 end
 
 function formatted_split(string::String, bank::Dict; 
-        dlm = "\\", verbose = true
+        dlm = "\\", verbose = false
     )
     split_str = split(string, dlm) #first we split the string according to the delimiter
     if verbose
@@ -353,31 +353,40 @@ function formatted_split(string::String, bank::Dict;
             for (idx, category) in enumerate(bank[fmt]) #Now walk through each category
                 if isa(category, FMTCategory{Nothing}) #If the category is nothing, we just skip it
                     nothing
-                    #println("This category is skipped")
                 elseif isa(category, FMTBank) #This means we have to step into the function deeper
                     println("Looking at a bank")
                 elseif isa(category, FMTDefault)
-                    println("This category is treated differently")
                     if !(category.key ∈ nt_keys) #The default key is not in the list. Add It
                         push!(nt_keys, category.key)
                         push!(nt_vals, category.value)
                     end
-                elseif isa(category, FMTSwitch)
+                elseif isa(category, FMT) #This handles all categories and specializations
                     value = split_str[idx] 
                     category(value)
-
-                elseif isa(category, FMT)
-                    value = split_str[idx] 
-                    category(value)
-                    push!(nt_keys, category.key)
-                    push!(nt_vals, category.value)
-                    if verbose
-                        println("Format: $(category.key) | Value: $(category.value)")
+                    #we want to make some way of failing if nothing is returned
+                    if category.value == "" || category.value == -1 #The category has failed
+                        if verbose
+                            println("Format is incorrect: $(category.key) | Value: $(category.value)")
+                        end
+                        #reset the categories to nothing
+                        nt_keys = Symbol[]
+                        nt_vals = []
+                        break #This moves onto the next format if a nothing is encountered 
+                    else
+                        push!(nt_keys, category.key)
+                        push!(nt_vals, category.value)
+                        if verbose
+                            println("Format: $(category.key) | Value: $(category.value)")
+                        end
                     end
                 end
             end
         end
-        return NamedTuple{Tuple(nt_keys)}(nt_vals)  
+        if !isempty(nt_vals)
+            return NamedTuple{Tuple(nt_keys)}(nt_vals) 
+        else 
+            println("Currently no matching formats :(")
+        end
     else
         println("Currently no matching formats :(")
     end
