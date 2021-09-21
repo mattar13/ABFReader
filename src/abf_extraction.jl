@@ -1368,7 +1368,7 @@ extract_stimulus(abf_path::String, sweep::Int64; kwargs...) = extract_stimulus(r
 """
 function readABF(::Type{T}, abf_path::String; 
         sweeps = -1, 
-        channels = ["Vm_prime","Vm_prime4"], 
+        channels::Vector{String} = ["Vm_prime","Vm_prime4"], 
         average_sweeps::Bool = false,
         stimulus_name = "IN 7",  #One of the best places to store digital stimuli
         stimulus_threshold::T = 2.5, #This is the normal voltage rating on digital stimuli
