@@ -273,7 +273,7 @@ function run_A_wave_analysis(all_files::DataFrame)
           println("Extracting A-wave for experiment $idx of $n_files.")
           println("Total traces: $(size(trace_A, 1))")
           #we want to extract the response for each trace here
-          data = readABF(exp) |> filter_data
+          data = readABF(exp.Path, average_sweeps = true) |> filter_data
           #Extract the minimum value
           minima = -minimum(data, dims = 2)[:,1,:]
           #Extract the response 
@@ -458,10 +458,29 @@ function run_B_wave_analysis(all_files::DataFrame)
      for (idx, exp) in enumerate(eachrow(trace_B))
           #we want to extract the response for each trace here
           println("Extracting B-wave for experiment $idx of $n_files.")
-          println("Total traces: $(size(trace_B, 1))")
           println(exp.A_Path)
           println(exp.AB_Path)
-          B_data = -((readABF(exp) .|> filter_data)...) #We can do this all in one shot
+          println("Total traces: $(size(trace_B, 1))")
+          A_data = readABF(exp.A_Path, 
+               average_sweeps = true, time_unit = :s
+               ) |> filter_data
+          AB_data = readABF(exp.AB_Path, 
+               average_sweeps = true, time_unit = :s
+               ) |> filter_data
+          
+          if size(AB_data) != size(A_data)
+               #we want to drop the extra channel
+               match_ch= findall(A_data.chNames.==AB_data.chNames)
+               if size(AB_data,3) > size(A_data,3) 
+                    drop!(AB_data, drop_idx = match_ch[1])
+               else
+                    drop!(A_data, drop_idx = match_ch[1])
+               end
+               B_data = AB_data - A_data
+          else
+               #Now we can subtract the A response from the AB response
+               B_data = AB_data - A_data 
+          end
 
           #Extract the response 
           if exp.Age <= 11
@@ -613,7 +632,27 @@ function run_G_wave_analysis(all_files::DataFrame)
           #println(exp.AB_Path)
           println("Total traces: $(size(trace_G, 1))")
           #we want to extract the response for each trace here
-          G_data = -((readABF(exp) |> filter_data)...)
+          AB_data = readABF(exp.AB_Path, 
+               average_sweeps = true, time_unit = :s
+               ) |> filter_data
+
+          ABG_data = readABF(exp.ABG_Path, 
+               average_sweeps = true, time_unit = :s
+               ) |> filter_data
+
+          if size(AB_data) != size(ABG_data)
+               #we want to drop the extra channel
+               match_ch= findall(AB_data.chNames.==ABG_data.chNames)
+               if size(ABG_data,3) > size(AB_data,3) 
+                    drop!(ABG_data, drop_idx = match_ch[1])
+               else
+                    drop!(AB_data, drop_idx = match_ch[1])
+               end
+               G_data = ABG_data - AB_data
+          else
+               #Now we can subtract the A response from the AB response
+               G_data = ABG_data - AB_data 
+          end
 
           #Extract the negative response 
           if exp.Age <= 11
