@@ -124,6 +124,7 @@ function readABF(df::DataFrame; kwargs...)
     end
 end
 
+readABF(df_row::DataFrameRow; kwargs...) = readABF(df_row |> DataFrame; kwargs...)
 
 import Base: +, -, *, / #Import these basic functions to help 
 +(trace::Experiment, val::Real) = trace.data_array = trace.data_array .+ val
