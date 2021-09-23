@@ -456,31 +456,22 @@ function run_B_wave_analysis(all_files::DataFrame)
      #Directly add B-wave responses
      n_files = size(trace_B, 1)
      for (idx, exp) in enumerate(eachrow(trace_B))
+          println(exp.Photoreceptor)
           #we want to extract the response for each trace here
           println("Extracting B-wave for experiment $idx of $n_files.")
           println(exp.A_Path)
           println(exp.AB_Path)
           println("Total traces: $(size(trace_B, 1))")
-          A_data = readABF(exp.A_Path, 
-               average_sweeps = true, time_unit = :s
-               ) |> filter_data
-          AB_data = readABF(exp.AB_Path, 
-               average_sweeps = true, time_unit = :s
-               ) |> filter_data
-          
-          if size(AB_data) != size(A_data)
-               #we want to drop the extra channel
-               match_ch= findall(A_data.chNames.==AB_data.chNames)
-               if size(AB_data,3) > size(A_data,3) 
-                    drop!(AB_data, drop_idx = match_ch[1])
-               else
-                    drop!(A_data, drop_idx = match_ch[1])
-               end
-               B_data = AB_data - A_data
+          #we may need something different for cone responses
+          if exp.Photoreceptor == "Cones"
+               A_data = readABF(exp.A_Path, average_sweeps = true) |> filter_data
+               AB_data = readABF(exp.AB_Path, average_sweeps = true) |> filter_data
           else
-               #Now we can subtract the A response from the AB response
-               B_data = AB_data - A_data 
+               A_data = readABF(exp.A_Path, average_sweeps = true) |> cone_filter
+               AB_data = readABF(exp.AB_Path, average_sweeps = true) |> cone_filter
           end
+          
+          B_data = AB_data - A_data 
 
           #Extract the response 
           if exp.Age <= 11
@@ -632,27 +623,10 @@ function run_G_wave_analysis(all_files::DataFrame)
           #println(exp.AB_Path)
           println("Total traces: $(size(trace_G, 1))")
           #we want to extract the response for each trace here
-          AB_data = readABF(exp.AB_Path, 
-               average_sweeps = true, time_unit = :s
-               ) |> filter_data
-
-          ABG_data = readABF(exp.ABG_Path, 
-               average_sweeps = true, time_unit = :s
-               ) |> filter_data
-
-          if size(AB_data) != size(ABG_data)
-               #we want to drop the extra channel
-               match_ch= findall(AB_data.chNames.==ABG_data.chNames)
-               if size(ABG_data,3) > size(AB_data,3) 
-                    drop!(ABG_data, drop_idx = match_ch[1])
-               else
-                    drop!(AB_data, drop_idx = match_ch[1])
-               end
-               G_data = ABG_data - AB_data
-          else
-               #Now we can subtract the A response from the AB response
-               G_data = ABG_data - AB_data 
-          end
+          AB_data = readABF(exp.AB_Path, average_sweeps = true) |> filter_data
+          ABG_data = readABF(exp.ABG_Path, average_sweeps = true) |> filter_data
+          #Now we can subtract the A response from the AB response
+          G_data = ABG_data - AB_data 
 
           #Extract the negative response 
           if exp.Age <= 11

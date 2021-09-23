@@ -263,10 +263,12 @@ function fft_spectrum(t, data::Array{T, 1}) where T <: Real
 end
 
 #%% a common filter function for simplification
-function filter_data(data; t_pre = 0.2, t_post = 4.0) 
+function filter_data(data; t_pre = 1.0, t_post = 4.0) 
 	truncate_data!(data, t_pre = t_pre, t_post = t_post);
 	baseline_cancel!(data, mode = :slope); 
 	data * 1000.0
 	lowpass_filter!(data)
 	return data
 end
+
+cone_filter(data) = filter_data(data, t_pre = 1.0, t_post = 1.0) #This should put the data right in the middle of the cone stimuli
