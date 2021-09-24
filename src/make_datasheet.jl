@@ -460,10 +460,11 @@ function run_B_wave_analysis(all_files::DataFrame)
           println("Extracting B-wave for experiment $idx of $n_files.")
           println("Total traces: $(size(trace_B, 1))")
           #we may need something different for cone responses
-          if exp.Photoreceptor == "Cones"
+          if exp.Photoreceptor == "Rods"
                A_data = readABF(exp.A_Path, average_sweeps = true) |> filter_data
                AB_data = readABF(exp.AB_Path, average_sweeps = true) |> filter_data
           else
+               println("Cone Data")
                A_data = readABF(exp.A_Path, average_sweeps = true) |> cone_filter
                AB_data = readABF(exp.AB_Path, average_sweeps = true) |> cone_filter
           end
@@ -620,10 +621,11 @@ function run_G_wave_analysis(all_files::DataFrame)
           println(exp.AB_Path)
           println("Total traces: $(size(trace_G, 1))")
           #we want to extract the response for each trace here
-          if exp.Photoreceptor == "Cones"
+          if exp.Photoreceptor == "Rods"
                AB_data = readABF(exp.AB_Path, average_sweeps = true) |> filter_data
                ABG_data = readABF(exp.ABG_Path, average_sweeps = true) |> filter_data
           else
+               println("Cone data")
                AB_data = readABF(exp.AB_Path, average_sweeps = true) |> cone_filter
                ABG_data = readABF(exp.ABG_Path, average_sweeps = true) |> cone_filter
           end
