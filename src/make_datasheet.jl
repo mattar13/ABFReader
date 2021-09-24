@@ -456,11 +456,8 @@ function run_B_wave_analysis(all_files::DataFrame)
      #Directly add B-wave responses
      n_files = size(trace_B, 1)
      for (idx, exp) in enumerate(eachrow(trace_B))
-          println(exp.Photoreceptor)
           #we want to extract the response for each trace here
           println("Extracting B-wave for experiment $idx of $n_files.")
-          println(exp.A_Path)
-          println(exp.AB_Path)
           println("Total traces: $(size(trace_B, 1))")
           #we may need something different for cone responses
           if exp.Photoreceptor == "Cones"
@@ -619,12 +616,17 @@ function run_G_wave_analysis(all_files::DataFrame)
      n_files = size(trace_G, 1)
      for (idx, exp) in enumerate(eachrow(trace_G))
           println("Extracting Glial component for experiment $idx of $n_files.")
-          #println(exp.ABG_Path)
-          #println(exp.AB_Path)
+          println(exp.ABG_Path)
+          println(exp.AB_Path)
           println("Total traces: $(size(trace_G, 1))")
           #we want to extract the response for each trace here
-          AB_data = readABF(exp.AB_Path, average_sweeps = true) |> filter_data
-          ABG_data = readABF(exp.ABG_Path, average_sweeps = true) |> filter_data
+          if exp.Photoreceptor == "Cones"
+               AB_data = readABF(exp.AB_Path, average_sweeps = true) |> filter_data
+               ABG_data = readABF(exp.ABG_Path, average_sweeps = true) |> filter_data
+          else
+               AB_data = readABF(exp.AB_Path, average_sweeps = true) |> cone_filter
+               ABG_data = readABF(exp.ABG_Path, average_sweeps = true) |> cone_filter
+          end
           #Now we can subtract the A response from the AB response
           G_data = ABG_data - AB_data 
 
@@ -845,6 +847,7 @@ if footnote #Basically this is only for running the analysis.
      all_paths = vcat(wt_paths, rs_paths)
      data_file = "F:\\Projects\\2021_Retinoschisis\\data_analysis.xlsx"
      all_files = update_datasheet(all_paths, calibration_file, data_file, verbose = true)
+     NeuroPhys.run_G_wave_analysis(all_files)
      run_analysis(all_files, data_file)
 
      #%% This analysis is for the Gnat data analysis
