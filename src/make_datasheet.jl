@@ -396,8 +396,8 @@ function run_A_wave_analysis(all_files::DataFrame)
      #Walk through every A-wave experiment and summarize the data by experiment
      for (idx, exp) in enumerate(eachrow(experiments_A))
           q_data = trace_A |> 
-               @filter(_.Year==exp.Year&&_.Month==exp.Month&&_.Date==exp.Date)|>
-               @filter(_.Animal == exp.Animal && _.Wavelength == exp.Wavelength)|>
+               @filter(_.Year==exp.Year&&_.Month==exp.Month&&_.Date==exp.Date && _.Animal == exp.Animal)|>
+               @filter(_.Photoreceptor && _.Wavelength == exp.Wavelength)|>
                @filter(_.Channel == exp.Channel && _.Age == exp.Age) |> 
                DataFrame
           
@@ -581,8 +581,8 @@ function run_B_wave_analysis(all_files::DataFrame)
      #Extract experiments in B-waves
      for (idx, exp) in enumerate(eachrow(experiments_B))
           q_data = trace_B |> 
-               @filter(_.Year==exp.Year&&_.Month==exp.Month&&_.Date==exp.Date)|>
-               @filter(_.Animal == exp.Animal && _.Wavelength == exp.Wavelength)|>
+               @filter(_.Year==exp.Year&&_.Month==exp.Month&&_.Date==exp.Date && _.Animal == exp.Animal)|>
+               @filter(_.Photoreceptor && _.Wavelength == exp.Wavelength)|>
                @filter(_.Channel == exp.Channel && _.Age == exp.Age) |> 
                DataFrame
           if !isempty(q_data)
@@ -739,10 +739,11 @@ function run_G_wave_analysis(all_files::DataFrame)
      #Experiments in G
      for (idx, exp) in enumerate(eachrow(experiments_G))
           q_data = trace_G |> 
-               @filter(_.Year==exp.Year&&_.Month==exp.Month&&_.Date==exp.Date)|>
-               @filter(_.Animal == exp.Animal && _.Wavelength == exp.Wavelength)|>
+               @filter(_.Year==exp.Year&&_.Month==exp.Month&&_.Date==exp.Date && _.Animal == exp.Animal)|>
+               @filter(_.Photoreceptor && _.Wavelength == exp.Wavelength)|>
                @filter(_.Channel == exp.Channel && _.Age == exp.Age) |> 
                DataFrame
+          
           if !isempty(q_data)
                #Rmax
                experiments_G[idx, :rmax] = maximum(q_data.Response)
