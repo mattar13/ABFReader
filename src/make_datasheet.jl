@@ -16,7 +16,7 @@ dataframe_sheets = [
 
 condition_filter(df::DataFrame, condition::String) = df |> @filter(_.Condition == condition) |> DataFrame
 
-function make_sheet(all_paths::Array{String}, calibration_file::String)
+function make_sheet(all_paths::Array{String}, calibration_file::String; verbose = false)
      all_files = DataFrame(
           :Path => all_paths, 
           :Year => 0, :Month => 0, :Date => 0, 
@@ -25,7 +25,7 @@ function make_sheet(all_paths::Array{String}, calibration_file::String)
           :Photoreceptor => "Rods", 
           :ND => 0, :Percent => 1, :Stim_time => 1.0, :Photons => 0.0
      ) #Make the dataframe containing a basic summary of all files
-
+     
      delete_after = Int64[] #Some files we may want to skip, so we put those files here
      for (idx, path) in enumerate(all_paths) #Look through all the files and record them. 
           if verbose
