@@ -397,7 +397,7 @@ function run_A_wave_analysis(all_files::DataFrame)
      for (idx, exp) in enumerate(eachrow(experiments_A))
           q_data = trace_A |> 
                @filter(_.Year==exp.Year&&_.Month==exp.Month&&_.Date==exp.Date && _.Animal == exp.Animal)|>
-               @filter(_.Photoreceptor && _.Wavelength == exp.Wavelength)|>
+               @filter(_.Photoreceptor == exp.Photoreceptor && _.Wavelength == exp.Wavelength)|>
                @filter(_.Channel == exp.Channel && _.Age == exp.Age) |> 
                DataFrame
           
@@ -582,7 +582,7 @@ function run_B_wave_analysis(all_files::DataFrame)
      for (idx, exp) in enumerate(eachrow(experiments_B))
           q_data = trace_B |> 
                @filter(_.Year==exp.Year&&_.Month==exp.Month&&_.Date==exp.Date && _.Animal == exp.Animal)|>
-               @filter(_.Photoreceptor && _.Wavelength == exp.Wavelength)|>
+               @filter(_.Photoreceptor == exp.Photoreceptor && _.Wavelength == exp.Wavelength)|>
                @filter(_.Channel == exp.Channel && _.Age == exp.Age) |> 
                DataFrame
           if !isempty(q_data)
@@ -740,7 +740,7 @@ function run_G_wave_analysis(all_files::DataFrame)
      for (idx, exp) in enumerate(eachrow(experiments_G))
           q_data = trace_G |> 
                @filter(_.Year==exp.Year&&_.Month==exp.Month&&_.Date==exp.Date && _.Animal == exp.Animal)|>
-               @filter(_.Photoreceptor && _.Wavelength == exp.Wavelength)|>
+               @filter(_.Photoreceptor == exp.Photoreceptor && _.Wavelength == exp.Wavelength)|>
                @filter(_.Channel == exp.Channel && _.Age == exp.Age) |> 
                DataFrame
           
