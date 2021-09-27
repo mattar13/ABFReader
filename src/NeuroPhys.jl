@@ -83,7 +83,7 @@ export plot, plot!, vline!, hline!, savefig, histogram, grid, title!
 
 #These functions are specific for making datasheets
 include("make_datasheet.jl")
-export update_datasheet
+export update_datasheet, make_sheet
 export run_analysis
 
 include("logging.jl")
