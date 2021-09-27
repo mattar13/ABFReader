@@ -381,7 +381,7 @@ function run_A_wave_analysis(all_files::DataFrame)
      end
 
      experiments_A = trace_A |> 
-          @unique({_.Year, _.Month, _.Date, _.Age, _.Animal, _.Wavelength, _.Channel}) |> 
+          @unique({_.Year, _.Month, _.Date, _.Age, _.Animal, _.Photoreceptor, _.Wavelength, _.Channel}) |> 
           @orderby(_.Genotype) |> @thenby(_.Age) |> 
           @thenby(_.Photoreceptor) |> @thenby(_.Wavelength) |>
           @map({_.Year, _.Month, _.Date, _.Animal, _.Channel,
@@ -567,7 +567,7 @@ function run_B_wave_analysis(all_files::DataFrame)
      end
 
      experiments_B = trace_B |> 
-          @unique({_.Year, _.Month, _.Date, _.Age, _.Animal, _.Wavelength, _.Channel}) |> 
+          @unique({_.Year, _.Month, _.Date, _.Age, _.Animal, _.Photoreceptor, _.Wavelength, _.Channel}) |>
           @orderby(_.Genotype) |> @thenby(_.Age) |> 
           @thenby(_.Photoreceptor) |> @thenby(_.Wavelength) |> 
           @map({_.Year, _.Month, _.Date, _.Animal, _.Channel,
@@ -726,7 +726,7 @@ function run_G_wave_analysis(all_files::DataFrame)
      end
 
      experiments_G = trace_G |> 
-          @unique({_.Year, _.Month, _.Date, _.Age, _.Animal, _.Wavelength, _.Channel}) |> 
+          @unique({_.Year, _.Month, _.Date, _.Age, _.Animal, _.Photoreceptor, _.Wavelength, _.Channel}) |> 
           @orderby(_.Genotype) |> @thenby(_.Age) |> 
           @thenby(_.Photoreceptor) |> @thenby(_.Wavelength) |>
           @map({_.Year, _.Month, _.Date, _.Animal, _.Channel,
