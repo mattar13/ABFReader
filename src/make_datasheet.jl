@@ -25,7 +25,7 @@ function make_sheet(all_paths::Array{String}, calibration_file::String; verbose 
           :Photoreceptor => "Rods", 
           :ND => 0, :Percent => 1, :Stim_time => 1.0, :Photons => 0.0
      ) #Make the dataframe containing a basic summary of all files
-     
+
      delete_after = Int64[] #Some files we may want to skip, so we put those files here
      for (idx, path) in enumerate(all_paths) #Look through all the files and record them. 
           if verbose
@@ -381,7 +381,7 @@ function run_A_wave_analysis(all_files::DataFrame)
      end
 
      experiments_A = trace_A |> 
-          @unique({_.Year, _.Month, _.Date, _.Age, _.Animal, _.Channel}) |> 
+          @unique({_.Year, _.Month, _.Date, _.Age, _.Animal, _.Wavelength, _.Channel}) |> 
           @orderby(_.Genotype) |> @thenby(_.Age) |> 
           @thenby(_.Photoreceptor) |> @thenby(_.Wavelength) |>
           @map({_.Year, _.Month, _.Date, _.Animal, _.Channel,
@@ -567,7 +567,7 @@ function run_B_wave_analysis(all_files::DataFrame)
      end
 
      experiments_B = trace_B |> 
-          @unique({_.Year, _.Month, _.Date, _.Age, _.Animal, _.Channel}) |> 
+          @unique({_.Year, _.Month, _.Date, _.Age, _.Animal, _.Wavelength, _.Channel}) |> 
           @orderby(_.Genotype) |> @thenby(_.Age) |> 
           @thenby(_.Photoreceptor) |> @thenby(_.Wavelength) |> 
           @map({_.Year, _.Month, _.Date, _.Animal, _.Channel,
@@ -726,7 +726,7 @@ function run_G_wave_analysis(all_files::DataFrame)
      end
 
      experiments_G = trace_G |> 
-          @unique({_.Year, _.Month, _.Date, _.Age, _.Animal, _.Channel}) |> 
+          @unique({_.Year, _.Month, _.Date, _.Age, _.Animal, _.Wavelength, _.Channel}) |> 
           @orderby(_.Genotype) |> @thenby(_.Age) |> 
           @thenby(_.Photoreceptor) |> @thenby(_.Wavelength) |>
           @map({_.Year, _.Month, _.Date, _.Animal, _.Channel,
