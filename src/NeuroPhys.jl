@@ -84,6 +84,7 @@ export plot, plot!, vline!, hline!, savefig, histogram, grid, title!
 #These functions are specific for making datasheets
 include("make_datasheet.jl")
 export update_datasheet, make_sheet
+export run_A_wave_analysis, run_G_wave_analysis, run_B_wave_analysis
 export run_analysis
 
 include("logging.jl")
