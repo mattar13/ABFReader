@@ -44,7 +44,7 @@ export match_channels
 
 #filtering are any functions that return a Experiment file and alter the old one
 include("filtering.jl") 
-export filter_data
+#export filter_data #Don't export this one explicitly
 export baseline_cancel, baseline_cancel! 
 export lowpass_filter, lowpass_filter!
 export highpass_filter, highpass_filter!
