@@ -305,7 +305,9 @@ update_datasheet(root::String, calibration_file; kwargs...) = update_RS_datashee
 """
 Saving and running A-wave analysis
 """
-function run_A_wave_analysis(all_files::DataFrame)
+function run_A_wave_analysis(all_files::DataFrame; 
+          t_peak_cutoff = 2.0     
+     )
      #Record all a waves
      trace_A = all_files |> 
 		@filter(_.Condition == "BaCl_LAP4" || _.Condition == "LAP4_BaCl") |>
@@ -327,7 +329,7 @@ function run_A_wave_analysis(all_files::DataFrame)
           println("Extracting A-wave for experiment $idx of $n_files.")
           println("Total traces: $(size(trace_A, 1))")
           #we want to extract the response for each trace here
-          data = readABF(exp.Path, average_sweeps = true) |> filter_data
+          data = filter_data(readABF(exp.Path, average_sweeps = true), t_post = t_peak_cutoff)
           #Extract the minimum value
           minima = -minimum(data, dims = 2)[:,1,:]
           #Extract the response 
