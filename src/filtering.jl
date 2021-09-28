@@ -253,13 +253,20 @@ end
 
 
 ################## Check these functions because they might be deprecated #####################################
-function fft_spectrum(t, data::Array{T, 1}) where T <: Real
+function fft_spectrum(data::Experiment)
     #FFTW filtering
-    x_fft = fft(data) |> fftshift
+    t = data.t
     dt = t[2] - t[1]
     freqs = FFTW.fftfreq(length(t), 1.0/dt) |> fftshift
     over_0 = findall(freqs .> 0);
-    return freqs[over_0], x_fft[over_0] 
+    n_sweep, n_data, n_ch = size(rod_data_B)
+	fft_data = zeros(Complex, n_sweep, n_data, n_ch)
+	for swp in 1:n_sweep
+		for ch in 1:n_ch
+			fft_data[swp, :, ch] = fft(rod_data_B.data_array[swp, :, ch]) |> fftshift
+		end
+	end
+    return freqs[over_0], fft_data[:, over_0, :] 
 end
 
 #%% a common filter function for simplification
