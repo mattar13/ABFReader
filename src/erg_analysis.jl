@@ -125,7 +125,13 @@ The integration time is fit by integrating the dim flash response and dividing i
 - A key to note here is that the exact f(x) of the ERG data is not completely known
 - The integral is therefore a defininte integral and a sum of the area under the curve
 """
-integral(data::Experiment{T}) where T <: Real = (-sum(data, dims = 2)*data.dt)[:,1,:]
+
+function integral(data::Experiment{T}) where T <: Real 
+    #we want this to be equal to any response after the stimuli
+    t_points = findall(data.t .>= 0.0)
+    data_section = data[:, t_points, :]
+    return sum(data_section, dims = 2) * data.dt
+end
 
 # The below functions are created by fitting a model 
 
