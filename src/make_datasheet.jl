@@ -906,7 +906,6 @@ if footnote #Basically this is only for running the analysis.
      all_paths = vcat(wt_paths, rs_paths)
      data_file = "F:\\Projects\\2021_Retinoschisis\\data_analysis.xlsx"
      all_files = update_datasheet(all_paths, calibration_file, data_file, verbose = true)
-     NeuroPhys.run_G_wave_analysis(all_files)
      run_analysis(all_files, data_file)
 
      #%% This analysis is for the Gnat data analysis
