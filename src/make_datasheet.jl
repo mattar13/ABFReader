@@ -328,8 +328,14 @@ function run_A_wave_analysis(all_files::DataFrame;
      for (idx, exp) in enumerate(eachrow(trace_A))
           println("Extracting A-wave for experiment $idx of $n_files.")
           println("Total traces: $(size(trace_A, 1))")
-          #we want to extract the response for each trace here
-          data = filter_data(readABF(exp.Path, average_sweeps = true), t_post = t_peak_cutoff)
+          if exp.age == 9 
+               #I have found that in the cases of P9 a-waves, the peak can be measures in less than a second after the flash. 
+               #Because the response is so small, drift will often get picked up for a response
+               data = filter_data(readABF(exp.Path, average_sweeps = true), t_post = 1.0) 
+          else
+               #we want to extract the response for each trace here
+               data = filter_data(readABF(exp.Path, average_sweeps = true), t_post = t_peak_cutoff)
+          end
           #Extract the minimum value
           minima = -minimum(data, dims = 2)[:,1,:]
           #Extract the response 
@@ -894,7 +900,7 @@ if footnote #Basically this is only for running the analysis.
      param_file = "F:\\Projects\\2021_Retinoschisis\\parameters.xlsx"
 
      #%% Lets make a dataframe that does not alter the other dataframe categories
-     calibration_file = "E:\\Data\\Calibrations\\photon_lookup.xlsx"
+     calibration_file = "F:\\Data\\Calibrations\\photon_lookup.xlsx"
      rs_root = "F:\\Data\\ERG\\Retinoschisis\\"
      wt_root = "E:\\Data\\ERG\\Paul\\" #This comes from my portable hardrive
      gnat_root = "F:\\Data\\ERG\\Gnat"
@@ -902,8 +908,8 @@ if footnote #Basically this is only for running the analysis.
      rs_paths = rs_root |> parse_abf
      gnat_paths = gnat_root |> parse_abf
 
-     #%% This analysis is for the Retinoschisis data analysis
-     all_paths = vcat(wt_paths, rs_paths)
+     #%% This analysis is for the Retinoschisis data analysis (We don't need pauls data anymore)
+     all_paths = rs_paths
      data_file = "F:\\Projects\\2021_Retinoschisis\\data_analysis.xlsx"
      all_files = update_datasheet(all_paths, calibration_file, data_file, verbose = true)
      run_analysis(all_files, data_file)
