@@ -216,8 +216,16 @@ This is from the adaptive line interface filter in the Clampfit manual
 
 This takes notch filters at every harmonic
 """
-function EI_filter(trace; reference_filter = 120.0)
-    println("Not really sure about this one yet")
+function EI_filter(trace; reference_filter = 120.0, cycles = 10)
+    data = deepcopy(trace)
+    sum_array = zeros(size(data))
+    for cycle in 1:cycles 
+        result = notch_filter(trace, center = reference_filter/(2*cycle), std = 1000.0/(2*cycle))
+        sum_array += result.data_array
+    end
+    avg_filter = sum_array ./ cycles
+    data.data_array = avg_filter
+    return data
 end
 """
 If the traces contain multiple runs, then this file averages the data
