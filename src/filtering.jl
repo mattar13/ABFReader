@@ -170,9 +170,7 @@ end
 highpass_filter(trace::Experiment, freq; pole = 8) = highpass_filter(trace; freq = freq, pole = pole)
 
 function notch_filter(trace::Experiment; pole = 8, center = 60.0, std = 0.1)
-    responsetype = Bandstop(center-std, center+std; fs = 1/trace.dt)
-	designmethod = Butterworth(pole)
-	digital_filter = digitalfilter(responsetype, designmethod)
+    digital_filter = iirnotch(0.60, 0.1)
     data = deepcopy(trace)
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
@@ -184,10 +182,7 @@ function notch_filter(trace::Experiment; pole = 8, center = 60.0, std = 0.1)
 end
 
 function notch_filter!(trace::Experiment; pole = 8, center = 60.0, std = 0.1)
-    
-    responsetype = Bandstop(center-std, center+std; fs = 1/trace.dt)
-	designmethod = Butterworth(pole)
-	digital_filter = digitalfilter(responsetype, designmethod)
+    digital_filter = iirnotch(0.60, 0.1)
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
             trace.data_array[swp,:,ch] .= filt(digital_filter, trace[swp, :, ch])
