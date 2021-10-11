@@ -11,7 +11,7 @@ This function adjusts the baseline, similar to how it is done in clampfit.
     - (start, end) -> a custom region
 It catches the baseline if the stimulus is at the beginning of the 
     """
-function baseline_cancel(trace::Experiment; mode::Symbol = :mean, region = :prestim)
+function baseline_cancel(trace::Experiment; mode::Symbol = :slope, region = :prestim)
     data = deepcopy(trace)
     if isempty(trace.stim_protocol)
         #println("No Stim protocol exists")
@@ -60,7 +60,7 @@ function baseline_cancel(trace::Experiment; mode::Symbol = :mean, region = :pres
     end
 end
 
-function baseline_cancel!(trace::Experiment; mode::Symbol = :mean, region = :prestim)
+function baseline_cancel!(trace::Experiment; mode::Symbol = :slope, region = :prestim)
     if isempty(trace.stim_protocol)
         #println("No stim protocol exists")
     else
@@ -105,6 +105,8 @@ function baseline_cancel!(trace::Experiment; mode::Symbol = :mean, region = :pre
         end
     end
 end
+
+#TODO: Eventually I want to add all filter functions into a single function 
 
 """
 This function applies a n-pole lowpass filter
@@ -168,7 +170,6 @@ end
 highpass_filter(trace::Experiment, freq; pole = 8) = highpass_filter(trace; freq = freq, pole = pole)
 
 function notch_filter(trace::Experiment; pole = 8, center = 60.0, std = 0.1)
-    
     responsetype = Bandstop(center-std, center+std; fs = 1/trace.dt)
 	designmethod = Butterworth(pole)
 	digital_filter = digitalfilter(responsetype, designmethod)
@@ -215,6 +216,27 @@ function cwt_filter!(trace::Experiment; wave = WT.dog2, periods = 1:9)
     end
 end
 
+"""
+This is from the adaptive line interface filter in the Clampfit manual
+
+This takes notch filters at every harmonic
+"""
+function EI_filter(trace)
+
+
+    responsetype = Bandstop(center-std, center+std; fs = 1/trace.dt)
+	designmethod = Butterworth(pole)
+	digital_filter = digitalfilter(responsetype, designmethod)
+
+    for swp in 1:size(trace,1)
+        for ch in 1:size(trace,3)
+            trace.data_array[swp,:,ch] .= filt(digital_filter, trace[swp, :, ch])
+        end
+    end
+
+
+
+end
 """
 If the traces contain multiple runs, then this file averages the data
 """
