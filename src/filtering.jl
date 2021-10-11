@@ -169,8 +169,8 @@ end
 
 highpass_filter(trace::Experiment, freq; pole = 8) = highpass_filter(trace; freq = freq, pole = pole)
 
-function notch_filter(trace::Experiment; center = 0.006, std = 0.005)
-    digital_filter = iirnotch(center, std)
+function notch_filter(trace::Experiment; center = 120.0, std = 10.0)
+    digital_filter = iirnotch(center*trace.dt, std*trace.dt)
     data = deepcopy(trace)
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
@@ -181,8 +181,8 @@ function notch_filter(trace::Experiment; center = 0.006, std = 0.005)
     return data
 end
 
-function notch_filter!(trace::Experiment;  center = 0.006, std = 0.005)
-    digital_filter = iirnotch(center, std)
+function notch_filter!(trace::Experiment;  center = 120.0, std = 10.0)
+    digital_filter = iirnotch(center*trace.dt, std*trace.dt)
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
             trace.data_array[swp,:,ch] .= filt(digital_filter, trace[swp, :, ch])
@@ -216,8 +216,8 @@ This is from the adaptive line interface filter in the Clampfit manual
 
 This takes notch filters at every harmonic
 """
-function EI_filter(trace)
-    
+function EI_filter(trace; reference_filter = 120.0)
+    println("Not really sure about this one yet")
 end
 """
 If the traces contain multiple runs, then this file averages the data
