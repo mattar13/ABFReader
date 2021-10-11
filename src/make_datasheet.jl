@@ -328,7 +328,7 @@ function run_A_wave_analysis(all_files::DataFrame;
      for (idx, exp) in enumerate(eachrow(trace_A))
           println("Extracting A-wave for experiment $idx of $n_files.")
           println("Total traces: $(size(trace_A, 1))")
-          if exp.age == 9 
+          if exp.Age == 9 || exp.Age == 11
                #I have found that in the cases of P9 a-waves, the peak can be measures in less than a second after the flash. 
                #Because the response is so small, drift will often get picked up for a response
                data = filter_data(readABF(exp.Path, average_sweeps = true), t_post = 1.0) 
