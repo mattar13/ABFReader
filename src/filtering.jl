@@ -274,11 +274,14 @@ function fft_spectrum(data::Experiment)
 end
 
 #%% a common filter function for simplification
-function filter_data(data; t_pre = 1.0, t_post = 4.0) 
+function filter_data(data; t_pre = 1.0, t_post = 4.0, notch_filter = true) 
 	truncate_data!(data, t_pre = t_pre, t_post = t_post);
 	baseline_cancel!(data, mode = :slope); 
 	data * 1000.0
 	lowpass_filter!(data)
+    if notch_filter
+        notch_filter!(data)
+    end
 	return data
 end
 
