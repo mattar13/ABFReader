@@ -169,7 +169,7 @@ end
 
 highpass_filter(trace::Experiment, freq; pole = 8) = highpass_filter(trace; freq = freq, pole = pole)
 
-function notch_filter(trace::Experiment; center = 120.0, std = 10.0)
+function notch_filter(trace::Experiment; center = 120.0, std = 1000.0)
     digital_filter = iirnotch(center*trace.dt, std*trace.dt)
     data = deepcopy(trace)
     for swp in 1:size(trace,1)
@@ -181,7 +181,7 @@ function notch_filter(trace::Experiment; center = 120.0, std = 10.0)
     return data
 end
 
-function notch_filter!(trace::Experiment;  center = 120.0, std = 10.0)
+function notch_filter!(trace::Experiment;  center = 120.0, std = 1000.0)
     digital_filter = iirnotch(center*trace.dt, std*trace.dt)
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
