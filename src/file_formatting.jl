@@ -319,7 +319,14 @@ format_bank_PAUL = [
           ("_", :Year, :Month, :Date, check_geno, check_age, :Animal), 
           NeuroPhys.check_drugs, check_pc, NeuroPhys.check_color, 
           NeuroPhys.file_format
-     ),
+    ),
+    
+    ("\\", ~, ~, ~, :Project, ~, 
+          ("_", :Year, :Month, :Date, check_geno, check_age, :Animal), 
+          check_pc, NeuroPhys.check_drugs, NeuroPhys.check_color, 
+          NeuroPhys.file_format
+    ),
+
      ("\\", ~, ~, ~, :Project, ~, 
           ("_", :Year, :Month, :Date, check_geno,  check_age, :Animal), 
           NeuroPhys.check_drugs, check_pc, NeuroPhys.check_color, 
