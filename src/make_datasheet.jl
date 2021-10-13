@@ -920,3 +920,32 @@ if footnote #Basically this is only for running the analysis.
      all_files = update_datasheet(all_paths, calibration_file, data_file, verbose = true)
      run_analysis(all_files, data_file)
 end
+
+#%%
+check_files = false
+if check_files
+     calibration_file = "F:\\Data\\Calibrations\\photon_lookup.xlsx"
+     rs_root = "F:\\Data\\ERG\\Retinoschisis\\"
+     wt_root = "E:\\Data\\ERG\\Paul\\" #This comes from my portable hardrive
+     gnat_root = "F:\\Data\\ERG\\Gnat"
+     wt_paths = wt_root |> parse_abf
+     rs_paths = rs_root |> parse_abf
+     gnat_paths = gnat_root |> parse_abf
+     all_paths = vcat(wt_paths, gnat_paths)
+     failed_paths = []
+     for (i, path) in enumerate(all_paths)
+          println(i)
+          nt = formatted_split(path, format_bank) #At this time all necessary information is contained in the path name
+          if isnothing(nt)
+               secondary_nt = splitpath(path)[end][1:end-4] |> number_seperator #check if the new path contains average
+               nt2 = formatted_split(splitpath(path)[end], file_format) #make sure the file contains the format 
+               if secondary_nt[2] == ["Average"] || !isnothing(nt2)
+                    #these files need to be added
+                    push!(failed_paths, path)
+               else
+                    #push!(added_files, path)
+               end
+          end
+     end
+     failed_paths
+end
