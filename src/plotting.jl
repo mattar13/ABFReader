@@ -44,6 +44,7 @@ Plotting function.
 @recipe function f(
         exp::Experiment{T}; 
         to_plot = (:sweeps, :channels), 
+        subplot = -1, 
         layout = (:channels, 1),
         plot_stim_mode = :none, #We will set this as default none for now
         label = "", label_stim = false,
@@ -78,7 +79,11 @@ Plotting function.
         xguide := xlabels
         @series begin
             label := label
-            subplot := length(ch_rng) == 1 ? 1 : ch
+            if subplot != -1
+                subplot := subplot
+            else
+                subplot := length(ch_rng) == 1 ? 1 : ch
+            end
             x := exp.t #t_series
             y := exp[swp, :, ch]
             yguide := isnothing(ylabels) ? "$(exp.chNames[ch])($(exp.chUnits[ch]))" : ylabels
@@ -86,7 +91,11 @@ Plotting function.
         end
         if !isempty(exp.stim_protocol) && plot_stim_mode != :none
             @series begin
-                subplot := length(ch_rng) == 1 ? 1 : ch
+                if subplot != -1
+                    subplot := subplot
+                else
+                    subplot := length(ch_rng) == 1 ? 1 : ch
+                end
                 seriescolor := :yellow
                 
                 if label_stim && swp == 1
