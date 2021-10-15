@@ -498,7 +498,7 @@ function run_A_wave_analysis(all_files::DataFrame;
      return trace_A, experiments_A, conditions_A
 end
 
-function run_B_wave_analysis(all_files::DataFrame)
+function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true)
      trace_A = all_files |> @filter(_.Condition == "BaCl_LAP4" || _.Condition == "LAP4_BaCl") |> DataFrame
      trace_AB = all_files |> @filter(_.Condition == "BaCl") |> DataFrame
      trace_B = trace_A |> @join(trace_AB, 
@@ -531,7 +531,11 @@ function run_B_wave_analysis(all_files::DataFrame)
                AB_data = readABF(exp.AB_Path, average_sweeps = true) |> cone_filter
           end
           
-          B_data = AB_data - A_data 
+          if analyze_subtraction
+               B_data = AB_data #This does not utilize the subtraction
+          else
+               B_data = AB_data - A_data 
+          end
 
           #Extract the response 
           if exp.Age <= 11
@@ -658,7 +662,7 @@ function run_B_wave_analysis(all_files::DataFrame)
      return trace_B, experiments_B, conditions_B
 end
 
-function run_G_wave_analysis(all_files::DataFrame)
+function run_G_wave_analysis(all_files::DataFrame, )
      trace_AB = all_files |> @filter(_.Condition == "BaCl") |> DataFrame
      trace_ABG = all_files |> @filter(_.Condition == "NoDrugs") |> DataFrame
      trace_G = trace_AB |> @join(trace_ABG, 
@@ -692,8 +696,11 @@ function run_G_wave_analysis(all_files::DataFrame)
                ABG_data = readABF(exp.ABG_Path, average_sweeps = true) |> cone_filter
           end
           #Now we can subtract the A response from the AB response
-          G_data = ABG_data - AB_data 
-
+          if analyze_subtraction
+               G_data = ABG_data #This does not utilize the subtraction
+          else
+               G_data = ABG_data - AB_data 
+          end
           #Extract the negative response 
           if exp.Age <= 11
                resp = abs.(maximum(G_data, dims = 2))[1,:,:]
@@ -903,7 +910,7 @@ if footnote #Basically this is only for running the analysis.
      calibration_file = "F:\\Data\\Calibrations\\photon_lookup.xlsx"
      rs_root = "F:\\Data\\ERG\\Retinoschisis\\"
      wt_root = "E:\\Data\\ERG\\Paul\\" #This comes from my portable hardrive
-     gnat_root = "F:\\Data\\ERG\\Gnat"
+     gnat_root = "E:\\Data\\ERG\\Gnat\\"
      wt_paths = wt_root |> parse_abf
      rs_paths = rs_root |> parse_abf
      gnat_paths = gnat_root |> parse_abf
