@@ -501,19 +501,32 @@ end
 function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true)
      trace_A = all_files |> @filter(_.Condition == "BaCl_LAP4" || _.Condition == "LAP4_BaCl") |> DataFrame
      trace_AB = all_files |> @filter(_.Condition == "BaCl") |> DataFrame
-     trace_B = trace_A |> @join(trace_AB, 
-          {_.Year, _.Month, _.Date, _.Animal, _.Photons, _.Photoreceptor, _.Wavelength}, 
-          {_.Year, _.Month, _.Date, _.Animal, _.Photons, _.Photoreceptor, _.Wavelength},
-          {
-               A_Path = _.Path, AB_Path = __.Path, 
-               A_condition = _.Condition, AB_condition = __.Condition,
-               __.Year,__.Month,__.Date,__.Animal,__.Photoreceptor,__.Wavelength,
-               __.Age, __.Genotype, __.Condition, __.Photons, 
-               Channel = "Vm_prime",
-               Response = 0.0, Peak_Time = 0.0, Int_Time = 0.0, 
-               Tau_Rec = 0.0, Tau_GOF = 0.0
-          }
-     ) |> DataFrame
+     if analyze_subtraction
+          trace_B = trace_A |> @join(trace_AB, 
+               {_.Year, _.Month, _.Date, _.Animal, _.Photons, _.Photoreceptor, _.Wavelength}, 
+               {_.Year, _.Month, _.Date, _.Animal, _.Photons, _.Photoreceptor, _.Wavelength},
+               {
+                    A_Path = _.Path, AB_Path = __.Path, 
+                    A_condition = _.Condition, AB_condition = __.Condition,
+                    __.Year,__.Month,__.Date,__.Animal,__.Photoreceptor,__.Wavelength,
+                    __.Age, __.Genotype, __.Condition, __.Photons, 
+                    Channel = "Vm_prime",
+                    Response = 0.0, Peak_Time = 0.0, Int_Time = 0.0, 
+                    Tau_Rec = 0.0, Tau_GOF = 0.0
+               }
+          ) |> DataFrame
+     else
+          trace_B = trace_AB 	|> @map({_.Path, 
+			_.Year, _.Month, _.Date, _.Animal, _.Photoreceptor, _.Wavelength,
+			_.Age, _.Genotype, _.Condition, _.Photons, 
+			Channel = "Vm_prime",
+			Minima = 0.0, 
+			Response = 0.0, Peak_Time = 0.0, Int_Time = 0.0, 
+			Tau_Rec = 0.0, Tau_GOF = 0.0, 
+			a = 0.0, t_eff = 0.0, Amp_GOF = 0.0
+			}) |>
+	     DataFrame
+     end
      
      #Directly add B-wave responses
      n_files = size(trace_B, 1)
@@ -547,8 +560,6 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true)
           #Extract the integrated time
           tInt = NeuroPhys.integral(B_data)
           #Extract the recovery time constant
-          #println(size(B_data))
-          #println(size(resp))
           tRec, tau_gofs = recovery_tau(B_data, resp) 
           println(tRec)
           if size(B_data, 3) > 1
@@ -662,7 +673,7 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true)
      return trace_B, experiments_B, conditions_B
 end
 
-function run_G_wave_analysis(all_files::DataFrame, )
+function run_G_wave_analysis(all_files::DataFrame, analyze_subtraction = true)
      trace_AB = all_files |> @filter(_.Condition == "BaCl") |> DataFrame
      trace_ABG = all_files |> @filter(_.Condition == "NoDrugs") |> DataFrame
      trace_G = trace_AB |> @join(trace_ABG, 
@@ -698,6 +709,7 @@ function run_G_wave_analysis(all_files::DataFrame, )
           #Now we can subtract the A response from the AB response
           if analyze_subtraction
                G_data = ABG_data #This does not utilize the subtraction
+
           else
                G_data = ABG_data - AB_data 
           end
