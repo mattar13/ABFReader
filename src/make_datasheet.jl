@@ -516,14 +516,12 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true)
                }
           ) |> DataFrame
      else
-          trace_B = trace_AB 	|> @map({_.Path, 
-			_.Year, _.Month, _.Date, _.Animal, _.Photoreceptor, _.Wavelength,
-			_.Age, _.Genotype, _.Condition, _.Photons, 
-			Channel = "Vm_prime",
-			Minima = 0.0, 
-			Response = 0.0, Peak_Time = 0.0, Int_Time = 0.0, 
-			Tau_Rec = 0.0, Tau_GOF = 0.0, 
-			a = 0.0, t_eff = 0.0, Amp_GOF = 0.0
+          trace_B = trace_AB 	|> @map({A_Path =_.Path, AB_Path =_.Path, 
+                    _.Year, _.Month, _.Date, _.Animal, _.Photoreceptor, _.Wavelength,
+                    _.Age, _.Genotype, _.Condition, _.Photons, 
+                    Channel = "Vm_prime",
+                    Response = 0.0, Peak_Time = 0.0, Int_Time = 0.0, 
+                    Tau_Rec = 0.0, Tau_GOF = 0.0
 			}) |>
 	     DataFrame
      end
@@ -673,7 +671,7 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true)
      return trace_B, experiments_B, conditions_B
 end
 
-function run_G_wave_analysis(all_files::DataFrame, analyze_subtraction = true)
+function run_G_wave_analysis(all_files::DataFrame; analyze_subtraction = true)
      trace_AB = all_files |> @filter(_.Condition == "BaCl") |> DataFrame
      trace_ABG = all_files |> @filter(_.Condition == "NoDrugs") |> DataFrame
      trace_G = trace_AB |> @join(trace_ABG, 
@@ -837,7 +835,7 @@ end
 """
 Working on this function to replace making individual trace extractions. 
 """
-function run_analysis(all_files::DataFrame, data_file::String)
+function run_analysis(all_files::DataFrame, data_file::String; analyze_subtraction = true)
      #make the A-wave files
      trace_A, experiments_A, conditions_A = run_A_wave_analysis(all_files)
      #BotNotify("{ERG GNAT}: Completed extraction of A-wave")
@@ -864,7 +862,7 @@ function run_analysis(all_files::DataFrame, data_file::String)
      end
 
      #make the B-wave files
-     trace_B, experiments_B, conditions_B = run_B_wave_analysis(all_files)
+     trace_B, experiments_B, conditions_B = run_B_wave_analysis(all_files, analyze_subtraction = analyze_subtraction)
     # BotNotify("{ERG GNAT}: Completed extraction of B-wave")
      XLSX.openxlsx(data_file, mode = "rw") do xf 
           sheet = xf["trace_B"]
@@ -887,7 +885,7 @@ function run_analysis(all_files::DataFrame, data_file::String)
                DataFrames.names(conditions_B))						
      end
      #make the G-wave files
-     trace_G, experiments_G, conditions_G = run_G_wave_analysis(all_files)
+     trace_G, experiments_G, conditions_G = run_G_wave_analysis(all_files, analyze_subtraction = analyze_subtraction)
      #BotNotify("{ERG GNAT}: Completed extraction of G-component")
      XLSX.openxlsx(data_file, mode = "rw") do xf 
           sheet = xf["trace_G"]
