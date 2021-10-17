@@ -543,9 +543,10 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true)
           end
           
           if analyze_subtraction
-               B_data = AB_data #This does not utilize the subtraction
-          else
                B_data = AB_data - A_data 
+          else
+               B_data = AB_data #This does not utilize the subtraction
+               #println("Here")
           end
 
           #Extract the response 
@@ -558,8 +559,9 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true)
           #Extract the integrated time
           tInt = NeuroPhys.integral(B_data)
           #Extract the recovery time constant
+          #println(resp)
           tRec, tau_gofs = recovery_tau(B_data, resp) 
-          println(tRec)
+          #println(tRec)
           if size(B_data, 3) > 1
                trace_B[idx, :Response] = resp[1]
                trace_B[idx, :Peak_Time] = peak_time[1]
@@ -935,7 +937,8 @@ if footnote #Basically this is only for running the analysis.
      all_paths = vcat(wt_paths, gnat_paths)
      data_file = "F:\\Projects\\2020_JGP_Gnat\\data_analysis.xlsx"
      all_files = update_datasheet(all_paths, calibration_file, data_file, verbose = true)
-     run_analysis(all_files, data_file)
+     run_analysis(all_files, data_file, analyze_subtraction = false)
+     run_B_wave_analysis(all_files, analyze_subtraction = false)
 end
 
 #%%
