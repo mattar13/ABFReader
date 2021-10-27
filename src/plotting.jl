@@ -64,9 +64,9 @@ Plotting function.
     layout := lay
 
 
-    for row in plt_rows, col in plt_cols
-        #println("Row: $row")
-        #println("Col: $col")
+    for (subp_row, row) in enumerate(plt_rows), (subp_col, col) in enumerate(plt_cols)
+        println("Row: $row")
+        println("Col: $col")
         if layout[1] == :channels || layout[2] == :sweeps       
             swp = col
             ch = row
@@ -74,12 +74,12 @@ Plotting function.
             swp = col
             ch = row
         end
-    
-        if lay[1] == 1
-            subp = row
-        else
-            subp = col * row
-        end
+        
+        println(subp_row)
+        println(subp_col)
+        subp_row = row > lay[1] ? lay[1] : subp_row
+        subp_col = col > lay[2] ? lay[2] : subp_col
+        subp = subp_col * subp_row
 
         #println(subp)
         if label != "" && swp == 1
