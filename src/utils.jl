@@ -220,6 +220,19 @@ function push!(nt_push_to::Experiment, nt_added::Experiment)
     push!(nt_push_to, nt_added.data_array)
 end
 
+import Base: reverse, reverse!
+
+function reverse(trace::Experiment; kwargs...)
+    data = deepcopy(trace) 
+    data.data_array = reverse(trace.data_array; kwargs...)
+    return data
+end
+
+function reverse!(trace::Experiment; kwargs...) 
+    trace.data_array = reverse(trace.data_array; kwargs...)
+end
+
+
 function pad(trace::Experiment{T}, n_add::Int64; position::Symbol = :post, dims::Int64 = 2, val::T = 0.0) where T
     data = deepcopy(trace)    
     addon_size = collect(size(trace))
