@@ -1,27 +1,29 @@
 """
 This function helps us to determine sweeps and channels in a layout for plotting
 """
-function layout_helper(x, trace_size)
-    if x == :sweeps
+function layout_helper(x::Symbol, trace_size)
+    if x == :channels
         return trace_size[1]
-    elseif x == :channels
-        return trace_size[3]
-    elseif isa(x, Int64)
-        return x
+    elseif x == :sweeps
+        return trace_size[2]
     end
 end
+layout_helper(x::Int64, trace_size) = x
 
-function subplot_selector(x, trace_size)
+#These are all just convienance functions to help select the subplot
+subplot_selector(x::Int64, trace_size) = [x]
+subplot_selector(x::AbstractArray, trace_size) = x
+subplot_selector(x::UnitRange{T}, trace_size) where T<: Real = x
+
+function subplot_selector(x::Symbol, trace_size)
     if x == :sweeps
         return 1:trace_size[1]
     elseif x == :channels
         return 1:trace_size[3]
-    elseif isa(x, Int64)
-        return [x]
-    elseif isa(x, AbstractArray)
-        return x
     end
 end
+
+
 """
 Plotting function. 
 
@@ -43,9 +45,9 @@ Plotting function.
 """
 @recipe function f(
         exp::Experiment{T}; 
-        to_plot = (:sweeps, :channels), 
+        to_plot = (:channels, :sweeps), #(row, column)
         subplot = -1, 
-        layout = (:channels, 1),
+        layout = (:channels, 1), 
         plot_stim_mode = :none, #We will set this as default none for now
         label = "", label_stim = false,
         xlabels = nothing, ylabels = nothing
@@ -55,16 +57,32 @@ Plotting function.
     grid := false
 
     
-    swp_rng, ch_rng = map(subp -> subplot_selector(subp, size(exp)), to_plot)
+    #swp_rng, ch_rng
+    plt_rows, plt_cols = map(subp -> subplot_selector(subp, size(exp)), to_plot)
+    lay = (map(lay -> layout_helper(lay, (plt_rows|>length, plt_cols|>length)), layout))
+    println(lay)
+    layout := lay
+
+
+    for row in plt_rows, col in plt_cols
+        #println("Row: $row")
+        #println("Col: $col")
+        if layout[1] == :channels || layout[2] == :sweeps       
+            swp = col
+            ch = row
+        elseif layout[1] == :sweeps || layout[2] == :channels
+            swp = col
+            ch = row
+        end
     
-    if length(ch_rng) > 1
-        layout := (map(lay -> layout_helper(lay, size(exp)), layout))
-    else
-        layout := 1 #This may be a simplificaton
-    end
-    
-    for swp in swp_rng, ch in ch_rng
-        if label != ""&& swp == 1
+        if lay[1] == 1
+            subp = row
+        else
+            subp = col * row
+        end
+
+        #println(subp)
+        if label != "" && swp == 1
             label := label
         end
         if size(exp,3) == 1 && isnothing(xlabels)
@@ -82,7 +100,7 @@ Plotting function.
             if subplot != -1
                 subplot := subplot
             else
-                subplot := length(ch_rng) == 1 ? 1 : ch
+                subplot := subp
             end
             x := exp.t #t_series
             y := exp[swp, :, ch]
@@ -94,7 +112,7 @@ Plotting function.
                 if subplot != -1
                     subplot := subplot
                 else
-                    subplot := length(ch_rng) == 1 ? 1 : ch
+                    subplot := subp
                 end
                 seriescolor := :yellow
                 
