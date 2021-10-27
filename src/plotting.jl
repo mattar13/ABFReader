@@ -60,7 +60,7 @@ Plotting function.
     #swp_rng, ch_rng
     plt_rows, plt_cols = map(subp -> subplot_selector(subp, size(exp)), to_plot)
     lay = (map(lay -> layout_helper(lay, (plt_rows|>length, plt_cols|>length)), layout))
-    println(lay)
+    #println(lay)
     layout := lay
 
 
