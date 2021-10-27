@@ -286,13 +286,13 @@ function fft_spectrum(data::Experiment)
 end
 
 #%% a common filter function for simplification
-function filter_data(data; t_pre = 1.0, t_post = 4.0, highpass = 0.05, notch = 60.0, lowpass = 300) 
+function filter_data(data; t_pre = 1.0, t_post = 4.0, highpass = 0.05, EI_center = 60.0, lowpass = 300) 
 	truncate_data!(data, t_pre = t_pre, t_post = t_post);
 	baseline_cancel!(data, mode = :slope); 
 
     #We will apply several filters consecutively
 	highpass_filter!(data, freq = highpass) #Highpass 0.5hz
-	notch_filter!(data, center = notch) #notch filter 60hz noise
+	EI_filter!(data, reference_filter = EI_center) #adaptive line interference according to Clampfit
 	lowpass_filter!(data, freq = lowpass) #cutout all high frequency noise
 	return data
 end
