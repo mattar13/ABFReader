@@ -169,8 +169,8 @@ end
 
 highpass_filter(trace::Experiment, freq; pole = 8) = highpass_filter(trace; freq = freq, pole = pole)
 
-function notch_filter(trace::Experiment; center = 120.0, std = 30.0)
-    digital_filter = iirnotch(center*trace.dt, std*trace.dt)
+function notch_filter(trace::Experiment; center = 60.0, std = 30.0)
+    digital_filter = iirnotch(center, std, fs = 1/trace.dt)
     data = deepcopy(trace)
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
@@ -181,8 +181,8 @@ function notch_filter(trace::Experiment; center = 120.0, std = 30.0)
     return data
 end
 
-function notch_filter!(trace::Experiment;  center = 120.0, std = 1000.0)
-    digital_filter = iirnotch(center*trace.dt, std*trace.dt)
+function notch_filter!(trace::Experiment;  center = 60.0, std = 10.0)
+    digital_filter = iirnotch(center, std, fs = 1/trace.dt)
     for swp in 1:size(trace,1)
         for ch in 1:size(trace,3)
             trace.data_array[swp,:,ch] .= filt(digital_filter, trace[swp, :, ch])
@@ -216,17 +216,21 @@ This is from the adaptive line interface filter in the Clampfit manual
 
 This takes notch filters at every harmonic
 """
-function EI_filter(trace; reference_filter = 120.0, cycles = 10)
+function EI_filter(trace; reference_filter = 60.0, bandpass = 10.0, cycles = 5)
     data = deepcopy(trace)
-    sum_array = zeros(size(data))
     for cycle in 1:cycles 
-        result = notch_filter(trace, center = reference_filter/(2*cycle), std = 1000.0/(2*cycle))
-        sum_array += result.data_array
+        notch_filter!(data, center = reference_filter*cycle, std = bandpass)
     end
-    avg_filter = sum_array ./ cycles
-    data.data_array = avg_filter
     return data
 end
+
+function EI_filter!(trace; reference_filter = 60.0, bandpass = 10.0, cycles = 5)
+    for cycle in 1:cycles 
+        notch_filter!(trace, center = reference_filter*cycle, std = bandpass)
+    end
+end
+
+
 """
 If the traces contain multiple runs, then this file averages the data
 """
@@ -282,14 +286,14 @@ function fft_spectrum(data::Experiment)
 end
 
 #%% a common filter function for simplification
-function filter_data(data; t_pre = 1.0, t_post = 4.0, notch_filter = true) 
+function filter_data(data; t_pre = 1.0, t_post = 4.0, highpass = 0.05, notch = 60.0, lowpass = 300) 
 	truncate_data!(data, t_pre = t_pre, t_post = t_post);
 	baseline_cancel!(data, mode = :slope); 
-	data * 1000.0
-	lowpass_filter!(data)
-    if notch_filter
-        notch_filter!(data)
-    end
+
+    #We will apply several filters consecutively
+	highpass_filter!(data, freq = highpass) #Highpass 0.5hz
+	notch_filter!(data, center = notch) #notch filter 60hz noise
+	lowpass_filter!(data, freq = lowpass) #cutout all high frequency noise
 	return data
 end
 
