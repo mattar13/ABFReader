@@ -49,7 +49,7 @@ Plotting function.
         subplot = -1, 
         layout = (:channels, 1), 
         plot_stim_mode = :none, #We will set this as default none for now
-        stim_color = :black, stim_alpha = 0.7
+        stim_color = :red, stim_alpha = 0.7,
         label = "", label_stim = false,
         xlabels = nothing, ylabels = nothing
     ) where T <: Real
@@ -64,11 +64,17 @@ Plotting function.
 
 
     for (subp_col, col) in enumerate(plt_cols), (subp_row, row) in enumerate(plt_rows) 
-        #println("Row: $row")
-        #println("Col: $col")
+        println("Row: $row")
+        println("Col: $col")
         ch = row
         swp = col
-        subp = subp_row + (length(plt_rows) * (subp_col-1)) 
+        if layout[2] == 1
+            subp = subp_row
+        elseif layout[1] == 1 
+            subp = subp_col
+        else
+            subp = subp_row + (length(plt_rows) * (subp_col-1)) 
+        end
 
         if label != "" && swp == 1
             label := label
