@@ -285,8 +285,8 @@ function fft_spectrum(data::Experiment)
     return freqs[over_0], fft_data[:, over_0, :] 
 end
 
-#%% a common filter function for simplification
-function filter_data(data; t_pre = 1.0, t_post = 4.0, highpass = 0.05, EI_center = 60.0, lowpass = 300) 
+#%% a common filter function for simplification. Remember that this is an inplace version
+function filter_data(data; t_pre = 1.0, t_post = 4.0, highpass = 0.05, EI_center = 60.0, lowpass = 300.0) 
 	truncate_data!(data, t_pre = t_pre, t_post = t_post);
 	baseline_cancel!(data, mode = :slope); 
 
