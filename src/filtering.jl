@@ -301,9 +301,19 @@ function filter_data(data; t_pre = 1.0, t_post = 4.0, highpass = 0.05, EI_center
 	baseline_cancel!(data, mode = :slope); 
 
     #We will apply several filters consecutively
-	highpass_filter!(data, freq = highpass) #Highpass 0.5hz
-	EI_filter!(data, reference_filter = EI_center) #adaptive line interference according to Clampfit
-	lowpass_filter!(data, freq = lowpass) #cutout all high frequency noise
+	if highpass != false
+        highpass_filter!(data, freq = highpass) #Highpass 0.5hz
+    end
+
+    if EI_center != false
+	    EI_filter!(data, reference_filter = EI_center) #adaptive line interference according to Clampfit
+    end
+
+    if lowpass != false
+	    lowpass_filter!(data, freq = lowpass) #cutout all high frequency noise
+    end
+
+    data * 1000
 	return data
 end
 
