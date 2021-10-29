@@ -1,26 +1,110 @@
 using Revise #, OhMyREPL, DoctorDocstrings
 using NeuroPhys
 using Query, DataFrames, XLSX, StatsPlots
-param_file = "F:\\Projects\\2021_Retinoschisis\\parameters.xlsx"
-#%%
-data_file = "F:\\Projects\\2021_Retinoschisis\\data_analysis.xlsx"
-trace_A = DataFrame(XLSX.readtable(data_file, "trace_A")...)
-trace_B = DataFrame(XLSX.readtable(data_file, "trace_B")...)
-trace_G = DataFrame(XLSX.readtable(data_file, "trace_G")...)
+import NeuroPhys.filter_data
+using DSP
+
+
+#%% Using the paper Gauvin et al. 2014 Advance in ERG analysis: From Peak Time and Amplitude to Frequency
+#This paper utilizes CWT, DWT and FFT to break down the ERG waveform 
+
+#%% Lets plot some organoid data
+organoid_root = "F:\\Data\\ERG\\Organoids\\2021_10_28_ERG_Organoid\\Organoid1_9Cis2\\NoDrugs_9Cis100\\"
+files = organoid_root |> parse_abf
+file = files[7]
+data = readABF(file, channels = ["Vm_prime4"]) #|> filter_data
+data * 1000
+avg_data = average_sweeps(data)
+plot(data, layout = (:sweeps, :channels), xlims = (-0.2, 2.0), plot_stim_mode = :overlay_vspan)  
+#%% Filtering and DSP
+
+freqs, fft_data = NeuroPhys.fft_spectrum(data_abg)
+plot(freqs, fft_data[1,:,1] .|> abs, xaxis = :log)
+
 
 #%%
-#we can use this convienience function to help us match the correct data
-function match_experiment(trace::DataFrame, date::Tuple, pc::String, ch::String)
-	trace|> 
-		@filter((_.Month, _.Date, _.Animal) == date)|>
-		@filter(_.Photoreceptor == pc) |> 
-		@filter(_.Channel == ch) |> 
-	DataFrame
+organoid_files = organoid_root |> parse_abf
+for file in organoid_files
+     file_name = split(file, "\\")
+     #println(file_name)
+     file_title = join(file_name[end-2:end])
+     #println(file_title)
+     data = readABF(file, channels = ["Vm_prime", "Vm_prime4"]) 
+     truncate_data!(data);
+     baseline_cancel!(data, mode = :slope); 
+     notch_filter!(data, center = 120.0)
+     data * 1000.0
+     fig = plot(data, xlims = (-0.25, 0.50), plot_stim_mode = :overlay_vspan, c = :red)
+     savefig(fig, "$(organoid_root)\\$(file_title).png")
 end
+
 #%%
-P13_WT = (5, 28, 2) #P13 WT (2021_5_28_n2_Vm_prime_Rods)
-q_WT13a = match_experiment(trace_B, P13_WT, "Rods", "Vm_prime")
-data = readABF(q_WT13a)
+
+
+#%% Plotting Zebrafish files
+test_folder = "F:\\Data\\ERG\\Zebrafish\\2021_09_30_ERG_Zebrafish\\Cole\\NoDrugs\\Rods"
+test_files = test_folder |> parse_abf
+data = readABF(test_files, channels = ["Vm_prime"]) |> NeuroPhys.filter_data
+plt_data_C = plot(data, c = :Black, xlims = (-0.25, 1.0), lw = 3.0, dpi = 500, margins = 2.0Plots.mm)
+savefig(plt_data_C, "C:\\Users\\mtarc\\The University of Akron\\Renna Lab - General\\Projects\\Zebrafish\\2021_09_30_ZebrafishERG_Cole.png")
+
+#%% Brookes Rod data
+test_folder = "F:\\Data\\ERG\\Zebrafish\\2021_10_05_ERG_Zebrafish\\Brooke\\BaCl\\Rods"
+test_files = test_folder |> parse_abf
+data_AB = readABF(test_files, channels = ["Vm_prime4"]) |> x -> NeuroPhys.filter_data(x, notch_filter = false)
+#%%
+EI_filtered = NeuroPhys.EI_filter(data_AB)
+#%%
+plot(data_AB, c = :black)
+plot!(EI_filtered, c = :red)
+#%%
+test_folder = "F:\\Data\\ERG\\Zebrafish\\2021_10_05_ERG_Zebrafish\\Brooke\\BaCl_LAP4\\Rods"
+test_files = test_folder |> parse_abf
+data_A = readABF(test_files, channels = ["Vm_prime4"]) |> NeuroPhys.filter_data
+data_B = data_AB - data_A
+plt_data_AB = plot(data_AB, c = :Black, lw = 3.0, xlims = (-0.25, 1.0), ylims = (-15, 40))
+plt_data_A = plot(data_A, c = :red, lw = 3.0, xlims = (-0.25, 1.0), ylims = (-15, 40))
+plt_data_B = plot(data_B, c = :blue, lw = 3.0, xlims = (-0.25, 1.0), ylims = (-15, 40))
+plt_data_BROOKE = plot(plt_data_AB, plt_data_A, plt_data_B, layout = grid(1,3), size = (2000, 1000), dpi = 500, margins = 5.0Plots.mm)
+#savefig(plt_data_BROOKE, "C:\\Users\\mtarc\\The University of Akron\\Renna Lab - General\\Projects\\Zebrafish\\2021_10_05_Zfish_Rods_Brooke.png")
+#%%
+freqs, fft_data = NeuroPhys.fft_spectrum(data_A)
+plot(freqs, fft_data[1,:,1] |> real, xaxis = :log)
+
+#%% Brooke Cones
+test_folder = "F:\\Data\\ERG\\Zebrafish\\2021_10_05_ERG_Zebrafish\\Brooke\\BaCl\\Cones\\Green"
+test_files = test_folder |> parse_abf
+special_filter(x) = NeuroPhys.filter_data(x, t_pre = 2.0, t_post = 2.0)
+data = readABF(test_files, channels = ["Vm_prime4"]) |> special_filter
+plt_data_GREEN = plot(data, c = :Green, lw = 3.0, xlims = (-0.25, -1.0), ylims = (-15, 10), title = "Green Cones")
+plt_data_OFF = plot(data, c = :Green, lw = 3.0, ylims = (-15, 40), margins = 5.0Plots.mm)
+
+test_folder = "F:\\Data\\ERG\\Zebrafish\\2021_10_05_ERG_Zebrafish\\Brooke\\BaCl\\Cones\\UV"
+test_files = test_folder |> parse_abf
+special_filter(x) = NeuroPhys.filter_data(x, t_pre = 2.0, t_post = 2.0)
+data = readABF(test_files, channels = ["Vm_prime4"]) |> special_filter
+plt_data_UV = plot(data, c = :Purple, lw = 3.0, xlims = (-0.25, -1.0), ylims = (-15, 10), title = "UV Cones")
+
+test_folder = "F:\\Data\\ERG\\Zebrafish\\2021_10_05_ERG_Zebrafish\\Brooke\\BaCl\\Cones\\Red"
+test_files = test_folder |> parse_abf
+special_filter(x) = NeuroPhys.filter_data(x, t_pre = 2.0, t_post = 2.0)
+data = readABF(test_files, channels = ["Vm_prime4"]) |> special_filter
+plt_data_RED = plot(data, c = :Red, lw = 3.0, xlims = (-0.25, -1.0), ylims = (-15, 10), title = "Red Cones")
+
+plt_data = plot(plt_data_UV, plt_data_GREEN, plt_data_RED, layout = grid(1, 3), size = (2500, 750), dpi = 500, margins = 5.0Plots.mm)
+savefig(plt_data, "C:\\Users\\mtarc\\The University of Akron\\Renna Lab - General\\Projects\\Zebrafish\\2021_10_05_Zfish_Cones_Brooke.png")
+savefig(plt_data_OFF, "C:\\Users\\mtarc\\The University of Akron\\Renna Lab - General\\Projects\\Zebrafish\\2021_10_05_Zfish_OFFResponse_Brooke.png")
+
+
+#%%
+param_file = "F:\\Projects\\2021_Retinoschisis\\parameters.xlsx"
+calibration_file = "F:\\Data\\Calibrations\\photon_lookup.xlsx"
+#%% Test make_sheet function
+test_folder = "F:\\Data\\ERG\\Zebrafish\\2021_09_30_ERG_Zebrafish\\Cole\\NoDrugs\\Rods"
+test_files = test_folder |> parse_abf
+make_sheet(test_files, calibration_file, verbose = true)
+#%% 
+
 #%% Eventually you should make a Pluto notebook that runs this analysis
 q_file = all_files |> 
      @filter(_.Month == 3 && _.Date == 12 && _.Animal == 1 && _.Photons > 6000.0) |> 
@@ -80,6 +164,7 @@ ec_data * -1000
 
 abg_file = "F:\\Data\\ERG\\Eyecup\\2021_09_14_ERG_RS\\Mouse2_P15_WT\\NoDrugs\\Rods"
 abg_paths = abg_file |> parse_abf
+data_abg = readABF(abg_paths[1])
 abg_data = concat(abg_paths, average_sweeps = true)
 drop!(abg_data)
 truncate_data!(abg_data, truncate_based_on = :stimulus_end, t_pre = 1.0, t_post = 3.0)
