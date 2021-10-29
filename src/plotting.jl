@@ -49,6 +49,7 @@ Plotting function.
         subplot = -1, 
         layout = (:channels, 1), 
         plot_stim_mode = :none, #We will set this as default none for now
+        stim_color = :black, stim_alpha = 0.7
         label = "", label_stim = false,
         xlabels = nothing, ylabels = nothing
     ) where T <: Real
@@ -67,11 +68,7 @@ Plotting function.
         #println("Col: $col")
         ch = row
         swp = col
-        subp = subp_row + (length(plt_rows) * (subp_col-1))
-        #if layout[1] == :channels || layout[2] == :sweeps       
-        #elseif layout[1] == :sweeps || layout[2] == :channels
-            #subp = subp_col + (length(plt_rows) * (subp_row-1))
-        #end       
+        subp = subp_row + (length(plt_rows) * (subp_col-1)) 
 
         if label != "" && swp == 1
             label := label
@@ -102,7 +99,7 @@ Plotting function.
                 else
                     subplot := subp
                 end
-                seriescolor := :yellow
+                seriescolor := stim_color
                 
                 if label_stim && swp == 1
                     label := "stimulus"
@@ -112,19 +109,21 @@ Plotting function.
                 if plot_stim_mode == :overlay_vline_start
                     linewidth := 2.0
                     seriestype := :vline
+                    linecolor := stim_color
                     y := [exp.stim_protocol[swp].timestamps[1]]
                     yguide := "$(exp.chNames[ch])($(exp.chUnits[ch]))"
                     ()
                 elseif plot_stim_mode == :overlay_vline_end
                     linewidth := 2.0
                     seriestype := :vline
+                    linecolor := stim_color
                     y := [exp.stim_protocol[swp].timestamps[2]]
                     yguide := "$(exp.chNames[ch])($(exp.chUnits[ch]))"
                     ()
                 elseif plot_stim_mode == :overlay_vspan
                     linewidth := 1.0
-                    linecolor := :yellow
-                    seriesalpha := 0.5
+                    linecolor := stim_color
+                    seriesalpha := stim_alpha
                     seriestype := vspan
                     y := [exp.stim_protocol[swp].timestamps...]
                     yguide := "$(exp.chNames[ch])($(exp.chUnits[ch]))"
