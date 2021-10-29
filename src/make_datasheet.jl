@@ -940,6 +940,8 @@ if footnote #Basically this is only for running the analysis.
      run_analysis(all_files, data_file, analyze_subtraction = false)
      run_B_wave_analysis(all_files, analyze_subtraction = false)
 end
+#%%
+
 
 #%%
 check_files = false
@@ -968,4 +970,16 @@ if check_files
           end
      end
      failed_paths
+
+     using DataFrames, Dates, XLSX
+     df = DataFrames.DataFrame(integers=[1, 2, 3, 4], strings=["Hey", "You", "Out", "There"], floats=[10.2, 20.3, 30.4, 40.5], dates=[Date(2018,2,20), Date(2018,2,21), Date(2018,2,22), Date(2018,2,23)], times=[Dates.Time(19,10), Dates.Time(19,20), Dates.Time(19,30), Dates.Time(19,40)], datetimes=[Dates.DateTime(2018,5,20,19,10), Dates.DateTime(2018,5,20,19,20), Dates.DateTime(2018,5,20,19,30), Dates.DateTime(2018,5,20,19,40)])
+     #%%
+     data_file = "F:\\Projects\\2021_Retinoschisis\\data_analysis.xlsx"
+     XLSX.openxlsx(data_file, mode = "rw") do xf 
+          sheet = xf["trace_A"]
+          XLSX.writetable(sheet, 
+               collect(DataFrames.eachcol(df)), 
+               DataFrames.names(df),
+               )						
+     end
 end
