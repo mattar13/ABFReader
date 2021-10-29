@@ -296,7 +296,7 @@ function fft_spectrum(data::Experiment)
 end
 
 #%% a common filter function for simplification. Remember that this is an inplace version
-function filter_data(data; t_pre = 1.0, t_post = 4.0, highpass = 0.05, EI_center = 60.0, lowpass = 300.0) 
+function filter_data(data; t_pre = 1.0, t_post = 4.0, highpass = false, EI_bandpass = 100.0, lowpass = 300.0) 
 	truncate_data!(data, t_pre = t_pre, t_post = t_post);
 	baseline_cancel!(data, mode = :slope); 
 
@@ -305,8 +305,8 @@ function filter_data(data; t_pre = 1.0, t_post = 4.0, highpass = 0.05, EI_center
         highpass_filter!(data, freq = highpass) #Highpass 0.5hz
     end
 
-    if EI_center != false
-	    EI_filter!(data, reference_filter = EI_center) #adaptive line interference according to Clampfit
+    if EI_bandpass != false
+	    EI_filter!(data, bandpass = EI_bandpass) #adaptive line interference according to Clampfit
     end
 
     if lowpass != false
