@@ -64,8 +64,8 @@ Plotting function.
 
 
     for (subp_col, col) in enumerate(plt_cols), (subp_row, row) in enumerate(plt_rows) 
-        println("Row: $row")
-        println("Col: $col")
+        #println("Row: $row")
+        #println("Col: $col")
         ch = row
         swp = col
         if layout[2] == 1
