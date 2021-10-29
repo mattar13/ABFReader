@@ -55,33 +55,24 @@ Plotting function.
     
     #Set the basic characteristics of each plot
     grid := false
-
     
-    #swp_rng, ch_rng
     plt_rows, plt_cols = map(subp -> subplot_selector(subp, size(exp)), to_plot)
     lay = (map(lay -> layout_helper(lay, (plt_rows|>length, plt_cols|>length)), layout))
-    println(plt_rows)
-    println(plt_cols)
     #println(lay)
     layout := lay
 
 
     for (subp_col, col) in enumerate(plt_cols), (subp_row, row) in enumerate(plt_rows) 
-        println("Row: $row")
-        println("Col: $col")
-        if layout[1] == :channels || layout[2] == :sweeps       
-            swp = row
-            ch = col
-        elseif layout[1] == :sweeps || layout[2] == :channels
-            swp = col
-            ch = row
-        end
-        
-        #subp_row = row > lay[1] ? lay[1] : subp_row
-        #subp_col = col > lay[2] ? lay[2] : subp_col
-        subp = subp_col * subp_row
+        #println("Row: $row")
+        #println("Col: $col")
+        ch = row
+        swp = col
+        subp = subp_row + (length(plt_rows) * (subp_col-1))
+        #if layout[1] == :channels || layout[2] == :sweeps       
+        #elseif layout[1] == :sweeps || layout[2] == :channels
+            #subp = subp_col + (length(plt_rows) * (subp_row-1))
+        #end       
 
-        #println(subp)
         if label != "" && swp == 1
             label := label
         end
