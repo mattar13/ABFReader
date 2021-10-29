@@ -267,6 +267,16 @@ function normalize!(trace::Experiment; rng = (-1,0))
     end
 end
 
+function rolling_mean(trace::Experiment; window = 2)
+    data = deepcopy(trace)
+    for swp in 1:size(trace,1), ch in 1:size(trace,3)
+
+    end
+end
+
+
+
+
 
 ################## Check these functions because they might be deprecated #####################################
 function fft_spectrum(data::Experiment)
