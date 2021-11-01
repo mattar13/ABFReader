@@ -5,41 +5,86 @@ import NeuroPhys.filter_data
 using DSP
 
 
-#%% Using the paper Gauvin et al. 2014 Advance in ERG analysis: From Peak Time and Amplitude to Frequency
-#This paper utilizes CWT, DWT and FFT to break down the ERG waveform 
-
-#%% Lets plot some organoid data
-organoid_root = "F:\\Data\\ERG\\Organoids\\2021_10_28_ERG_Organoid\\Organoid1_9Cis2\\NoDrugs_9Cis100\\"
-files = organoid_root |> parse_abf
-file = files[7]
-data = readABF(file, channels = ["Vm_prime4"]) #|> filter_data
-data * 1000
-avg_data = average_sweeps(data)
-plot(data, layout = (:sweeps, :channels), xlims = (-0.2, 2.0), plot_stim_mode = :overlay_vspan)  
-#%% Filtering and DSP
-
-freqs, fft_data = NeuroPhys.fft_spectrum(data_abg)
-plot(freqs, fft_data[1,:,1] .|> abs, xaxis = :log)
-
-
-#%%
+#%% iteratively looking at organoids
+organoid_root = "F:\\Data\\ERG\\Organoids\\Good\\"
 organoid_files = organoid_root |> parse_abf
+
 for file in organoid_files
      file_name = split(file, "\\")
-     #println(file_name)
      file_title = join(file_name[end-2:end])
-     #println(file_title)
-     data = readABF(file, channels = ["Vm_prime", "Vm_prime4"]) 
-     truncate_data!(data);
-     baseline_cancel!(data, mode = :slope); 
-     notch_filter!(data, center = 120.0)
-     data * 1000.0
-     fig = plot(data, xlims = (-0.25, 0.50), plot_stim_mode = :overlay_vspan, c = :red)
-     savefig(fig, "$(organoid_root)\\$(file_title).png")
+     println(file_title)
+     try
+          data = readABF(file, channels = ["Vm_prime", "Vm_prime4"])
+          truncate_data!(data)
+          baseline_cancel!(data, mode = :slope); 
+          EI_filter!(data, reference_filter = 60.0, bandpass = 100.0) #adaptive line interference according to Clampfit
+          lowpass_filter!(data, freq = 300.0) #cutout all high frequency noise
+          data * 1000
+          #%%
+          fig = plot(data, to_plot = (:channels, 1), layout = (:sweeps, :channels), xlims = (-0.2, 1.0), #ylims = (-0.5, 0.5),
+               plot_stim_mode = :overlay_vspan
+               ) 
+          savefig(fig, "$(organoid_root)\\$(file_title).png")
+     catch error
+          println(error)
+          println("Something happened in this")
+     end
 end
 
 #%%
+xlims = (-0.2, 0.5)
+abg_file = "F:\\Data\\ERG\\Eyecup\\2021_09_14_ERG_RS\\Mouse2_P15_WT\\NoDrugs\\Rods\\nd2_1p_0000.abf"
+data = readABF(abg_file, channels = ["Vm_prime"], average_sweeps = true)
+baseline_cancel!(data, mode = :slope); 
+truncate_data!(data);
+#highpass_filter!(data, freq = highpass) #Highpass 0.5hz
+EI_filter!(data, reference_filter = 60.0, bandpass = 100.0) #adaptive line interference according to Clampfit
+lowpass_filter!(data, freq = 300.0) #cutout all high frequency noise
+data * 1000
+p1 = plot(data, plot_stim_mode = :overlay_vspan, xlims = xlims)
 
+# Lets plot some organoid data
+organoid_root = "F:\\Data\\ERG\\Organoids\\2021_10_28_ERG_Organoid\\Organoid1_9Cis2\\NoDrugs_9Cis100\\"
+files = organoid_root |> parse_abf
+data = readABF(files[7], channels = ["Vm_prime4"]) 
+baseline_cancel!(data, mode = :slope); 
+truncate_data!(data);
+#highpass_filter!(data, freq = 0.05) #Highpass 0.5hz
+EI_filter!(data, reference_filter = 60.0, bandpass = 100.0) #adaptive line interference according to Clampfit
+lowpass_filter!(data, freq = 300.0) #cutout all high frequency noise
+data * 1000
+p2 = plot(data, 
+     to_plot = (:channels, 1), layout = (:sweeps, :channels), xlims = xlims, 
+     plot_stim_mode = :overlay_vspan
+     )
+plot(p1, p2,  layout = grid(2,1))
+
+
+
+#%% Using the paper Gauvin et al. 2014 Advance in ERG analysis: From Peak Time and Amplitude to Frequency
+#This paper utilizes CWT, DWT and FFT to break down the ERG waveform 
+#Lets pick a good response to filter and compare it to the Organoids
+using Wavelets
+abg_file = "F:\\Data\\ERG\\Eyecup\\2021_09_14_ERG_RS\\Mouse2_P15_WT\\NoDrugs\\Rods\\nd2_1p_0000.abf"
+data = readABF(abg_file, channels = ["Vm_prime"], average_sweeps = true)
+baseline_cancel!(data, mode = :slope); 
+truncate_data!(data);
+p1 = plot(data, plot_stim_mode = :overlay_vspan, xlims = xlims)
+freqs, fft_data = NeuroPhys.fft_spectrum(data)
+p2 = plot(freqs, fft_data[1,:,1] .|> abs,  xaxis = :log, yaxis = :log)
+
+organoid_root = "F:\\Data\\ERG\\Organoids\\2021_10_28_ERG_Organoid\\Organoid1_9Cis2\\NoDrugs_9Cis100\\"
+files = organoid_root |> parse_abf
+data = readABF(files[7], channels = ["Vm_prime4"]) 
+baseline_cancel!(data, mode = :slope); 
+truncate_data!(data);
+p3 = plot(data, 
+     to_plot = (:channels, 1), layout = (:sweeps, :channels), xlims = xlims, 
+     plot_stim_mode = :overlay_vspan
+     )
+freqs, fft_data = NeuroPhys.fft_spectrum(data)
+p4 = plot(freqs, fft_data[1,:,1] .|> abs,  xaxis = :log, yaxis = :log)
+plot(p1, p2, p3, p4, layout = grid(4,1))
 
 #%% Plotting Zebrafish files
 test_folder = "F:\\Data\\ERG\\Zebrafish\\2021_09_30_ERG_Zebrafish\\Cole\\NoDrugs\\Rods"
