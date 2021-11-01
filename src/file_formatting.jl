@@ -86,7 +86,7 @@ This is the formatted_split function.
             [:Wavelength, x -> x == "Green" || x == 594 ? 594 : 365]
 """
 function formatted_split(string::String, format::Tuple; 
-        dlm = "_", parse_numbers = false, verbose = false, 
+        dlm = "\\", parse_numbers = false, verbose = false, 
         default_keys = (Photoreceptor = "Rods", Wavelength = 525)
         )
     nt_keys = nothing
@@ -374,4 +374,19 @@ format_bank = [
     format_bank_RS,  #These are the formats for the Retinoschisis files
     format_bank_GNAT, #Gnat files
     format_bank_PAUL #Pauls files
+]
+
+organoid_format = [
+    ("\\", 
+        ~,
+        ~, 
+        :Method, 
+        :ModelOrganism, 
+        ("_", :ShipYear, :ShipMonth, :ShipDate, ~), 
+        ("_", :Year, :Month, :Date, ~, ~), 
+        ("_", :OrganoidNumber, :Genotype, :RearingCondition, :PrepCondition),
+        :Conditon, 
+        :Photoreceptor, 
+        ~
+        ) 		
 ]
