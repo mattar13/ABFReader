@@ -117,14 +117,14 @@ Plotting function.
                     seriestype := :vline
                     linecolor := stim_color
                     y := [exp.stim_protocol[swp].timestamps[1]]
-                    yguide := "$(exp.chNames[ch])($(exp.chUnits[ch]))"
+                    #yguide := "$(exp.chNames[ch])($(exp.chUnits[ch]))"
                     ()
                 elseif plot_stim_mode == :overlay_vline_end
                     linewidth := 2.0
                     seriestype := :vline
                     linecolor := stim_color
                     y := [exp.stim_protocol[swp].timestamps[2]]
-                    yguide := "$(exp.chNames[ch])($(exp.chUnits[ch]))"
+                    #yguide := "$(exp.chNames[ch])($(exp.chUnits[ch]))"
                     ()
                 elseif plot_stim_mode == :overlay_vspan
                     linewidth := 1.0
@@ -132,7 +132,7 @@ Plotting function.
                     seriesalpha := stim_alpha
                     seriestype := vspan
                     y := [exp.stim_protocol[swp].timestamps...]
-                    yguide := "$(exp.chNames[ch])($(exp.chUnits[ch]))"
+                    #yguide := "$(exp.chNames[ch])($(exp.chUnits[ch]))"
                     ()
                 end
             end
