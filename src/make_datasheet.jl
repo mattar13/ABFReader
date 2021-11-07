@@ -50,6 +50,8 @@ function make_sheet(all_paths::Array{String}, calibration_file::String; verbose 
                )
                if !isnothing(photon)
                     all_files[idx, :Photons] = photon*stim_time
+               elseif haskey(nt, StimulusNumber) 
+                    all_files[idx, :Photons] = nt.StimulusNumber               
                end
           else
                #for now just remove the file from the dataframe
@@ -945,23 +947,28 @@ end
 
 #%%
 check_files = false
+failed_paths = nothing
 if check_files
-     calibration_file = "F:\\Data\\Calibrations\\photon_lookup.xlsx"
-     rs_root = "F:\\Data\\ERG\\Retinoschisis\\"
-     wt_root = "E:\\Data\\ERG\\Paul\\" #This comes from my portable hardrive
-     gnat_root = "F:\\Data\\ERG\\Gnat"
+#%%
+     using Revise
+     using NeuroPhys
+     #rs_root = "F:\\Data\\ERG\\Retinoschisis\\"
+     wt_root = "E:\\Data\\ERG\\Paul\\NotDetermined\\" #This comes from my portable hardrive
+     #gnat_root = "F:\\Data\\ERG\\Gnat"
      wt_paths = wt_root |> parse_abf
-     rs_paths = rs_root |> parse_abf
-     gnat_paths = gnat_root |> parse_abf
-     all_paths = vcat(wt_paths, gnat_paths)
+     #rs_paths = rs_root |> parse_abf
+     #gnat_paths = gnat_root |> parse_abf
+     all_paths = wt_paths#vcat(wt_paths, gnat_paths)
      failed_paths = []
      for (i, path) in enumerate(all_paths)
           println(i)
           nt = formatted_split(path, format_bank) #At this time all necessary information is contained in the path name
           if isnothing(nt)
                secondary_nt = splitpath(path)[end][1:end-4] |> number_seperator #check if the new path contains average
+               #println(secondary_nt)
                nt2 = formatted_split(splitpath(path)[end], file_format) #make sure the file contains the format 
-               if secondary_nt[2] == ["Average"] || !isnothing(nt2)
+               #println(flag3)
+               if secondary_nt[2] == ["Average"] || !isnothing(nt2) && !isnothing(tryparse(Float64, nt2.Percent))
                     #these files need to be added
                     push!(failed_paths, path)
                else
@@ -969,17 +976,12 @@ if check_files
                end
           end
      end
-     failed_paths
+     fpath = failed_paths[1]
 
-     using DataFrames, Dates, XLSX
-     df = DataFrames.DataFrame(integers=[1, 2, 3, 4], strings=["Hey", "You", "Out", "There"], floats=[10.2, 20.3, 30.4, 40.5], dates=[Date(2018,2,20), Date(2018,2,21), Date(2018,2,22), Date(2018,2,23)], times=[Dates.Time(19,10), Dates.Time(19,20), Dates.Time(19,30), Dates.Time(19,40)], datetimes=[Dates.DateTime(2018,5,20,19,10), Dates.DateTime(2018,5,20,19,20), Dates.DateTime(2018,5,20,19,30), Dates.DateTime(2018,5,20,19,40)])
-     #%%
-     data_file = "F:\\Projects\\2021_Retinoschisis\\data_analysis.xlsx"
-     XLSX.openxlsx(data_file, mode = "rw") do xf 
-          sheet = xf["trace_A"]
-          XLSX.writetable(sheet, 
-               collect(DataFrames.eachcol(df)), 
-               DataFrames.names(df),
-               )						
-     end
+     nt = formatted_split(fpath, NeuroPhys.format_bank, verbose = true) 
+     println(length(failed_paths))
+     failed_paths[1]
+#%%
 end
+
+
