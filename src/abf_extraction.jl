@@ -253,8 +253,8 @@ For Julia this can be Float64, but for older files this may be Float32.
     7) 'duration::T' -> How long the DAC will be held at a certai level
     8) 'durationDelta::T' -> From sweep to sweep the change in the duration
     9) 'digitalPattern::Vector'{T} -> If a digital channel is used, a digital bit pattern will be used (8 bits)
-    10) 'pulsePeriod::T' -> The length of the pulse 
-    11) 'pulseWidth::T' -> ??? 
+    10) 'pulsePeriod::T' -> The periodicity of the pulse (Sine Wave)
+    11) 'pulseWidth::T' -> The width of the pulse (Sine Wave)
 
 
 """
@@ -1072,7 +1072,6 @@ function readStringSection(f::IOStream, blockStart, entrySize, entryCount;
     stringsRaw = fill(UInt8[], entryCount) #The raw string data
     strings = fill("", entryCount) #The formatted strings
     #Parse through the data and read the bytes 
-    #open(filename, "r") do f
     for i in 0:entryCount-1 #iterate through each entry
         seek(f, byteStart+i*entrySize) #advance the file x bytes
         b = [0x00] #memory entry for bytes
