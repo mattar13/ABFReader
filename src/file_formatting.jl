@@ -284,9 +284,9 @@ end
 check_color(x::Real) = x
 
 function check_drugs(x::String)
-    if x == "Drugs"
+    if x == "Drugs" || x == "BaCl_LAP4"
         return (:Condition, "BaCl_LAP4")
-    elseif x == "NoDrugs" || x == "No Drugs"
+    elseif x == "NoDrugs" || x == "No Drugs" || x == "BaCl"
         return (:Condition, "BaCl")
     else 
         return :InvalidDrug
@@ -327,12 +327,33 @@ format_bank_PAUL = [
           NeuroPhys.file_format
     ),
 
-     ("\\", ~, ~, ~, :Project, ~, 
-          ("_", :Year, :Month, :Date, check_geno,  check_age, :Animal), 
-          NeuroPhys.check_drugs, check_pc, NeuroPhys.check_color, 
-          NeuroPhys.file_format, 
-          (".", NeuroPhys.choose_words, ~)
-     ),
+    ("\\", ~, ~, ~, :Project, ~, 
+        ("_", :Year, :Month, :Date, check_geno,  check_age, :Animal), 
+        NeuroPhys.check_drugs, check_pc, NeuroPhys.check_color, 
+        NeuroPhys.file_format, 
+        (".", NeuroPhys.choose_words, ~)
+    ),
+
+    ("\\", ~, ~, ~, :Project, :PhotonStatus, 
+        ("_", :Year, :Month, :Date, check_geno,  check_age, :Animal), 
+        NeuroPhys.check_drugs, NeuroPhys.check_color, 
+        NeuroPhys.file_format, 
+        (".", NeuroPhys.choose_words, ~)
+    ),
+
+    ("\\", ~, ~, ~, :Project, :PhotonStatus, 
+        ("_", :Year, :Month, :Date, check_geno,  check_age, :Animal), 
+        NeuroPhys.check_pc, NeuroPhys.check_drugs, NeuroPhys.check_color, 
+        NeuroPhys.file_format, 
+        (".", NeuroPhys.choose_words, ~)
+    ),
+
+    ("\\", ~, ~, ~, :Project, :PhotonStatus, 
+        ("_", :Year, :Month, :Date, check_geno,  check_age, :Animal), 
+        NeuroPhys.check_pc, NeuroPhys.check_drugs, NeuroPhys.check_color, 
+        :StimulusNumber, 
+        (".", NeuroPhys.choose_words, ~)
+    ),
 
     ("\\", ~, ~, ~, :Project, ~, 
           ("_", :Year, :Month, :Date, check_geno,  check_age, :Animal), 
