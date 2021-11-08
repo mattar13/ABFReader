@@ -97,11 +97,12 @@ function update_datasheet(
                          print("Analyzing path number $idx of $(length(all_paths))")
                          println(path)
                     end
-                    nt = formatted_split(path, format_bank) #At this time all necessary information is contained in the path name
+                    nt = formatted_split(path, format_bank, parse_numbers = true) #At this time all necessary information is contained in the path name
+                    #println(nt)
                     if !isnothing(nt) 
                          for field in Symbol.(DataFrames.names(all_files))
                               if haskey(nt, field)
-                                   all_files[idx, field] = nt[field] 
+                                   all_files[idx, field] = nt[field]
                               end
                          end
 
@@ -110,11 +111,21 @@ function update_datasheet(
                          stim_time = round((tstops[2]-tstops[1])*1000)
                          all_files[idx, :Stim_time] = stim_time
                          #Now we want to apply photons using the photon lookup
-                         photon = photon_lookup(
-                              nt.Wavelength, nt.ND, nt.Percent, 1.0, calibration_file
-                         )
-                         if !isnothing(photon)
-                              all_files[idx, :Photons] = photon*stim_time
+                         if haskey(nt, :StimulusNumber)
+                              println(nt.StimulusNumber)
+                              all_files[idx, :Photons] = nt.StimulusNumber
+
+                         else
+                              #ND, _ = nt.ND |> number_seperator
+                              #PERCENT, _ = nt.Percent |> number_seperator
+                              #println(nt.ND |> number_seperator)
+                              #println(nt.Percent)
+                              photon = photon_lookup(
+                                   nt.Wavelength, nt.ND, nt.Percent, 1.0, calibration_file
+                              )
+                              if !isnothing(photon)
+                                   all_files[idx, :Photons] = photon*stim_time
+                              end
                          end
                     else
                          #for now just remove the file from the dataframe
@@ -916,38 +927,37 @@ end
 #
 const footnote = false #When exporting these files, this will ensure the analysis is not run
 if footnote #Basically this is only for running the analysis. 
+#%%
      using Revise
      using NeuroPhys
      param_file = "F:\\Projects\\2021_Retinoschisis\\parameters.xlsx"
 
-     #%% Lets make a dataframe that does not alter the other dataframe categories
+#%%    # Lets make a dataframe that does not alter the other dataframe categories
      calibration_file = "F:\\Data\\Calibrations\\photon_lookup.xlsx"
      rs_root = "F:\\Data\\ERG\\Retinoschisis\\"
-     wt_root = "E:\\Data\\ERG\\Paul\\" #This comes from my portable hardrive
-     gnat_root = "E:\\Data\\ERG\\Gnat\\"
-     wt_paths = wt_root |> parse_abf
      rs_paths = rs_root |> parse_abf
-     gnat_paths = gnat_root |> parse_abf
-
-     #%% This analysis is for the Retinoschisis data analysis (We don't need pauls data anymore)
      all_paths = rs_paths
      data_file = "F:\\Projects\\2021_Retinoschisis\\data_analysis.xlsx"
      all_files = update_datasheet(all_paths, calibration_file, data_file, verbose = true)
      run_analysis(all_files, data_file)
 
-     #%% This analysis is for the Gnat data analysis
+#%% This analysis is for the Gnat data analysis
+     calibration_file = "E:\\Data\\Calibrations\\photon_lookup.xlsx"
+     wt_root = "E:\\Data\\ERG\\Paul\\" #This comes from my portable hardrive
+     gnat_root = "E:\\Data\\ERG\\Gnat\\"
+     wt_paths = wt_root |> parse_abf
+     gnat_paths = gnat_root |> parse_abf
      all_paths = vcat(wt_paths, gnat_paths)
-     data_file = "F:\\Projects\\2020_JGP_Gnat\\data_analysis.xlsx"
+     data_file = "E:\\Projects\\2020_JGP_Gnat\\data_analysis.xlsx"
      all_files = update_datasheet(all_paths, calibration_file, data_file, verbose = true)
      run_analysis(all_files, data_file, analyze_subtraction = false)
-     run_B_wave_analysis(all_files, analyze_subtraction = false)
-end
+     #run_B_wave_analysis(all_files, analyze_subtraction = false)
 #%%
+end
 
 
 #%%
 check_files = false
-failed_paths = nothing
 if check_files
 #%%
      using Revise
