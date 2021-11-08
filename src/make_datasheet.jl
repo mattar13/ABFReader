@@ -39,19 +39,20 @@ function make_sheet(all_paths::Array{String}, calibration_file::String; verbose 
                          all_files[idx, field] = nt[field] 
                     end
                end
-
-               stim_protocol = extract_stimulus(path, 1)
-               tstops = stim_protocol.timestamps
-               stim_time = round((tstops[2]-tstops[1])*1000)
-               all_files[idx, :Stim_time] = stim_time
-               #Now we want to apply photons using the photon lookup
-               photon = photon_lookup(
-                    nt.Wavelength, nt.ND, nt.Percent, 1.0, calibration_file
-               )
-               if !isnothing(photon)
-                    all_files[idx, :Photons] = photon*stim_time
-               elseif haskey(nt, StimulusNumber) 
+               if haskey(nt, :StimulusNumber)
                     all_files[idx, :Photons] = nt.StimulusNumber               
+               else
+                    stim_protocol = extract_stimulus(path, 1)
+                    tstops = stim_protocol.timestamps
+                    stim_time = round((tstops[2]-tstops[1])*1000)
+                    all_files[idx, :Stim_time] = stim_time
+                    #Now we want to apply photons using the photon lookup
+                    photon = photon_lookup(
+                         nt.Wavelength, nt.ND, nt.Percent, 1.0, calibration_file
+                    )
+                    if !isnothing(photon)
+                         all_files[idx, :Photons] = photon*stim_time
+                    end
                end
           else
                #for now just remove the file from the dataframe
