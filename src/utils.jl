@@ -93,7 +93,7 @@ end
 This code is actually somewhat specific for my own needs, will be some way of making this more general later
 
 """
-function readABF(df::DataFrame; kwargs...)
+function readABF(df::DataFrame; extra_channels = nothing, kwargs...)
     df_names = names(df)
     #Check to make sure path is in the dataframe
     #Check to make sure the dataframe contains channel info
@@ -103,6 +103,9 @@ function readABF(df::DataFrame; kwargs...)
         A_paths = string.(df.A_Path)
         AB_paths = string.(df.AB_Path)
         ch = (df.Channel |> unique) .|> String
+        if !isnothing(extra_channels)
+            ch = (vcat(ch..., extra_channels...))
+        end
         A_data = readABF(A_paths, channels = ch)
         AB_data = readABF(AB_paths, channels = ch)
         return A_data, AB_data
@@ -111,17 +114,25 @@ function readABF(df::DataFrame; kwargs...)
         AB_paths = string.(df.AB_Path)
         ABG_paths = string.(df.ABG_Path)
         ch = (df.Channel |> unique) .|> String
+        if !isnothing(extra_channels)
+            ch = (vcat(ch..., extra_channels...))
+        end
         AB_data = readABF(AB_paths, channels = ch)
         ABG_data = readABF(ABG_paths, channels = ch)
         return AB_data, ABG_data
     elseif ("Path" ∈ df_names) #This is just the A-wave
         paths = string.(df.Path)
         ch = (df.Channel |> unique) .|> String
+        if !isnothing(extra_channels)
+            ch = (vcat(ch..., extra_channels...))
+        end
         data = readABF(paths, channels = ch) 
         return data
     else
         throw("There is no path key")
     end
+
+    
 end
 
 readABF(df_row::DataFrameRow; kwargs...) = readABF(df_row |> DataFrame; kwargs...)
