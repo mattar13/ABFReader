@@ -55,12 +55,28 @@ Plotting function.
     
     #Set the basic characteristics of each plot
     grid := false
-    
-    plt_rows, plt_cols = map(subp -> subplot_selector(subp, size(exp)), to_plot)
-    lay = (map(lay -> layout_helper(lay, (plt_rows|>length, plt_cols|>length)), layout))
-    #println(lay)
-    layout := lay
 
+    plt_rows, plt_cols = map(subp -> subplot_selector(subp, size(exp)), to_plot)
+    lay = (map(lay -> layout_helper(lay, (plt_rows|>length, plt_cols|>length)), layout[1:2]))
+    #This can help with better custom layouts
+
+    if length(layout) > 2
+        #we need to first pull any info about height and widths
+        wh = findall(lay .> 1)
+        wh_size = layout[3:end]
+        if wh == [1]
+            #println("height")
+            layout := grid(lay..., heights=wh_size[1])
+        elseif wh == [2]
+            #println("width")
+            layout := grid(lay..., widths=wh_size[1])
+        else #There are multiple options
+            println("both height and width")
+            layout := grid(lay..., heights = wh_size[1], widths=wh_size[2])
+        end
+    else
+        layout := lay
+    end
 
     for (subp_col, col) in enumerate(plt_cols), (subp_row, row) in enumerate(plt_rows) 
         #println("Row: $row")
