@@ -86,7 +86,7 @@ This is the formatted_split function.
             [:Wavelength, x -> x == "Green" || x == 594 ? 594 : 365]
 """
 function formatted_split(string::String, format::Tuple; 
-        dlm = "\\", parse_numbers = false, verbose = false, 
+        dlm = "\\", parse_numbers = true, verbose = false, 
         default_keys = (Photoreceptor = "Rods", Wavelength = 525)
         )
     nt_keys = nothing
