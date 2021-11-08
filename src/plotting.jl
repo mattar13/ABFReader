@@ -12,7 +12,7 @@ layout_helper(x::Int64, trace_size) = x
 
 #These are all just convienance functions to help select the subplot
 subplot_selector(x::Int64, trace_size) = [x]
-subplot_selector(x::AbstractArray, trace_size) = x
+subplot_selector(x::AbstractArray{T}, trace_size) where T<: Real = x
 subplot_selector(x::UnitRange{T}, trace_size) where T<: Real = x
 
 function subplot_selector(x::Symbol, trace_size)
@@ -21,8 +21,7 @@ function subplot_selector(x::Symbol, trace_size)
     elseif x == :channels
         return 1:trace_size[3]
     end
-end
-
+end   
 
 """
 Plotting function. 
