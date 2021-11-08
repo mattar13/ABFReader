@@ -274,10 +274,6 @@ function rolling_mean(trace::Experiment; window = 2)
     end
 end
 
-
-
-
-
 ################## Check these functions because they might be deprecated #####################################
 function fft_spectrum(data::Experiment)
     #FFTW filtering
