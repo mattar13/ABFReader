@@ -82,69 +82,7 @@ function update_datasheet(
      try 
           #First we check if the root file exists
           if !isfile(data_file) #If the root file does not exist we need to make it
-               #after we get done testing, all of this will become a seperate function
-               all_files = DataFrame(
-                    :Path => all_paths, 
-                    :Year => 0, :Month => 0, :Date => 0, 
-                    :Animal => 0, :Age => 9, :Genotype => "", 
-                    :Condition => "Nothing", :Wavelength => 525, 
-                    :Photoreceptor => "Rods", 
-                    :ND => 0, :Percent => 1, :Stim_time => 1.0, :Photons => 0.0
-               ) #Make the dataframe containing a basic summary of all files
-
-               delete_after = Int64[] #Some files we may want to skip, so we put those files here
-               for (idx, path) in enumerate(all_paths) #Look through all the files and record them. 
-                    if verbose
-                         print("Analyzing path number $idx of $(length(all_paths))")
-                         println(path)
-                    end
-                    nt = formatted_split(path, format_bank, parse_numbers = true) #At this time all necessary information is contained in the path name
-                    #println(nt)
-                    if !isnothing(nt) 
-                         for field in Symbol.(DataFrames.names(all_files))
-                              if haskey(nt, field)
-                                   all_files[idx, field] = nt[field]
-                              end
-                         end
-
-                         stim_protocol = extract_stimulus(path, 1)
-                         tstops = stim_protocol.timestamps
-                         stim_time = round((tstops[2]-tstops[1])*1000)
-                         all_files[idx, :Stim_time] = stim_time
-                         #Now we want to apply photons using the photon lookup
-                         if haskey(nt, :StimulusNumber)
-                              println(nt.StimulusNumber)
-                              all_files[idx, :Photons] = nt.StimulusNumber
-
-                         else
-                              #ND, _ = nt.ND |> number_seperator
-                              #PERCENT, _ = nt.Percent |> number_seperator
-                              #println(nt.ND |> number_seperator)
-                              #println(nt.Percent)
-                              photon = photon_lookup(
-                                   nt.Wavelength, nt.ND, nt.Percent, 1.0, calibration_file
-                              )
-                              if !isnothing(photon)
-                                   all_files[idx, :Photons] = photon*stim_time
-                              end
-                         end
-                    else
-                         #for now just remove the file from the dataframe
-                         push!(delete_after, idx)
-                    end
-               end
-               if !isempty(delete_after) #After we have made a list of skipped files, place them here
-                    println("Delete extra files")
-                    delete!(all_files, delete_after)
-               end                    
-               #Sort the file by Year -> Month -> Date -> Animal Number
-               all_files = all_files |> 
-                    @orderby(_.Year) |> @thenby(_.Month) |> @thenby(_.Date)|>
-                    @thenby(_.Animal)|> @thenby(_.Genotype) |> @thenby(_.Condition) |> 
-                    @thenby(_.Wavelength) |> @thenby(_.Photons)|> 
-                    DataFrame
-               
-               
+               all_files = make_sheet(all_paths, calibration_file, verbose = verbose)
                if verbose
                     print("Dataframe created, saving...")
                end
