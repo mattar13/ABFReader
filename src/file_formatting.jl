@@ -314,6 +314,11 @@ file_format = [
     ("_", :ND, :Percent, ~, ~, ~, ~)
 ]
 
+filename_format = [
+    (".", NeuroPhys.choose_words, ~), 
+    (".", ("_", NeuroPhys.choose_words, ~), ~), 
+
+]
 format_bank_PAUL = [
     ("\\", ~, ~, ~, :Project, ~, 
           ("_", :Year, :Month, :Date, check_geno, check_age, :Animal), 
@@ -331,35 +336,35 @@ format_bank_PAUL = [
         ("_", :Year, :Month, :Date, check_geno,  check_age, :Animal), 
         NeuroPhys.check_drugs, check_pc, NeuroPhys.check_color, 
         NeuroPhys.file_format, 
-        (".", NeuroPhys.choose_words, ~)
+        filename_format
     ),
 
     ("\\", ~, ~, ~, :Project, :PhotonStatus, 
         ("_", :Year, :Month, :Date, check_geno,  check_age, :Animal), 
         NeuroPhys.check_drugs, NeuroPhys.check_color, 
         NeuroPhys.file_format, 
-        (".", NeuroPhys.choose_words, ~)
+        filename_format
     ),
 
     ("\\", ~, ~, ~, :Project, :PhotonStatus, 
         ("_", :Year, :Month, :Date, check_geno,  check_age, :Animal), 
         NeuroPhys.check_pc, NeuroPhys.check_drugs, NeuroPhys.check_color, 
         NeuroPhys.file_format, 
-        (".", NeuroPhys.choose_words, ~)
+        filename_format
     ),
 
     ("\\", ~, ~, ~, :Project, :PhotonStatus, 
         ("_", :Year, :Month, :Date, check_geno,  check_age, :Animal), 
         NeuroPhys.check_pc, NeuroPhys.check_drugs, NeuroPhys.check_color, 
         :StimulusNumber, 
-        (".", NeuroPhys.choose_words, ~)
+        filename_format
     ),
 
     ("\\", ~, ~, ~, :Project, ~, 
-          ("_", :Year, :Month, :Date, check_geno,  check_age, :Animal), 
-          NeuroPhys.check_pc, NeuroPhys.check_drugs, NeuroPhys.check_color, 
-          NeuroPhys.file_format, 
-          (".", NeuroPhys.choose_words, ~)
+        ("_", :Year, :Month, :Date, check_geno,  check_age, :Animal), 
+        NeuroPhys.check_pc, NeuroPhys.check_drugs, NeuroPhys.check_color, 
+        NeuroPhys.file_format, 
+        filename_format
      ),
 ]
 
