@@ -66,11 +66,11 @@ function concat!(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, posi
     end
 end
 
-function concat(path_arr::Array{String,1}; average_sweeps = true, kwargs...)
-    data = readABF(path_arr[1]; average_sweeps = true, kwargs...)
+function concat(path_arr::Array{String,1}; kwargs...)
+    data = readABF(path_arr[1]; kwargs...)
     #IN this case we want to ensure that the stim_protocol is only 1 stimulus longer
     for path in path_arr[2:end]
-        data_add = readABF(path; average_sweeps = true, kwargs...)
+        data_add = readABF(path; kwargs...)
         concat!(data, data_add; kwargs...)
     end
     return data
@@ -79,10 +79,10 @@ end
 concat(superfolder::String; kwargs...) = concat(parse_abf(superfolder); kwargs ...)
 
 #This function utilizes concat
-function readABF(abf_folder::AbstractArray{String}; average_sweeps = false, kwargs...) 
-    sweeps = concat(abf_folder; average_sweeps = false, kwargs...) #In the inner loop we don't want to average the sweeps
+function readABF(abf_folder::AbstractArray{String};  kwargs...) 
+    sweeps = concat(abf_folder; kwargs...) #In the inner loop we don't want to average the sweeps
     #Save the sweep averaging for here
-    if average_sweeps == true
+    if kwargs[:average_sweeps] == true
         average_sweeps!(sweeps)
     end
 
