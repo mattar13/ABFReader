@@ -106,7 +106,7 @@ function readABF(df::DataFrame; extra_channels = nothing, kwargs...)
         if !isnothing(extra_channels)
             ch = (vcat(ch..., extra_channels...))
         end
-        A_data = readABF(A_paths, channels = ch)
+        A_data = readABF(A_paths, channels = ch, kwargs...)
         AB_data = readABF(AB_paths, channels = ch)
         return A_data, AB_data
     elseif ("AB_Path" ∈ df_names) && ("ABG_Path" ∈ df_names) #This is the G-wave subtraction
@@ -117,8 +117,8 @@ function readABF(df::DataFrame; extra_channels = nothing, kwargs...)
         if !isnothing(extra_channels)
             ch = (vcat(ch..., extra_channels...))
         end
-        AB_data = readABF(AB_paths, channels = ch)
-        ABG_data = readABF(ABG_paths, channels = ch)
+        AB_data = readABF(AB_paths, channels = ch, kwargs...)
+        ABG_data = readABF(ABG_paths, channels = ch, kwargs...)
         return AB_data, ABG_data
     elseif ("Path" ∈ df_names) #This is just the A-wave
         paths = string.(df.Path)
@@ -126,7 +126,7 @@ function readABF(df::DataFrame; extra_channels = nothing, kwargs...)
         if !isnothing(extra_channels)
             ch = (vcat(ch..., extra_channels...))
         end
-        data = readABF(paths, channels = ch) 
+        data = readABF(paths, channels = ch, kwargs...) 
         return data
     else
         throw("There is no path key")
