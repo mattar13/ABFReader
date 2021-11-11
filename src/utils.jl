@@ -79,7 +79,7 @@ end
 concat(superfolder::String; kwargs...) = concat(parse_abf(superfolder); kwargs ...)
 
 #This function utilizes concat
-function readABF(abf_folder::AbstractArray{String}; average_sweeps = false, kwargs...) 
+function readABF(abf_folder::AbstractArray{String}; average_sweeps = true, kwargs...) 
     data = concat(abf_folder; kwargs...) #In the inner loop we don't want to average the sweeps
     #Save the sweep averaging for here
     if average_sweeps
