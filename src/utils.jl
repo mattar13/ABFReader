@@ -79,14 +79,14 @@ end
 concat(superfolder::String; kwargs...) = concat(parse_abf(superfolder); kwargs ...)
 
 #This function utilizes concat
-function readABF(abf_folder::AbstractArray{String};  kwargs...) 
-    sweeps = concat(abf_folder; kwargs...) #In the inner loop we don't want to average the sweeps
+function readABF(abf_folder::AbstractArray{String}; average_sweeps = false, kwargs...) 
+    data = concat(abf_folder; kwargs...) #In the inner loop we don't want to average the sweeps
     #Save the sweep averaging for here
-    if kwargs[:average_sweeps] == true
-        average_sweeps!(sweeps)
+    if average_sweeps
+        average_sweeps!(data)
     end
 
-    return sweeps
+    return data
 end
 
 """
@@ -106,8 +106,8 @@ function readABF(df::DataFrame; extra_channels = nothing, kwargs...)
         if !isnothing(extra_channels)
             ch = (vcat(ch..., extra_channels...))
         end
-        A_data = readABF(A_paths, channels = ch, kwargs...)
-        AB_data = readABF(AB_paths, channels = ch)
+        A_data = readABF(A_paths; channels = ch, kwargs...)
+        AB_data = readABF(AB_paths; channels = ch, kwargs...)
         return A_data, AB_data
     elseif ("AB_Path" ∈ df_names) && ("ABG_Path" ∈ df_names) #This is the G-wave subtraction
         println("G wave subtraction")

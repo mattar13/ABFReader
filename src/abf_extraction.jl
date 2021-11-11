@@ -1396,6 +1396,9 @@ function readABF(::Type{T}, abf_path::String;
         data = getWaveform(abfInfo, ch_names; warn_bad_channel = warn_bad_channel)
     elseif sweeps != -1 && channels == -1
         data = abfInfo["data"][sweeps, :, :]
+    elseif sweeps != -1 && channels != -1
+        data = getWaveform(abfInfo, ch_names; warn_bad_channel = warn_bad_channel)
+        data = data[sweeps, :, :]
     end
     #We need to throw an error if a dimension is empty
     if any(size(data) .== 0)
