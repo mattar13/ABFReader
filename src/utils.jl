@@ -70,7 +70,7 @@ function concat(path_arr::Array{String,1}; kwargs...)
     data = readABF(path_arr[1]; average_sweeps = true, kwargs...)
     #IN this case we want to ensure that the stim_protocol is only 1 stimulus longer
     for path in path_arr[2:end]
-        data_add = readABF(path; kwargs...)
+        data_add = readABF(path; average_sweeps = true, kwargs...)
         concat!(data, data_add; kwargs...)
     end
     return data
