@@ -18,7 +18,7 @@ condition_filter(df::DataFrame, condition::String) = df |> @filter(_.Condition =
 
 function make_sheet(all_paths::Array{String}, calibration_file::String; verbose = false)
      all_files = DataFrame(
-          :ID => 1:length(all_paths)
+          :ID => 1:length(all_paths),
           :Path => all_paths, 
           :Year => 0, :Month => 0, :Date => 0, 
           :Animal => 0, :Age => 9, :Genotype => "", 
@@ -876,12 +876,12 @@ end
 #
 const footnote = false #When exporting these files, this will ensure the analysis is not run
 if footnote #Basically this is only for running the analysis. 
-#%%
+     #%%
      using Revise
      using NeuroPhys
      param_file = "F:\\Projects\\2021_Retinoschisis\\parameters.xlsx"
 
-#%%    # Lets make a dataframe that does not alter the other dataframe categories
+     #%%    # Lets make a dataframe that does not alter the other dataframe categories
      calibration_file = "F:\\Data\\Calibrations\\photon_lookup.xlsx"
      rs_root = "F:\\Data\\ERG\\Retinoschisis\\"
      rs_paths = rs_root |> parse_abf
@@ -890,7 +890,7 @@ if footnote #Basically this is only for running the analysis.
      all_files = update_datasheet(all_paths, calibration_file, data_file, verbose = true)
      run_analysis(all_files, data_file)
 
-#%% This analysis is for the Gnat data analysis
+     #%% This analysis is for the Gnat data analysis
      calibration_file = "E:\\Data\\Calibrations\\photon_lookup.xlsx"
      wt_root = "E:\\Data\\ERG\\Paul\\" #This comes from my portable hardrive
      gnat_root = "E:\\Data\\ERG\\Gnat\\"
@@ -900,8 +900,7 @@ if footnote #Basically this is only for running the analysis.
      data_file = "E:\\Projects\\2020_JGP_Gnat\\data_analysis.xlsx"
      all_files = update_datasheet(all_paths, calibration_file, data_file, verbose = true)
      run_analysis(all_files, data_file, analyze_subtraction = false)
-     #run_B_wave_analysis(all_files, analyze_subtraction = false)
-#%%
+     #%%
 end
 #%% Test this file
 
