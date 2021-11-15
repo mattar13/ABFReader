@@ -316,7 +316,7 @@ file_format = [
 
 filename_format = [
     (".", NeuroPhys.choose_words, ~), 
-    (".", ("_", NeuroPhys.choose_words, ~), ~), 
+    (".", ("_", NeuroPhys.choose_words, :Background), ~), 
 
 ]
 format_bank_PAUL = [
