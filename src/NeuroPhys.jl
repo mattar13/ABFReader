@@ -7,7 +7,7 @@ using Base: String, println
 is_working() = println("Test this push, for some reason it's not working") 
 #Imports
 using PyCall
-using Plots
+using RecipesBase #This can be removed if plotting is not desired. This makes the code run much faster
 using StatsBase, Statistics
 using Polynomials, Distributions #Used for polynomial fitting
 using DSP, Wavelets, FFTW #Used for filtering
@@ -80,7 +80,7 @@ export photons, Transferrance, stimulus_model, f_I
 export IR, IR_dev, AMP, REC
 
 include("plotting.jl")
-export plot, plot!, vline!, hline!, savefig, histogram, grid, title!
+#export plot, plot!, vline!, hline!, savefig, histogram, grid, title!
 
 #These functions are specific for making datasheets
 include("make_datasheet.jl")
