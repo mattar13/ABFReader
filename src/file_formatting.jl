@@ -1,5 +1,5 @@
 
-function get_root(path::T, experimenter::T) where T <: DataFrame 
+function get_root(path::T, experimenter::T) where {T<:DataFrame}
     if experimenter.value == "Matt"
         return joinpath(split(path.value, "\\")[1:end-1]...)
     elseif experimenter.value == "Paul"
@@ -19,16 +19,16 @@ end
 This function walks through the directory tree and locates any .abf file. 
 The extension can be changed with the keyword argument extension
 """
-function parse_abf(super_folder::String; 
-        extension::String = ".abf", 
-        verbose = false
-    )
+function parse_abf(super_folder::String;
+    extension::String = ".abf",
+    verbose = false
+)
     file_list = String[]
     for (root, dirs, files) in walkdir(super_folder)
         for file in files
             if file[end-3:end] == extension
                 path = joinpath(root, file)
-                if verbose 
+                if verbose
                     println(path) # path to files
                 end
                 push!(file_list, path)
@@ -85,10 +85,10 @@ This is the formatted_split function.
         To use boolean statements use the oneline boolean functions:
             [:Wavelength, x -> x == "Green" || x == 594 ? 594 : 365]
 """
-function formatted_split(string::String, format::Tuple; 
-        dlm = "\\", parse_numbers = true, verbose = false, 
-        default_keys = (Photoreceptor = "Rods", Wavelength = 525)
-        )
+function formatted_split(string::String, format::Tuple;
+    dlm = "\\", parse_numbers = true, verbose = false,
+    default_keys = (Photoreceptor = "Rods", Wavelength = 525)
+)
     nt_keys = nothing
     nt_vals = nothing
     #If the first item in the format tuple is a string, it is the delimiter
@@ -104,7 +104,7 @@ function formatted_split(string::String, format::Tuple;
         print("String size: ")
         println(length(split_str))
     end
-    if length(format) == length(split_str)  
+    if length(format) == length(split_str)
         nt_keys = Symbol[]
         nt_vals = Array([])
         #First we go looking through all formats
@@ -130,7 +130,7 @@ function formatted_split(string::String, format::Tuple;
                     push!(nt_keys, f_key)
                     push!(nt_vals, f_val)
                 end
-            elseif isa(nt_key, Tuple) || isa(nt_key, Array{T} where T <: Tuple)
+            elseif isa(nt_key, Tuple) || isa(nt_key, Array{T} where {T<:Tuple})
                 #Nested formats also can't contain defaults
                 inside_split = formatted_split(nt_val, nt_key, default_keys = nothing)
                 #println(inside_split)
@@ -154,17 +154,17 @@ function formatted_split(string::String, format::Tuple;
                 push!(nt_vals, nt_val)
             end
         end
-        
+
         if length(split_str) > length(format) && allow_misc
             #This is where misc gets created. 
             push!(nt_vals, split_str[length(format)+1:length(split_str)]...)
             push!(nt_keys, :misc)
         end
-     
+
     else
         if verbose
             print("The length of the formats do not match ")
-            println("$(length(format)) ̸≠ $(length(split_str))")    
+            println("$(length(format)) ̸≠ $(length(split_str))")
         end
     end
 
@@ -179,13 +179,13 @@ function formatted_split(string::String, format::Tuple;
                 end
             end
         end
-        return NamedTuple{Tuple(nt_keys)}(nt_vals)   
+        return NamedTuple{Tuple(nt_keys)}(nt_vals)
     end
 end
 
 #Basically this is what you pick when you aren't sure which format is correct out of a few options
-function formatted_split(string::String, formats::Array{T}; kwargs...)  where T
-    for (i,format) in enumerate(formats)
+function formatted_split(string::String, formats::Array{T}; kwargs...) where {T}
+    for (i, format) in enumerate(formats)
         if haskey(kwargs, :verbose) && kwargs[:verbose] == true
             println(i)
             println(format)
@@ -227,10 +227,10 @@ end
 function choose_words(x::String, has_words = ["AVERAGE"], lacks_words = ["CONCATENATE"])
     #We want to skip files containing concatenate but pass files containing average only
     t1 = contains_words(x; words = lacks_words, result = :fail)
-	t2 = contains_words(x; words = has_words, result = :pass)
+    t2 = contains_words(x; words = has_words, result = :pass)
     #println(t1)
     #println(t2)
-    if !isnothing(t1) 
+    if !isnothing(t1)
         return t1 #no need to return both
     end
     if !isnothing(t2)
@@ -252,9 +252,9 @@ function check_age(x::String)
     end
 end
 
-function check_geno(x; 
-        possible = ["DR", "WT", "GNAT-KO", "GNAT-HT", "UN", "RS1KO", "R141C", "C59S"]
-    ) 
+function check_geno(x;
+    possible = ["DR", "WT", "GNAT-KO", "GNAT-HT", "UN", "RS1KO", "R141C", "C59S"]
+)
     #Don't seperate the numbers
     if x ∈ possible
         return (:Genotype, x)
@@ -288,13 +288,13 @@ function check_drugs(x::String)
         return (:Condition, "BaCl_LAP4")
     elseif x == "NoDrugs" || x == "No Drugs" || x == "BaCl"
         return (:Condition, "BaCl")
-    else 
+    else
         return :InvalidDrug
     end
 end
 
 function throw_flag(x::String)
-    if x[1] =='b' #If the file is bad, put a b and the channe number to indicate what channel
+    if x[1] == 'b' #If the file is bad, put a b and the channe number to indicate what channel
         flagged_idxs = map(x -> parse(Int, string(x)), split(x[2:end], "-"))
         return (:Flag, flagged_idxs)
     elseif x == "OLD"
@@ -307,93 +307,140 @@ end
 
 
 file_format = [
-    ("_", :ND, :Percent), 
-    ("_", :ND, :Percent, ~), 
-    ("_", :ND, :Percent, ~, ~), 
+    ("_", :ND, :Percent),
+    ("_", :ND, :Percent, ~),
+    ("_", :ND, :Percent, ~, ~),
     ("_", :ND, :Percent, ~, ~, (".", :flag, :ext)),
     ("_", :ND, :Percent, ~, ~, ~, ~)
 ]
 
 filename_format = [
-    (".", NeuroPhys.choose_words, ~), 
-    (".", ("_", NeuroPhys.choose_words, :Background), ~), 
-
+    (".", NeuroPhys.choose_words, ~),
+    (".", ("_", NeuroPhys.choose_words, :Background), ~),  
 ]
+
 format_bank_PAUL = [
-    ("\\", ~, ~, ~, :Project, ~, 
-          ("_", :Year, :Month, :Date, check_geno, check_age, :Animal), 
-          NeuroPhys.check_drugs, check_pc, NeuroPhys.check_color, 
-          NeuroPhys.file_format
-    ),
+    ("\\", ~, ~, ~, :Project, ~,
+        ("_", :Year, :Month, :Date, check_geno, check_age, :Animal),
+        check_drugs,
+        check_pc,
+        check_color,
+        file_format
+    ), 
     
-    ("\\", ~, ~, ~, :Project, ~, 
-          ("_", :Year, :Month, :Date, check_geno, check_age, :Animal), 
-          check_pc, NeuroPhys.check_drugs, NeuroPhys.check_color, 
-          NeuroPhys.file_format
-    ),
+    ("\\", ~, ~, ~, :Project, ~,
+        ("_", :Year, :Month, :Date, check_geno, check_age, :Animal),
+        check_pc,
+        check_drugs,
+        check_color,
+        file_format
+    ), 
+    
+    ("\\", ~, ~, ~, :Project, ~,
+        ("_", :Year, :Month, :Date, check_geno, check_age, :Animal),
+        check_drugs,
+        check_pc,
+        check_color,
+        file_format,
+        filename_format
+    ), 
+    
+    ("\\", ~, ~, ~, :Project, :PhotonStatus,
+        ("_", :Year, :Month, :Date, check_geno, check_age, :Animal),
+        check_drugs,
+        check_color,
+        file_format,
+        filename_format
+    ), 
 
-    ("\\", ~, ~, ~, :Project, ~, 
-        ("_", :Year, :Month, :Date, check_geno,  check_age, :Animal), 
-        NeuroPhys.check_drugs, check_pc, NeuroPhys.check_color, 
-        NeuroPhys.file_format, 
+    ("\\", ~, ~, ~, :Project, :PhotonStatus,
+        ("_", :Year, :Month, :Date, check_geno, check_age, :Animal),
+        check_drugs,
+        check_color,
+        file_format,
+        filename_format
+    ), 
+
+
+    ("\\", ~, ~, ~, :Project, :PhotonStatus,
+        ("_", :Year, :Month, :Date, check_geno, check_age, :Animal),
+        check_color,
+        file_format,
+        filename_format
+    ), 
+    
+    ("\\", ~, ~, ~, :Project, :PhotonStatus,
+        ("_", :Year, :Month, :Date, check_geno, check_age, :Animal),
+        check_drugs,
+        check_color,
+        file_format,
+    ), 
+    
+    ("\\", ~, ~, ~, :Project, :PhotonStatus,
+        ("_", :Year, :Month, :Date, check_geno, check_age, :Animal),
+        check_drugs,
+        check_color,
+        file_format,
+        filename_format
+    ), 
+    
+    ("\\", ~, ~, ~, :Project, :PhotonStatus,
+        ("_", :Year, :Month, :Date, check_geno, check_age, :Animal),
+        check_pc,
+        check_drugs,
+        check_color,
+        file_format,
+        filename_format
+    ), 
+   
+    ("\\", ~, ~, ~, :Project, :PhotonStatus,
+        ("_", :Year, :Month, :Date, check_geno, check_age, :Animal),
+        check_pc,
+        check_drugs,
+        check_color,
+        :StimulusNumber,
+        filename_format
+    ), 
+    
+    ("\\", ~, ~, ~, :Project, ~,
+        ("_", :Year, :Month, :Date, check_geno, check_age, :Animal),
+        check_pc,
+        check_drugs,
+        check_color,
+        file_format,
         filename_format
     ),
-
-    ("\\", ~, ~, ~, :Project, :PhotonStatus, 
-        ("_", :Year, :Month, :Date, check_geno,  check_age, :Animal), 
-        NeuroPhys.check_drugs, NeuroPhys.check_color, 
-        NeuroPhys.file_format, 
-        filename_format
-    ),
-
-    ("\\", ~, ~, ~, :Project, :PhotonStatus, 
-        ("_", :Year, :Month, :Date, check_geno,  check_age, :Animal), 
-        NeuroPhys.check_pc, NeuroPhys.check_drugs, NeuroPhys.check_color, 
-        NeuroPhys.file_format, 
-        filename_format
-    ),
-
-    ("\\", ~, ~, ~, :Project, :PhotonStatus, 
-        ("_", :Year, :Month, :Date, check_geno,  check_age, :Animal), 
-        NeuroPhys.check_pc, NeuroPhys.check_drugs, NeuroPhys.check_color, 
-        :StimulusNumber, 
-        filename_format
-    ),
-
-    ("\\", ~, ~, ~, :Project, ~, 
-        ("_", :Year, :Month, :Date, check_geno,  check_age, :Animal), 
-        NeuroPhys.check_pc, NeuroPhys.check_drugs, NeuroPhys.check_color, 
-        NeuroPhys.file_format, 
-        filename_format
-     ),
 ]
 
 format_bank_RS = [
-    ("\\", :Drive, ~, :Method, :Project, 
-            ("_", :Year, :Month, :Date, ~, ~), 
-            ("_", :Animal, check_age, check_geno), 
-            condition_check, check_pc, check_color, file_format
+    ("\\", :Drive, ~, :Method, :Project,
+        ("_", :Year, :Month, :Date, ~, ~),
+        ("_", :Animal, check_age, check_geno),
+        condition_check, 
+        check_pc, 
+        check_color, 
+        file_format
+    ), ("\\", :Drive, ~, :Method, :Project,
+        ("_", :Year, :Month, :Date, ~, ~),
+        ("_", :Animal, check_age, check_geno),
+        condition_check, 
+        check_pc, 
+        file_format
+    ), ("\\", :Drive, ~, :Method, :Project,
+        ("_", :Year, :Month, :Date, ~, ~),
+        ("_", :Animal, check_age, check_geno),
+        condition_check, check_color, file_format
     ),
-
-    ("\\", :Drive, ~, :Method, :Project, 
-            ("_", :Year, :Month, :Date, ~, ~), 
-            ("_", :Animal, check_age, check_geno), 
-            condition_check, check_pc, file_format
-    ),
-    
-    ("\\", :Drive, ~, :Method, :Project, 
-            ("_", :Year, :Month, :Date, ~, ~), 
-            ("_", :Animal, check_age, check_geno), 
-            condition_check, check_color, file_format 
-    ),	
 ]
 
 format_bank_GNAT = [
-    ("\\", ~, ~, ~, :Project, 
-          ("_", :Year, :Month, :Date, ~), 
-          ("_", :Animal, check_age, check_geno), 
-          check_drugs, check_color, 
-          file_format)
+    ("\\", ~, ~, ~, :Project,
+        ("_", :Year, :Month, :Date, ~),
+        ("_", :Animal, check_age, check_geno),
+        check_drugs, 
+        check_color,
+        file_format
+    )
 ]
 
 format_bank = [
@@ -403,16 +450,16 @@ format_bank = [
 ]
 
 organoid_format = [
-    ("\\", 
-        ~,
-        ~, 
-        :Method, 
-        :ModelOrganism, 
-        ("_", :ShipYear, :ShipMonth, :ShipDate, ~), 
-        ("_", :Year, :Month, :Date, ~, ~), 
-        ("_", :OrganoidNumber, :Genotype, :RearingCondition, :PrepCondition),
-        :Conditon, 
-        :Photoreceptor, 
-        ~
-        ) 		
+    ("\\",
+    ~,
+    ~,
+    :Method,
+    :ModelOrganism,
+    ("_", :ShipYear, :ShipMonth, :ShipDate, ~),
+    ("_", :Year, :Month, :Date, ~, ~),
+    ("_", :OrganoidNumber, :Genotype, :RearingCondition, :PrepCondition),
+    :Conditon,
+    :Photoreceptor,
+    ~
+)
 ]
