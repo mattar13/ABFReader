@@ -18,6 +18,7 @@ condition_filter(df::DataFrame, condition::String) = df |> @filter(_.Condition =
 
 function make_sheet(all_paths::Array{String}, calibration_file::String; verbose = false)
      all_files = DataFrame(
+          :ID => 1:length(all_paths)
           :Path => all_paths, 
           :Year => 0, :Month => 0, :Date => 0, 
           :Animal => 0, :Age => 9, :Genotype => "", 
@@ -39,6 +40,15 @@ function make_sheet(all_paths::Array{String}, calibration_file::String; verbose 
                          all_files[idx, field] = nt[field] 
                     end
                end
+               if haskey(nt, :Background) #This is a stupid caveat for Pauls files
+                    println("This has a fucking stupid name >:{")
+                    if nt.Background == "withback"
+                         all_files[idx, :Photoreceptor] = "Cones"
+                    elseif nt.Background == "noback"
+                         all_files[idx, :Photoreceptor] = "Rods"
+                    end
+               end
+
                if haskey(nt, :StimulusNumber)
                     all_files[idx, :Photons] = nt.StimulusNumber               
                else
@@ -893,21 +903,25 @@ if footnote #Basically this is only for running the analysis.
      #run_B_wave_analysis(all_files, analyze_subtraction = false)
 #%%
 end
+#%% Test this file
 
 
 #%%
 check_files = false
 if check_files
-#%%
+     #%%
      using Revise
      using NeuroPhys
+
+
+     rod_file = "E:\\Data\\ERG\\Paul\\NotDetermined\\2019_03_20_WT_P10_m2\\BaCl\\Green\\nd1_1p_1ms\\Average083_noback.abf"
+     cone_file = "E:\\Data\\ERG\\Paul\\NotDetermined\\2019_03_20_WT_P10_m2\\BaCl\\Green\\nd1_1p_1ms\\Average084_withback.abf"
+     nt = formatted_split(cone_file, format_bank)
+
+
      #rs_root = "F:\\Data\\ERG\\Retinoschisis\\"
      wt_root = "E:\\Data\\ERG\\Paul\\NotDetermined\\" #This comes from my portable hardrive
-     #gnat_root = "F:\\Data\\ERG\\Gnat"
      wt_paths = wt_root |> parse_abf
-     #rs_paths = rs_root |> parse_abf
-     #gnat_paths = gnat_root |> parse_abf
-     all_paths = wt_paths#vcat(wt_paths, gnat_paths)
      failed_paths = []
      for (i, path) in enumerate(all_paths)
           println(i)
@@ -927,10 +941,10 @@ if check_files
      end
      fpath = failed_paths[1]
 
-     nt = formatted_split(fpath, NeuroPhys.format_bank, verbose = true) 
+     nt = formatted_split(fpath, NeuroPhys.format_bank, verbose = true)
      println(length(failed_paths))
      failed_paths[1]
-#%%
+     #%%
 end
 
 
