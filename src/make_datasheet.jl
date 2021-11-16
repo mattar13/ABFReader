@@ -123,7 +123,7 @@ function update_datasheet(
                if verbose
                     print("Dataframe created, saving...")
                end
-
+          
                #save the file as a excel file
                XLSX.openxlsx(data_file, mode = "w") do xf
                     XLSX.rename!(xf["Sheet1"], "All_Files") #The first sheet needs to be renamed
@@ -131,29 +131,30 @@ function update_datasheet(
                          collect(DataFrames.eachcol(all_files)),
                          DataFrames.names(all_files)
                     ) #Write the analysis we just did into the excel file	
-
+          
                     for sn in dataframe_sheets #Make empty dataframes as above
                          XLSX.addsheet!(xf, sn)
                     end
                end
-
-
+          
+          
                if verbose
                     println(" Completed")
                end
-
+          
                return all_files
           else #If the file does exist, then we give it a quick check for changes
-
+          
                if verbose
                     print("The file previously exists, checking for changes...")
                end
-
+          
                #Open the old dataframe
                all_files = DataFrame(
                     XLSX.readtable(data_file, "All_Files")...
                )
-
+               #Make sure the all_files have the right tryparse
+               #all_files[!, :Path] = convert.(String, all_files[!, :Path])
                added_files = String[] #Make an empty list of files that were added since the dataframe was saved
                for path in all_paths #Walk through all the paths
                     if path ∉ all_files.Path #If the path in the file list is not in the dataframe, we need to add it
@@ -165,37 +166,38 @@ function update_datasheet(
                          end
                     end
                end
-
+          
                removed_files = String[] #If a entry in the dataframe was deleted in the file tree, then remove it 
                for (idx, path) in enumerate(all_files.Path)
                     if path ∉ all_paths
                          push!(removed_files, idx)
                     end
                end
-
+          
                if verbose
                     println(" Completed")
                end
-
+          
                if !isempty(added_files) #We only need to do this part when we have added files to the analysis
                     #This new function will just reupdate entries by merging dataframes
                     new_df = make_sheet(added_files, calibration_file, verbose = verbose)
                     println(new_df)
-
-
+          
+          
                     if verbose
                          println("$(length(added_files)) Files have been added ")
                     end
                end
-
+          
                if !isempty(removed_files) #This is a catch for if files are removed but none are added
                     delete!(all_files, removed_files)
-
+          
                     if verbose
                          println("Files have been removed $removed_files")
                     end
                end
-
+               
+               all_files = [all_files; new_df] #Concatenate all_files with new files
                if !isempty(added_files) || !isempty(removed_files) #If the file hierarchy is changed, we need to adjust the all files
                     if verbose
                          println("Data Analysis has been modified")
