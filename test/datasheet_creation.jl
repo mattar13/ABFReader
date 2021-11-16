@@ -21,7 +21,7 @@ wt_paths = wt_root |> parse_abf
 gnat_paths = gnat_root |> parse_abf
 all_paths = vcat(wt_paths, gnat_paths)
 data_file = "E:\\Projects\\2020_JGP_Gnat\\data_analysis.xlsx"
-all_files = update_datasheet(all_paths, calibration_file, data_file, verbose = true)
+all_files, new_df = update_datasheet(all_paths, calibration_file, data_file, verbose = true)
 run_analysis(all_files, data_file, analyze_subtraction = false)
 #%%
 test_root = "E:\\Data\\ERG\\Paul" #This comes from my portable hardrive
