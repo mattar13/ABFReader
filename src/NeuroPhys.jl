@@ -22,10 +22,10 @@ export formatted_split, format_bank_PAUL, format_bank_RS, format_bank_GNAT
 export parse_abf
 export number_extractor, filename_extractor
 
-include("abf_extraction.jl")
+include("abf.jl")
 #export readStruct, 
 export openABF
-export Experiment
+#export Experiment
 export readABF, extract_stimulus
 #export StimulusProtocol
 
