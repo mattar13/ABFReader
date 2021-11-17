@@ -1261,9 +1261,14 @@ end
 
 """
 This scans the axon binary and extracts all the most useful header information
+
+For datashape
+    1 -> channels
+    2 -> dataspan
+    3 -> Sweeps
 """
 function readABFInfo(::Type{T}, filename::String; 
-        loadData = true
+        loadData = true, data_format = [3,2,1] #
     ) where T <: Real
     data = T[]
     #Can we go through and convert anything before loading
