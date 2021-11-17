@@ -123,7 +123,7 @@ function update_datasheet(
                if verbose
                     print("Dataframe created, saving...")
                end
-          
+
                #save the file as a excel file
                XLSX.openxlsx(data_file, mode = "w") do xf
                     XLSX.rename!(xf["Sheet1"], "All_Files") #The first sheet needs to be renamed
@@ -131,24 +131,24 @@ function update_datasheet(
                          collect(DataFrames.eachcol(all_files)),
                          DataFrames.names(all_files)
                     ) #Write the analysis we just did into the excel file	
-          
+
                     for sn in dataframe_sheets #Make empty dataframes as above
                          XLSX.addsheet!(xf, sn)
                     end
                end
-          
-          
+
+
                if verbose
                     println(" Completed")
                end
-          
+
                return all_files
           else #If the file does exist, then we give it a quick check for changes
-          
+
                if verbose
                     print("The file previously exists, checking for changes...")
                end
-          
+
                #Open the old dataframe
                all_files = DataFrame(
                     XLSX.readtable(data_file, "All_Files")...
@@ -166,37 +166,37 @@ function update_datasheet(
                          end
                     end
                end
-          
+
                removed_files = String[] #If a entry in the dataframe was deleted in the file tree, then remove it 
                for (idx, path) in enumerate(all_files.Path)
                     if path ∉ all_paths
                          push!(removed_files, idx)
                     end
                end
-          
+
                if verbose
                     println(" Completed")
                end
-          
+
                if !isempty(added_files) #We only need to do this part when we have added files to the analysis
                     #This new function will just reupdate entries by merging dataframes
                     new_df = make_sheet(added_files, calibration_file, verbose = verbose)
                     println(new_df)
-          
-          
+
+
                     if verbose
                          println("$(length(added_files)) Files have been added ")
                     end
                end
-          
+
                if !isempty(removed_files) #This is a catch for if files are removed but none are added
                     delete!(all_files, removed_files)
-          
+
                     if verbose
                          println("Files have been removed $removed_files")
                     end
                end
-               
+
                all_files = [all_files; new_df] #Concatenate all_files with new files
                if !isempty(added_files) || !isempty(removed_files) #If the file hierarchy is changed, we need to adjust the all files
                     if verbose
@@ -232,90 +232,81 @@ end
 
 update_datasheet(root::String, calibration_file; kwargs...) = update_RS_datasheet(root |> parse_abf, calibration_file; kwargs...)
 
+
+function channel_analysis(data::Experiment; mode = :A, verbose = true)
+     if mode == :A
+          analysis = DataFrame()
+          #Extract the channel names
+          analysis[:, :Path] = fill(data.infoDict["abfPath"], (size(data, 3)))
+          analysis[!, :Channel] = data.chNames
+          #Extract the minimum value
+          analysis[!, :Minima] = -minimum(data, dims = 2)[:, 1, :] |> vec
+          #Extract the response 
+          resp = abs.(saturated_response(data))
+          analysis[!, :Response] = resp |> vec
+          #Extract the latency to response
+          analysis[!, :Peak_Time] = time_to_peak(data) |> vec
+          #Extract the integrated time
+          analysis[!, :Int_Time] = NeuroPhys.integral(data) |> vec
+          #println("Analyzed Integration time")
+          rec_res = recovery_tau(data, resp)
+          analysis[!, :Tau_Rec] = rec_res[1] |> vec
+          analysis[!, :Tau_GOF] = rec_res[2] |> vec
+          #println("Analyzed time constant")
+          amp_res = amplification(data, -resp)
+          analysis[!, :Amp] = amp_res[1][1, :, :] |> vec
+          analysis[!, :Effective_Time] = amp_res[1][2, :, :] |> vec
+          analysis[!, :Amp_GOF] = amp_res[2] |> vec
+          #println("Analyzed amplification")
+          return analysis
+     elseif mode == :B
+
+     elseif mode == :G
+
+     end
+end
+
+function channel_analysis(filename::String; t_post = 1.0, kwargs...)
+     #I have found that in the cases of P9 a-waves, the peak can be measures in less than a second after the flash. 
+     #Because the response is so small, drift will often get picked up for a response
+     data = filter_data(readABF(filename, average_sweeps = true), t_post = t_post)
+     return channel_analysis(data; kwargs...)
+end
+
+
 """
 Saving and running A-wave analysis
 """
-function run_A_wave_analysis(all_files::DataFrame;
-     t_peak_cutoff = 2.0
-)
+function run_A_wave_analysis(all_files::DataFrame; t_peak_cutoff = 2.0)
      #Record all a waves
-     trace_A = all_files |>
-               @filter(_.Condition == "BaCl_LAP4" || _.Condition == "LAP4_BaCl") |>
-               #remove all photons under 10000
-               #@filter(_.Photons < 10000) |> 
-               @map({_.Path,
-                    _.Year, _.Month, _.Date, _.Animal, _.Photoreceptor, _.Wavelength,
-                    _.Age, _.Genotype, _.Condition, _.Photons,
-                    Channel = "Vm_prime",
-                    Minima = 0.0,
-                    Response = 0.0, Peak_Time = 0.0, Int_Time = 0.0,
-                    Tau_Rec = 0.0, Tau_GOF = 0.0,
-                    a = 0.0, t_eff = 0.0, Amp_GOF = 0.0
-               }) |>
-               DataFrame
-     n_files = size(trace_A, 1)
+     trace_A = DataFrame() #Make an empty dataframe
+     #Filter out all A-wave files
+     A_files = all_files |> @filter(_.Condition == "BaCl_LAP4" || _.Condition == "LAP4_BaCl") |> DataFrame
+     n_files = size(A_files, 1) #Take note of how many A-wave files exist
+
      #Step through each A-wave trace and break it apart by channel
-     for (idx, exp) in enumerate(eachrow(trace_A))
+     for (idx, exp) in enumerate(eachrow(A_files))
           println("Extracting A-wave for experiment $idx of $n_files.")
           println("Total traces: $(size(trace_A, 1))")
           if exp.Age == 9 || exp.Age == 11
                #I have found that in the cases of P9 a-waves, the peak can be measures in less than a second after the flash. 
                #Because the response is so small, drift will often get picked up for a response
-               data = filter_data(readABF(exp.Path, average_sweeps = true), t_post = 1.0)
+               #data = filter_data(readABF(exp.Path, average_sweeps = true), t_post = 1.0)
+               added = channel_analysis(exp.Path, t_post = 1.0)
           else
                #we want to extract the response for each trace here
-               data = filter_data(readABF(exp.Path, average_sweeps = true), t_post = t_peak_cutoff)
+               #data = filter_data(readABF(exp.Path, average_sweeps = true), t_post = t_peak_cutoff)
+               added = channel_analysis(exp.Path, t_post = t_peak_cutoff)
           end
-          #Extract the minimum value
-          minima = -minimum(data, dims = 2)[:, 1, :]
-          #Extract the response 
-          resp = abs.(saturated_response(data))
-          #Extract the latency to response
-          peak_time = time_to_peak(data)
-          #Extract the integrated time
-          tInt = NeuroPhys.integral(data)
-          #extract the Recovery time constant
-          tRec, tau_gofs = recovery_tau(data, resp)
-          println("Analyzed time constant")
-          amp, amp_gofs = amplification(data, -resp) #We need to ensure this is negative
-          println("Analyzed amplification")
-          if size(data, 3) > 1
-               trace_A[idx, :Minima] = minima[1]
-               trace_A[idx, :Response] = resp[1]
-               trace_A[idx, :Peak_Time] = peak_time[1]
-               trace_A[idx, :Int_Time] = tInt[1] * 1000
-               trace_A[idx, :Tau_Rec] = tRec[1] * 1000
-               trace_A[idx, :Tau_GOF] = tau_gofs[1]
-               trace_A[idx, :a] = amp[1, 1, 1]
-               trace_A[idx, :t_eff] = amp[2, 1, 1]
-               trace_A[idx, :Amp_GOF] = amp_gofs[1]
-               trace_A[idx, :Channel] = data.chNames[1]
-               for add_i = 2:size(data, 3)
-                    added_row = deepcopy(trace_A[idx, :])
-                    added_row.Minima = minima[add_i]
-                    added_row.Response = resp[add_i]
-                    added_row.Peak_Time = peak_time[add_i]
-                    added_row.Int_Time = tInt[add_i] * 1000
-                    added_row.Tau_Rec = tRec[add_i] * 1000
-                    added_row.Tau_GOF = tau_gofs[add_i]
-                    added_row.a = amp[1, 1, add_i]
-                    added_row.t_eff = amp[2, 1, add_i]
-                    added_row.Amp_GOF = amp_gofs[add_i]
-                    added_row.Channel = data.chNames[add_i]
-                    push!(trace_A, added_row)
-               end
-          else
-               trace_A[idx, :Minima] = minima[1]
-               trace_A[idx, :Response] = resp[1]
-               trace_A[idx, :Peak_Time] = peak_time[1]
-               trace_A[idx, :Int_Time] = tInt[1] * 1000
-               trace_A[idx, :Tau_Rec] = tRec[1] * 1000
-               trace_A[idx, :Tau_GOF] = tau_gofs[1]
-               trace_A[idx, :a] = amp[1, 1, 1]
-               trace_A[idx, :t_eff] = amp[2, 1, 1]
-               trace_A[idx, :Amp_GOF] = amp_gofs[1]
-               trace_A[idx, :Channel] = data.chNames[1]
-          end
+          new = added |> @map(
+                     {exp.Path,
+                     exp.Year, exp.Month, exp.Date, exp.Animal, exp.Photoreceptor, exp.Wavelength,
+                     exp.Age, exp.Genotype, exp.Condition, exp.Photons,
+                     _.Channel, _.Minima, _.Response, _.Peak_Time, _.Int_Time,
+                     _.Tau_Rec, _.Tau_GOF, _.Amp, _.Effective_Time, _.Amp_GOF
+                }) |> DataFrame
+
+          trace_A = [trace_A; new] #This concatenates the new dataframe
      end
 
      experiments_A = trace_A |>
@@ -332,6 +323,7 @@ function run_A_wave_analysis(all_files::DataFrame;
                      DataFrame
 
      #Walk through every A-wave experiment and summarize the data by experiment
+     #We should look into an easier way to summarize the data using @groupby
      for (idx, exp) in enumerate(eachrow(experiments_A))
           q_data = trace_A |>
                    @filter(_.Year == exp.Year && _.Month == exp.Month && _.Date == exp.Date && _.Animal == exp.Animal) |>
@@ -359,10 +351,10 @@ function run_A_wave_analysis(all_files::DataFrame;
                     println(valid_amps)
                     #if the response is higher than the rdim, than it is 
                     experiments_A[idx, :alpha] =
-                         sum(q_data.a[valid_amps]) / length(valid_amps)
+                         sum(q_data.Amp[valid_amps]) / length(valid_amps)
                     println(experiments_A[idx, :alpha])
                     experiments_A[idx, :effective_time] =
-                         sum(q_data.t_eff[valid_amps]) / length(valid_amps)
+                         sum(q_data.Effective_Time[valid_amps]) / length(valid_amps)
                end
           end
      end
@@ -428,9 +420,14 @@ function run_A_wave_analysis(all_files::DataFrame;
      return trace_A, experiments_A, conditions_A
 end
 
+#We can update this with our updated channel analysis
 function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true)
      trace_A = all_files |> @filter(_.Condition == "BaCl_LAP4" || _.Condition == "LAP4_BaCl") |> DataFrame
      trace_AB = all_files |> @filter(_.Condition == "BaCl") |> DataFrame
+
+     #A_files = all_files |> @filter(_.Condition == "BaCl_LAP4" || _.Condition == "LAP4_BaCl") |> DataFrame
+     #AB_files = all_files |> @filter(_.Condition == "BaCl") |> DataFrame
+
      if analyze_subtraction
           trace_B = trace_A |> @join(trace_AB,
                          {_.Year, _.Month, _.Date, _.Animal, _.Photons, _.Photoreceptor, _.Wavelength},
@@ -771,7 +768,7 @@ function run_analysis(all_files::DataFrame, data_file::String; analyze_subtracti
      #make the A-wave files
      trace_A, experiments_A, conditions_A = run_A_wave_analysis(all_files)
      #BotNotify("{ERG GNAT}: Completed extraction of A-wave")
-     XLSX.openxlsx(data_file, mode = "rw") do xf
+     XLSX.openxlsx(data_file, mode = "w") do xf
           sheet = xf["trace_A"]
           XLSX.writetable!(sheet,
                collect(DataFrames.eachcol(trace_A)),
@@ -779,14 +776,14 @@ function run_analysis(all_files::DataFrame, data_file::String; analyze_subtracti
      end
      #Extract experiments for A wave
 
-     XLSX.openxlsx(data_file, mode = "rw") do xf
+     XLSX.openxlsx(data_file, mode = "w") do xf
           sheet = xf["experiments_A"]
           XLSX.writetable!(sheet,
                collect(DataFrames.eachcol(experiments_A)),
                DataFrames.names(experiments_A))
      end
 
-     XLSX.openxlsx(data_file, mode = "rw") do xf
+     XLSX.openxlsx(data_file, mode = "w") do xf
           sheet = xf["conditions_A"]
           XLSX.writetable!(sheet,
                collect(DataFrames.eachcol(conditions_A)),
@@ -796,21 +793,21 @@ function run_analysis(all_files::DataFrame, data_file::String; analyze_subtracti
      #make the B-wave files
      trace_B, experiments_B, conditions_B = run_B_wave_analysis(all_files, analyze_subtraction = analyze_subtraction)
      # BotNotify("{ERG GNAT}: Completed extraction of B-wave")
-     XLSX.openxlsx(data_file, mode = "rw") do xf
+     XLSX.openxlsx(data_file, mode = "w") do xf
           sheet = xf["trace_B"]
           XLSX.writetable!(sheet,
                collect(DataFrames.eachcol(trace_B)),
                DataFrames.names(trace_B))
      end
 
-     XLSX.openxlsx(data_file, mode = "rw") do xf
+     XLSX.openxlsx(data_file, mode = "w") do xf
           sheet = xf["experiments_B"]
           XLSX.writetable!(sheet,
                collect(DataFrames.eachcol(experiments_B)),
                DataFrames.names(experiments_B))
      end
 
-     XLSX.openxlsx(data_file, mode = "rw") do xf
+     XLSX.openxlsx(data_file, mode = "w") do xf
           sheet = xf["conditions_B"]
           XLSX.writetable!(sheet,
                collect(DataFrames.eachcol(conditions_B)),
@@ -819,21 +816,21 @@ function run_analysis(all_files::DataFrame, data_file::String; analyze_subtracti
      #make the G-wave files
      trace_G, experiments_G, conditions_G = run_G_wave_analysis(all_files, analyze_subtraction = analyze_subtraction)
      #BotNotify("{ERG GNAT}: Completed extraction of G-component")
-     XLSX.openxlsx(data_file, mode = "rw") do xf
+     XLSX.openxlsx(data_file, mode = "w") do xf
           sheet = xf["trace_G"]
           XLSX.writetable!(sheet,
                collect(DataFrames.eachcol(trace_G)),
                DataFrames.names(trace_G))
      end
 
-     XLSX.openxlsx(data_file, mode = "rw") do xf
+     XLSX.openxlsx(data_file, mode = "w") do xf
           sheet = xf["experiments_G"]
           XLSX.writetable!(sheet,
                collect(DataFrames.eachcol(experiments_G)),
                DataFrames.names(experiments_G))
      end
 
-     XLSX.openxlsx(data_file, mode = "rw") do xf
+     XLSX.openxlsx(data_file, mode = "w") do xf
           sheet = xf["conditions_G"]
           XLSX.writetable!(sheet,
                collect(DataFrames.eachcol(conditions_G)),
@@ -841,3 +838,60 @@ function run_analysis(all_files::DataFrame, data_file::String; analyze_subtracti
      end
 end
 
+"""
+This function selects a specific entry in the excel file and changes it
+
+     The bottom level functionality is to use dataframes. 
+     By passing the dataframe to the function and specifying a entry idx, 
+     the new dataframe is added to the old dataframe and returned. 
+     
+     However the functionality of this will not be in adding your data into the cell, 
+     but rather rerunning the data analysis on specific entries after they have been updated
+"""
+function update_entry!(df::DataFrame, entry_idx::Int64)
+     #first we pull out the data from the dataframe
+     println("Adjusting index $entry_idx")
+     target_df = df[entry_idx, :]
+     data = readABF(target_df) #reread the file
+     data = filter_data(data, t_post = 2.0) #refilter the data
+     analysis = channel_analysis(data) #re analyze the channel
+     for col in Symbol.(DataFrames.names(analysis))
+          target_df[col] = analysis[1, col]
+     end
+     target_df.Response = 10.0
+     df[entry_idx, :] = target_df
+end
+
+update_entry!(df::DataFrame, entry_idxs::Vector{Int64}) = map(entry_idx -> update_entry!(df, entry_idx), entry_idxs)
+
+update_entry!(df::DataFrame, entry_rng::UnitRange{Int64}) = map(entry_idx -> update_entry!(df, entry_idx), collect(entry_rng))
+
+#For now this will be sufficient
+function update_entry!(df::DataFrame, entry_name; column_name::Symbol = :Path)
+     @assert entry_name ∈ df[:, column_name]
+     entry_idx = findall(df[:, column_name] .== entry_name)
+     update_entry!(df, entry_idx)
+end
+
+#For now this will be sufficient
+update_entry!(df::DataFrame, entry_names::Vector; column_name::Symbol = :Path) = map(entry_name -> update_entry!(df, entry_name; column_name = column_name), entry_names)
+
+function update_entry(df::DataFrame, entry_idx)
+     new_df = deepcopy(df)
+     update_entry!(new_df, entry_idx)
+     new_df
+end
+
+#This function uses the above to actually access the xlsx file and then save it
+function update_entry(filename::String, sheet_name::String, entry_id; save_entry = true, kwargs...)
+     df = DataFrame(XLSX.readtable(filename, sheet_name)...) #open the sheet
+     update_entry!(df, entry_id; kwargs...)
+     if save_entry
+          XLSX.openxlsx(filename, mode = "w") do xf
+          sheet = xf[sheet_name]
+          XLSX.writetable!(sheet,
+               collect(DataFrames.eachcol(df)),
+               DataFrames.names(df))
+          end
+     end
+end
