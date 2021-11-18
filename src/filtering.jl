@@ -307,8 +307,8 @@ function fft_spectrum(data::Experiment)
 end
 
 #%% a common filter function for simplification. Remember that this is an inplace version
-function filter_data(data; t_pre = 1.0, t_post = 4.0, highpass = false, EI_bandpass = 100.0, lowpass = 300.0) 
-	truncate_data!(data, t_pre = t_pre, t_post = t_post);
+function filter_data!(data; t_pre = 1.0, t_post = 4.0, highpass = false, EI_bandpass = 100.0, lowpass = 300.0) 
+    truncate_data!(data, t_pre = t_pre, t_post = t_post);
 	baseline_cancel!(data, mode = :slope); 
 
     #We will apply several filters consecutively
@@ -326,6 +326,12 @@ function filter_data(data; t_pre = 1.0, t_post = 4.0, highpass = false, EI_bandp
 
     data * 1000
 	return data
+end
+
+function filter_data(data; kwargs...) 
+    data_copy = deepcopy(data)
+    filter_data!(data_copy; kwargs...)
+    return data_copy
 end
 
 cone_filter(data) = filter_data(data, t_pre = 1.0, t_post = 1.0) #This should put the data right in the middle of the cone stimuli
