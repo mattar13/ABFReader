@@ -918,7 +918,7 @@ function update_entry(filename::String, sheet_name::String, entry_id; save_entry
      df = DataFrame(XLSX.readtable(filename, sheet_name)...) #open the sheet
      update_entry!(df, entry_id; kwargs...)
      if save_entry
-          XLSX.openxlsx(filename, mode = "w") do xf
+          XLSX.openxlsx(filename, mode = "rw") do xf
           sheet = xf[sheet_name]
           XLSX.writetable!(sheet,
                collect(DataFrames.eachcol(df)),
