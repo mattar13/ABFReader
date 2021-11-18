@@ -24,26 +24,26 @@ This function uses a histogram method to find the saturation point.
     - Does this same function work for the Rmax of nonsaturated responses?
     - Setting the saturated threshold to infinity will completely disregard the histogram method
 """
-function saturated_response(data::Experiment{T};  precision::Int64 = 100) where T <: Real
-     #We want to pick the region to analyze first
-    norm_factor = minimum(issue_data)
-	rmaxes = zeros(size(data,1), size(data,3))
-	minima = minimum(data, dims = 2)
-	
- 	for swp in 1:size(data,1), ch in 1:size(data,3)
-		y_data = data[swp, :, ch]./norm_factor
-		hfit = fit(Histogram, y_data, LinRange(0.15, 1.0, precision))
-		weights = hfit.weights/maximum(hfit.weights)
-		edges = collect(hfit.edges[1])[1:length(weights)]
-		resp = edges[argmax(weights)]
-		println(minimum(edges))
-		if resp == minimum(edges)
-			rmaxes[swp, ch] = minima[swp, ch]
-		else
-			rmaxes[swp, ch] = resp*norm_factor
-		end
-	end
-	rmaxes
+function saturated_response(data::Experiment{T}; precision::Int64 = 100) where {T<:Real}
+    #We want to pick the region to analyze first
+    norm_factor = minimum(data)
+    rmaxes = zeros(size(data, 1), size(data, 3))
+    minima = minimum(data, dims = 2)[:, 1, :]
+
+    for swp = 1:size(data, 1), ch = 1:size(data, 3)
+        y_data = data[swp, :, ch] ./ norm_factor
+        hfit = Distributions.fit(Histogram, y_data, LinRange(0.15, 1.0, precision))
+        weights = hfit.weights / maximum(hfit.weights)
+        edges = collect(hfit.edges[1])[1:length(weights)]
+        resp = edges[argmax(weights)]
+        #println(minimum(edges))
+        if resp == minimum(edges)
+            rmaxes[swp, ch] = minima[swp, ch]
+        else
+            rmaxes[swp, ch] = resp * norm_factor
+        end
+    end
+    rmaxes
 end
 
 
