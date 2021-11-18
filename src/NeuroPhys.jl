@@ -51,6 +51,7 @@ export highpass_filter, highpass_filter!
 export notch_filter, notch_filter!
 export EI_filter, EI_filter!
 export cwt_filter, cwt_filter!
+export dwt_filter
 export average_sweeps, average_sweeps!
 export normalize, normalize!
 #Analysis functions return a single number or numbers related to the Experiment
