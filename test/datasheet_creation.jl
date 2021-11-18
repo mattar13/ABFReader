@@ -24,7 +24,7 @@ all_paths = vcat(wt_paths, gnat_paths)
 data_file = "E:\\Projects\\2020_JGP_Gnat\\data_analysis.xlsx"
 all_files = update_datasheet(all_paths, calibration_file, data_file, verbose = true)
 run_analysis(all_files, data_file, analyze_subtraction = false)
-
+NeuroPhys.run_A_wave_analysis(all_files)
 #%%
 test_root = "E:\\Data\\ERG\\Paul" #This comes from my portable hardrive
 test_paths = test_root |> parse_abf

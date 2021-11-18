@@ -1,90 +1,91 @@
 using Revise #, OhMyREPL, DoctorDocstrings
 using NeuroPhys
+using Plots
+#if we want to plot we will have to import plotting manually
 using Query, DataFrames, XLSX, StatsPlots
 import NeuroPhys.filter_data
 using DSP
 
+#%% We want to be able to access and alter the XLSX datasheet easily rather than rerunning the entire exp
+data_file = "E:\\Projects\\2020_JGP_Gnat\\data_analysis.xlsx"
+all_files = DataFrame(XLSX.readtable(data_file, "All_Files")...)
+trace_A = DataFrame(XLSX.readtable(data_file, "trace_A")...)
+trace_B = DataFrame(XLSX.readtable(data_file, "trace_B")...)
+trace_G = DataFrame(XLSX.readtable(data_file, "trace_G")...)
+experiments_A = DataFrame(XLSX.readtable(data_file, "experiments_A")...)
+experiments_B = DataFrame(XLSX.readtable(data_file, "experiments_B")...)
+experiments_G = DataFrame(XLSX.readtable(data_file, "experiments_G")...)
+conditions_A = DataFrame(XLSX.readtable(data_file, "conditions_A")...)
+conditions_B = DataFrame(XLSX.readtable(data_file, "conditions_B")...)
+conditions_G = DataFrame(XLSX.readtable(data_file, "conditions_G")...)
 
-#%% iteratively looking at organoids
-organoid_root = "F:\\Data\\ERG\\Organoids\\Good\\"
-organoid_files = organoid_root |> parse_abf
 
-for file in organoid_files
-     file_name = split(file, "\\")
-     file_title = join(file_name[end-2:end])
-     println(file_title)
-     try
-          data = readABF(file, channels = ["Vm_prime", "Vm_prime4"])
-          truncate_data!(data)
-          baseline_cancel!(data, mode = :slope); 
-          EI_filter!(data, reference_filter = 60.0, bandpass = 100.0) #adaptive line interference according to Clampfit
-          lowpass_filter!(data, freq = 300.0) #cutout all high frequency noise
-          data * 1000
-          #%%
-          fig = plot(data, to_plot = (:channels, 1), layout = (:sweeps, :channels), xlims = (-0.2, 1.0), #ylims = (-0.5, 0.5),
-               plot_stim_mode = :overlay_vspan
-               ) 
-          savefig(fig, "$(organoid_root)\\$(file_title).png")
-     catch error
-          println(error)
-          println("Something happened in this")
+#write something that iteratively checks whether or not the entries match and then only analyzes the mismatches
+all_files |> @filter(_.Condition == "BaCl_LAP4" || _.Condition == "LAP4_BaCl") |> DataFrame
+
+
+
+#%%
+updated_traceA = update_entry(data_file, "trace_A", entry_name; column_name = :Path)
+
+updated_traceA[1, :]
+updated_traceA[2, :]
+a_waves[1, :]
+
+#%%
+file = "test\\to_analyze.abf"
+data = readABF(file) |> filter_data
+plot(data)
+#%%
+function extract_date_data(dataframe, date; pc = "Rods")
+     #println(length(date))
+     if length(date) > 5
+          df = dataframe |>
+               @filter(_.Photoreceptor == pc) |>
+               @filter(
+                    (_.Year, _.Month, _.Date, _.Animal, _.Wavelength, _.Channel) == date
+               ) |>
+               DataFrame
+     else
+          df = dataframe |>
+               @filter(_.Photoreceptor == pc) |>
+               @filter((_.Year, _.Month, _.Date, _.Animal, _.Wavelength) == date) |>
+               DataFrame
      end
+     df
 end
 
 #%%
-xlims = (-0.2, 0.5)
-abg_file = "F:\\Data\\ERG\\Eyecup\\2021_09_14_ERG_RS\\Mouse2_P15_WT\\NoDrugs\\Rods\\nd2_1p_0000.abf"
-data = readABF(abg_file, channels = ["Vm_prime"], average_sweeps = true)
-baseline_cancel!(data, mode = :slope); 
-truncate_data!(data);
-#highpass_filter!(data, freq = highpass) #Highpass 0.5hz
-EI_filter!(data, reference_filter = 60.0, bandpass = 100.0) #adaptive line interference according to Clampfit
-lowpass_filter!(data, freq = 300.0) #cutout all high frequency noise
-data * 1000
-p1 = plot(data, plot_stim_mode = :overlay_vspan, xlims = xlims)
+data_file = "E:\\Projects\\2020_JGP_Gnat\\data_analysis.xlsx"
+trace_B = DataFrame(XLSX.readtable(data_file, "trace_B")...)
 
-# Lets plot some organoid data
-organoid_root = "F:\\Data\\ERG\\Organoids\\2021_10_28_ERG_Organoid\\Organoid1_9Cis2\\NoDrugs_9Cis100\\"
-files = organoid_root |> parse_abf
-data = readABF(files[7], channels = ["Vm_prime4"]) 
-baseline_cancel!(data, mode = :slope); 
-truncate_data!(data);
-#highpass_filter!(data, freq = 0.05) #Highpass 0.5hz
-EI_filter!(data, reference_filter = 60.0, bandpass = 100.0) #adaptive line interference according to Clampfit
-lowpass_filter!(data, freq = 300.0) #cutout all high frequency noise
-data * 1000
-p2 = plot(data, 
-     to_plot = (:channels, 1), layout = (:sweeps, :channels), xlims = xlims, 
-     plot_stim_mode = :overlay_vspan
-     )
-plot(p1, p2,  layout = grid(2,1))
+p9WT_date = (2019, 7, 4, 1, 525, "Vm_prime4")
+p9WTB_df = extract_date_data(trace_B, p9WT_date)
+
+p9WTB_data = readABF(p9WTB_df)[1]
+size(p9WTB_data)
 
 
+#%% 1) I want to append new data to the end of the .abf file containing photon and ID info
+file = "test\\to_filter.abf"
+data = readABF(file)
+categories = keys(data.infoDict)
 
-#%% Using the paper Gauvin et al. 2014 Advance in ERG analysis: From Peak Time and Amplitude to Frequency
-#This paper utilizes CWT, DWT and FFT to break down the ERG waveform 
-#Lets pick a good response to filter and compare it to the Organoids
-using Wavelets
-abg_file = "F:\\Data\\ERG\\Eyecup\\2021_09_14_ERG_RS\\Mouse2_P15_WT\\NoDrugs\\Rods\\nd2_1p_0000.abf"
-data = readABF(abg_file, channels = ["Vm_prime"], average_sweeps = true)
-baseline_cancel!(data, mode = :slope); 
-truncate_data!(data);
-p1 = plot(data, plot_stim_mode = :overlay_vspan, xlims = xlims)
-freqs, fft_data = NeuroPhys.fft_spectrum(data)
-p2 = plot(freqs, fft_data[1,:,1] .|> abs,  xaxis = :log, yaxis = :log)
 
-organoid_root = "F:\\Data\\ERG\\Organoids\\2021_10_28_ERG_Organoid\\Organoid1_9Cis2\\NoDrugs_9Cis100\\"
-files = organoid_root |> parse_abf
-data = readABF(files[7], channels = ["Vm_prime4"]) 
-baseline_cancel!(data, mode = :slope); 
-truncate_data!(data);
-p3 = plot(data, 
-     to_plot = (:channels, 1), layout = (:sweeps, :channels), xlims = xlims, 
-     plot_stim_mode = :overlay_vspan
-     )
-freqs, fft_data = NeuroPhys.fft_spectrum(data)
-p4 = plot(freqs, fft_data[1,:,1] .|> abs,  xaxis = :log, yaxis = :log)
-plot(p1, p2, p3, p4, layout = grid(4,1))
+#%% 2) Reading the Comments 
+
+
+#%% 3) Edit the ABF file
+
+#%% Just found out there was Regex in Julia that may prove useful
+format = r"(?P<Inside>\S*?)_|\Z"
+file = "nd0_100p_1ms_0000.abf"
+m = match(format, file)
+
+#%%
+format = r"(?P<Drive>\S:)\\(?P<Label>\S*?)\\\S*?\\(?P<Project>\S*?)\\(?P<Year>\d*?)_(?P<Month>\d*?)_(?P<Date>\d*?)_\D*?_\D*?\\\D*?(?P<Animal>\d)_\D*?(?P<Age>\d*?)_(?P<Genotype>\S*?)\\(?P<Condition>\S*?)\\(?P<Photoreceptor>\D*?)\\(?P<Wavelength>\S*?)\\\\"
+file = "F:\\Data\\ERG\\Retinoschisis\\2021_09_29_ERG_RS\\Mouse1_P11_R141C\\BaCl\\Cones\\Green\\"
+m = match(format, file)
 
 #%% Plotting Zebrafish files
 test_folder = "F:\\Data\\ERG\\Zebrafish\\2021_09_30_ERG_Zebrafish\\Cole\\NoDrugs\\Rods"
@@ -110,11 +111,11 @@ data_B = data_AB - data_A
 plt_data_AB = plot(data_AB, c = :Black, lw = 3.0, xlims = (-0.25, 1.0), ylims = (-15, 40))
 plt_data_A = plot(data_A, c = :red, lw = 3.0, xlims = (-0.25, 1.0), ylims = (-15, 40))
 plt_data_B = plot(data_B, c = :blue, lw = 3.0, xlims = (-0.25, 1.0), ylims = (-15, 40))
-plt_data_BROOKE = plot(plt_data_AB, plt_data_A, plt_data_B, layout = grid(1,3), size = (2000, 1000), dpi = 500, margins = 5.0Plots.mm)
+plt_data_BROOKE = plot(plt_data_AB, plt_data_A, plt_data_B, layout = grid(1, 3), size = (2000, 1000), dpi = 500, margins = 5.0Plots.mm)
 #savefig(plt_data_BROOKE, "C:\\Users\\mtarc\\The University of Akron\\Renna Lab - General\\Projects\\Zebrafish\\2021_10_05_Zfish_Rods_Brooke.png")
 #%%
 freqs, fft_data = NeuroPhys.fft_spectrum(data_A)
-plot(freqs, fft_data[1,:,1] |> real, xaxis = :log)
+plot(freqs, fft_data[1, :, 1] |> real, xaxis = :log)
 
 #%% Brooke Cones
 test_folder = "F:\\Data\\ERG\\Zebrafish\\2021_10_05_ERG_Zebrafish\\Brooke\\BaCl\\Cones\\Green"
@@ -151,9 +152,9 @@ make_sheet(test_files, calibration_file, verbose = true)
 #%% 
 
 #%% Eventually you should make a Pluto notebook that runs this analysis
-q_file = all_files |> 
-     @filter(_.Month == 3 && _.Date == 12 && _.Animal == 1 && _.Photons > 6000.0) |> 
-     DataFrame
+q_file = all_files |>
+         @filter(_.Month == 3 && _.Date == 12 && _.Animal == 1 && _.Photons > 6000.0) |>
+         DataFrame
 target_file = q_file.Path[1]
 target_file = "F:\\Data\\ERG\\Gnat\\2021_06_24_ERG_GNAT\\Mouse2_Adult_GNAT-KO\\BaCl\\Green\\nd1_100p_0002.abf"
 data = readABF(target_file, channels = ["Vm_prime"], average_sweeps = true) |> filter_data
@@ -162,20 +163,20 @@ savefig("F:\\Proposal\\gnat_fig.png")
 
 #%% Plot IR curve for 2021-03-12-n1
 model(x, p) = map(I -> IR(I, p[1], p[2]) * p[3], x)
-q_WT30a = trace_A|>@filter(_.Month==3 && _.Date==12 && _.Animal==1)|>DataFrame
+q_WT30a = trace_A |> @filter(_.Month == 3 && _.Date == 12 && _.Animal == 1) |> DataFrame
 @df q_WT30a plot(:Photons, :Response, st = :scatter, xaxis = :log, c = :black)
 #fit the IR curve
-fit_sect = NeuroPhys.curve_fit(model, 
-q_WT30a.Photons, q_WT30a.Response, [100.0, 1.0, 100], 
-lower = [0.01, 0.01, 0.01], upper = [Inf, Inf, 400]
+fit_sect = NeuroPhys.curve_fit(model,
+     q_WT30a.Photons, q_WT30a.Response, [100.0, 1.0, 100],
+     lower = [0.01, 0.01, 0.01], upper = [Inf, Inf, 400]
 )
 I_range = LinRange(0.2, 1e4, 1000000)
-plot!(x -> model(x, fit_sect.param), I_range, 
-c = :jet, line_z = I_range, lw = 3.0, legend = false, 
-xaxis = :log, 
-xlabel = "log(Photons)/μm²", ylabel = "Response (μV)",
-grid = false, 
-margin = 0.0Plots.mm,
+plot!(x -> model(x, fit_sect.param), I_range,
+     c = :jet, line_z = I_range, lw = 3.0, legend = false,
+     xaxis = :log,
+     xlabel = "log(Photons)/μm²", ylabel = "Response (μV)",
+     grid = false,
+     margin = 0.0Plots.mm,
 )
 #%%
 savefig("F:\\Proposal\\example_IR.png")
@@ -191,8 +192,8 @@ savefig("F:\\Proposal\\example_FlashFamily.png")
 target_file = "E:\\Data\\Patching\\2019_11_03_Patch\\Animal_2\\Cell_3\\19n03042.abf"
 data = readABF(target_file, channels = ["Vm_prime4"], stimulus_name = nothing)
 
-tidxs = round(Int64, 150e3/data.dt):round(Int64, 250e3/data.dt)
-tseries = (data.t[tidxs].-data.t[tidxs[1]])
+tidxs = round(Int64, 150e3 / data.dt):round(Int64, 250e3 / data.dt)
+tseries = (data.t[tidxs] .- data.t[tidxs[1]])
 plot(tseries, data[1, tidxs, 1])
 #%%
 target_file = "F:\\Data\\ERG\\Retinoschisis\\2021_08_08_ERG_RS\\Mouse1_P13_R141C\\BaCl\\Cones\\Green\\nd1_100p_0000.abf"
@@ -220,6 +221,6 @@ abg_data * 1000
 #%% lets subtract the data
 import Plots.mm
 eyecup_plt = plot(ec_data, ylims = (-200, 75), to_plot = (:sweeps, 2), c = :black, title = ["Eyecup" ""]);
-abg_plt = plot(abg_data, ylims = (-200, 75),  to_plot = (:sweeps, 2), c = :red, title = ["Isolated Retina" ""]);
+abg_plt = plot(abg_data, ylims = (-200, 75), to_plot = (:sweeps, 2), c = :red, title = ["Isolated Retina" ""]);
 fig = plot(eyecup_plt, abg_plt, dpi = 300, size = (1000, 500), margin = 5mm);
 savefig(fig, "F:\\Projects\\2021_Retinoschisis\\eyecup_vs_nodrugs.png")
