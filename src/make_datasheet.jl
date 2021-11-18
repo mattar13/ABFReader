@@ -234,11 +234,11 @@ update_datasheet(root::String, calibration_file; kwargs...) = update_RS_datashee
 
 
 function channel_analysis(data::Experiment; mode = :A, verbose = true)
+     analysis = DataFrame()
+     #Extract the channel names
+     analysis[:, :Path] = fill(data.infoDict["abfPath"], (size(data, 3)))
+     analysis[!, :Channel] = data.chNames
      if mode == :A
-          analysis = DataFrame()
-          #Extract the channel names
-          analysis[:, :Path] = fill(data.infoDict["abfPath"], (size(data, 3)))
-          analysis[!, :Channel] = data.chNames
           #Extract the minimum value
           analysis[!, :Minima] = -minimum(data, dims = 2)[:, 1, :] |> vec
           #Extract the response 
@@ -258,12 +258,26 @@ function channel_analysis(data::Experiment; mode = :A, verbose = true)
           analysis[!, :Effective_Time] = amp_res[1][2, :, :] |> vec
           analysis[!, :Amp_GOF] = amp_res[2] |> vec
           #println("Analyzed amplification")
-          return analysis
      elseif mode == :B
+          resp = abs.(maximum(data, dims = 2))[1, :, :]
+          analysis[!, :Response] = resp |> vec
+          analysis[!, :Peak_Time] = time_to_peak(data) |> vec
+          analysis[!, :Int_Time] = integral(data) |> vec
 
+          rec_res = recovery_tau(data, resp)
+          analysis[!, :Tau_Rec] = rec_res[1] |> vec
+          analysis[!, :Tau_GOF] = rec_res[2] |> vec
      elseif mode == :G
+          resp = abs.(minimum(data, dims = 2))[1, :, :]
+          analysis[!, :Response] = resp |> vec
+          analysis[!, :Peak_Time] = time_to_peak(data) |> vec
+          analysis[!, :Int_Time] = integral(data) |> vec
 
+          rec_res = recovery_tau(data, resp)
+          analysis[!, :Tau_Rec] = rec_res[1] |> vec
+          analysis[!, :Tau_GOF] = rec_res[2] |> vec
      end
+     return analysis
 end
 
 function channel_analysis(filename::String; t_post = 1.0, kwargs...)
@@ -768,7 +782,7 @@ function run_analysis(all_files::DataFrame, data_file::String; analyze_subtracti
      #make the A-wave files
      trace_A, experiments_A, conditions_A = run_A_wave_analysis(all_files)
      #BotNotify("{ERG GNAT}: Completed extraction of A-wave")
-     XLSX.openxlsx(data_file, mode = "w") do xf
+     XLSX.openxlsx(data_file, mode = "rw") do xf
           sheet = xf["trace_A"]
           XLSX.writetable!(sheet,
                collect(DataFrames.eachcol(trace_A)),
@@ -776,14 +790,14 @@ function run_analysis(all_files::DataFrame, data_file::String; analyze_subtracti
      end
      #Extract experiments for A wave
 
-     XLSX.openxlsx(data_file, mode = "w") do xf
+     XLSX.openxlsx(data_file, mode = "rw") do xf
           sheet = xf["experiments_A"]
           XLSX.writetable!(sheet,
                collect(DataFrames.eachcol(experiments_A)),
                DataFrames.names(experiments_A))
      end
 
-     XLSX.openxlsx(data_file, mode = "w") do xf
+     XLSX.openxlsx(data_file, mode = "rw") do xf
           sheet = xf["conditions_A"]
           XLSX.writetable!(sheet,
                collect(DataFrames.eachcol(conditions_A)),
@@ -793,21 +807,21 @@ function run_analysis(all_files::DataFrame, data_file::String; analyze_subtracti
      #make the B-wave files
      trace_B, experiments_B, conditions_B = run_B_wave_analysis(all_files, analyze_subtraction = analyze_subtraction)
      # BotNotify("{ERG GNAT}: Completed extraction of B-wave")
-     XLSX.openxlsx(data_file, mode = "w") do xf
+     XLSX.openxlsx(data_file, mode = "rw") do xf
           sheet = xf["trace_B"]
           XLSX.writetable!(sheet,
                collect(DataFrames.eachcol(trace_B)),
                DataFrames.names(trace_B))
      end
 
-     XLSX.openxlsx(data_file, mode = "w") do xf
+     XLSX.openxlsx(data_file, mode = "rw") do xf
           sheet = xf["experiments_B"]
           XLSX.writetable!(sheet,
                collect(DataFrames.eachcol(experiments_B)),
                DataFrames.names(experiments_B))
      end
 
-     XLSX.openxlsx(data_file, mode = "w") do xf
+     XLSX.openxlsx(data_file, mode = "rw") do xf
           sheet = xf["conditions_B"]
           XLSX.writetable!(sheet,
                collect(DataFrames.eachcol(conditions_B)),
@@ -816,21 +830,21 @@ function run_analysis(all_files::DataFrame, data_file::String; analyze_subtracti
      #make the G-wave files
      trace_G, experiments_G, conditions_G = run_G_wave_analysis(all_files, analyze_subtraction = analyze_subtraction)
      #BotNotify("{ERG GNAT}: Completed extraction of G-component")
-     XLSX.openxlsx(data_file, mode = "w") do xf
+     XLSX.openxlsx(data_file, mode = "rw") do xf
           sheet = xf["trace_G"]
           XLSX.writetable!(sheet,
                collect(DataFrames.eachcol(trace_G)),
                DataFrames.names(trace_G))
      end
 
-     XLSX.openxlsx(data_file, mode = "w") do xf
+     XLSX.openxlsx(data_file, mode = "rw") do xf
           sheet = xf["experiments_G"]
           XLSX.writetable!(sheet,
                collect(DataFrames.eachcol(experiments_G)),
                DataFrames.names(experiments_G))
      end
 
-     XLSX.openxlsx(data_file, mode = "w") do xf
+     XLSX.openxlsx(data_file, mode = "rw") do xf
           sheet = xf["conditions_G"]
           XLSX.writetable!(sheet,
                collect(DataFrames.eachcol(conditions_G)),
