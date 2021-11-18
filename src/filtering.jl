@@ -211,6 +211,21 @@ function cwt_filter!(trace::Experiment; wave = WT.dog2, periods = 1:9)
     end
 end
 
+function dwt_filter(trace::Experiment; wave = WT.db2, filter_cutoff::Int64 = 10)
+    #In this case we have to limit the analyis to the window of dyadic time
+    #This means that we can only analyze sizes if they are equal to 2^dyadic
+    data = deepcopy(trace)
+    dyad_n = trunc(Int64, log(2, size(data, 2)))
+    println(dyad_n)
+    for swp = 1:size(data, 1), ch = 1:size(data, 3)
+        x = data[swp, 1:2^dyad_n, ch]
+        xt = dwt(x, wavelet(wave), dyad_n)
+        xt[2^filter_cutoff:end] .= 0.0
+        data.data_array[swp, 1:2^dyad_n, ch] .= idwt(xt, wavelet(wave))
+    end
+    data
+end
+
 """
 This is from the adaptive line interface filter in the Clampfit manual
 
