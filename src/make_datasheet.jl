@@ -293,13 +293,22 @@ Saving and running A-wave analysis
 """
 function run_A_wave_analysis(all_files::DataFrame; t_peak_cutoff = 2.0)
      #Record all a waves
-     trace_A = DataFrame() #Make an empty dataframe
      #Filter out all A-wave files
-     A_files = all_files |> @filter(_.Condition == "BaCl_LAP4" || _.Condition == "LAP4_BaCl") |> DataFrame
-     n_files = size(A_files, 1) #Take note of how many A-wave files exist
+     trace_A = all_files |>
+               @filter(_.Condition == "BaCl_LAP4" || _.Condition == "LAP4_BaCl") |>
+               @map({_.Path,
+                    _.Year, _.Month, _.Date, _.Animal, _.Photoreceptor, _.Wavelength,
+                    _.Age, _.Genotype, _.Condition, _.Photons,
+                    Channel = "Vm_prime",
+                    Response = 0.0, Minima = 0.0, Peak_Time = 0.0, Int_Time = 0.0,
+                    Tau_Rec = 0.0, Tau_GOF = 0.0,
+                    Amp = 0.0, Effective_Time = 0.0, Amp_GOF = 0.0
+               }) |>
+     DataFrame
+     n_files = size(trace_A, 1) #Take note of how many A-wave files exist
 
      #Step through each A-wave trace and break it apart by channel
-     for (idx, exp) in enumerate(eachrow(A_files))
+     for (idx, exp) in enumerate(eachrow(trace_A))
           println("Extracting A-wave for experiment $idx of $n_files.")
           println("Total traces: $(size(trace_A, 1))")
           if exp.Age == 9 || exp.Age == 11
@@ -312,15 +321,19 @@ function run_A_wave_analysis(all_files::DataFrame; t_peak_cutoff = 2.0)
                #data = filter_data(readABF(exp.Path, average_sweeps = true), t_post = t_peak_cutoff)
                added = channel_analysis(exp.Path, t_post = t_peak_cutoff)
           end
-          new = added |> @map(
-                     {exp.Path,
-                     exp.Year, exp.Month, exp.Date, exp.Animal, exp.Photoreceptor, exp.Wavelength,
-                     exp.Age, exp.Genotype, exp.Condition, exp.Photons,
-                     _.Channel, _.Minima, _.Response, _.Peak_Time, _.Int_Time,
-                     _.Tau_Rec, _.Tau_GOF, _.Amp, _.Effective_Time, _.Amp_GOF
-                }) |> DataFrame
-
-          trace_A = [trace_A; new] #This concatenates the new dataframe
+          println(size(added))
+          if size(added, 1) > 1
+               added_row = deepcopy(trace_A[idx, :])
+               for col_name in DataFrames.names(added)
+                    #println(col_name)
+                    #println(added[2, col_name])
+                    added_row[col_name] = added[2, col_name] #This concatenates the new dataframe
+               end
+               push!(trace_A, added_row)
+          end
+          for col_name in DataFrames.names(added)
+               trace_A[idx, col_name] = added[1, col_name] #This concatenates the new dataframe
+          end
      end
 
      experiments_A = trace_A |>
