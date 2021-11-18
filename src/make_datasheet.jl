@@ -505,11 +505,11 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true)
 
           #Extract the response 
           if analyze_subtraction
+               resp = abs.(maximum(B_data, dims = 2))[1, :, :]
+          else
                minima = minimum(B_data, dims = 2)[1, :, :]
                maxima = maximum(B_data, dims = 2)[1, :, :]
-               resp = abs(minima .- maxima)
-          else
-               resp = abs.(maximum(B_data, dims = 2))[1, :, :]
+               resp = abs.(minima .- maxima)
           end
           peak_time = time_to_peak(B_data)
           #Extract the integrated time
@@ -794,6 +794,8 @@ end
 Working on this function to replace making individual trace extractions. 
 """
 function run_analysis(all_files::DataFrame, data_file::String; analyze_subtraction = true)
+     #lets see if the files currently exist already
+     
      #make the A-wave files
      trace_A, experiments_A, conditions_A = run_A_wave_analysis(all_files)
      #BotNotify("{ERG GNAT}: Completed extraction of A-wave")
@@ -887,7 +889,7 @@ function update_entry!(df::DataFrame, entry_idx::Int64)
      for col in Symbol.(DataFrames.names(analysis))
           target_df[col] = analysis[1, col]
      end
-     target_df.Response = 10.0
+     #target_df.Response = 10.0
      df[entry_idx, :] = target_df
 end
 
@@ -923,4 +925,19 @@ function update_entry(filename::String, sheet_name::String, entry_id; save_entry
                DataFrames.names(df))
           end
      end
+end
+
+function update_analysis(filename::String, sheet_name::String)
+     all_files = DataFrame(XLSX.readtable(filename, "All_Files")...)
+     if sheet_name == "trace_A"
+          println("Updating trace_A analysis")
+          A_exist = all_files |> @filter(_.Condition == "BaCl_LAP4" || _.Condition == "LAP4_BaCl") |> DataFrame
+     elseif sheet_name == "trace_B"
+          println("Updating trace_B analysis")
+          B_exist = all_files |> @filter(_.Condition == "BaCl" ) |> DataFrame
+     elseif sheet_name == "trace_G"
+          println("Updating trace_G analysis")
+          G_exist = all_files |> @filter(_.Condition == "NoDrugs") |> DataFrame
+     end
+     #for each file set we want to check to see if the analysis exists
 end
