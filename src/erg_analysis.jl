@@ -24,7 +24,7 @@ This function uses a histogram method to find the saturation point.
     - Does this same function work for the Rmax of nonsaturated responses?
     - Setting the saturated threshold to infinity will completely disregard the histogram method
 """
-function aturated_response(data::Experiment{T};  precision::Int64 = 100) where T <: Real
+function saturated_response(data::Experiment{T};  precision::Int64 = 100) where T <: Real
      #We want to pick the region to analyze first
     norm_factor = minimum(issue_data)
 	rmaxes = zeros(size(data,1), size(data,3))
