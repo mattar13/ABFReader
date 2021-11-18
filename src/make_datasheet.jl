@@ -504,8 +504,10 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true)
           end
 
           #Extract the response 
-          if exp.Age <= 11
-               resp = abs.(minimum(B_data, dims = 2))[1, :, :]
+          if analyze_subtraction
+               minima = minimum(B_data, dims = 2)[1, :, :]
+               maxima = maximum(B_data, dims = 2)[1, :, :]
+               resp = abs(minima .- maxima)
           else
                resp = abs.(maximum(B_data, dims = 2))[1, :, :]
           end
