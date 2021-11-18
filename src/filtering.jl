@@ -211,7 +211,7 @@ function cwt_filter!(trace::Experiment; wave = WT.dog2, periods = 1:9)
     end
 end
 
-function dwt_filter(trace::Experiment; wave = WT.db2, filter_cutoff::Int64 = 10)
+function dwt_filter(trace::Experiment; wave = WT.db4, filter_cutoff::Int64 = 8)
     #In this case we have to limit the analyis to the window of dyadic time
     #This means that we can only analyze sizes if they are equal to 2^dyadic
     data = deepcopy(trace)
