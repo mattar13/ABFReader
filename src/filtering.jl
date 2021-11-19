@@ -334,7 +334,7 @@ function filter_data(data::Experiment; kwargs...)
     return data_copy
 end
 
-function filter_data(data::Tuple{Experiment}; kwargs...) 
+function filter_data(data::Tuple{Experiment{T},Experiment{T}}; kwargs...) where T <: Real
     data_copy = deepcopy(data[1])
     filter_data!(data_copy; kwargs...)
     return data_copy
