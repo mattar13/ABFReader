@@ -906,7 +906,7 @@ update_entry!(df::DataFrame, entry_rng::UnitRange{Int64}; kwargs...) = map(entry
 function update_entry!(df::DataFrame, entry_name; column_name::Symbol = :Path, kwargs...)
      @assert entry_name ∈ df[:, column_name]
      entry_idx = findall(df[:, column_name] .== entry_name)
-     update_entry!(df, entry_idxkwargs...)
+     update_entry!(df, entry_idx, kwargs...)
 end
 
 #For now this will be sufficient
