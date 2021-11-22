@@ -884,13 +884,13 @@ This function selects a specific entry in the excel file and changes it
      However the functionality of this will not be in adding your data into the cell, 
      but rather rerunning the data analysis on specific entries after they have been updated
 """
-function update_entry!(df::DataFrame, entry_idx::Int64)
+function update_entry!(df::DataFrame, entry_idx::Int64; kwargs...)
      #first we pull out the data from the dataframe
      println("Adjusting index $entry_idx")
      target_df = df[entry_idx, :]
      data = readABF(target_df) #reread the file
      data = filter_data(data, t_post = 2.0) #refilter the data
-     analysis = channel_analysis(data) #re analyze the channel
+     analysis = channel_analysis(data; kwargs...) #re analyze the channel
      for col in Symbol.(DataFrames.names(analysis))
           target_df[col] = analysis[1, col]
      end
@@ -898,23 +898,23 @@ function update_entry!(df::DataFrame, entry_idx::Int64)
      df[entry_idx, :] = target_df
 end
 
-update_entry!(df::DataFrame, entry_idxs::Vector{Int64}) = map(entry_idx -> update_entry!(df, entry_idx), entry_idxs)
+update_entry!(df::DataFrame, entry_idxs::Vector{Int64}; kwargs...) = map(entry_idx -> update_entry!(df, entry_idx; kwargs...), entry_idxs)
 
-update_entry!(df::DataFrame, entry_rng::UnitRange{Int64}) = map(entry_idx -> update_entry!(df, entry_idx), collect(entry_rng))
+update_entry!(df::DataFrame, entry_rng::UnitRange{Int64}; kwargs...) = map(entry_idx -> update_entry!(df, entry_idx; kwargs...), collect(entry_rng))
 
 #For now this will be sufficient
-function update_entry!(df::DataFrame, entry_name; column_name::Symbol = :Path)
+function update_entry!(df::DataFrame, entry_name; column_name::Symbol = :Path, kwargs...)
      @assert entry_name ∈ df[:, column_name]
      entry_idx = findall(df[:, column_name] .== entry_name)
-     update_entry!(df, entry_idx)
+     update_entry!(df, entry_idxkwargs...)
 end
 
 #For now this will be sufficient
-update_entry!(df::DataFrame, entry_names::Vector; column_name::Symbol = :Path) = map(entry_name -> update_entry!(df, entry_name; column_name = column_name), entry_names)
+update_entry!(df::DataFrame, entry_names::Vector; column_name::Symbol = :Path, kwargs...) = map(entry_name -> update_entry!(df, entry_name; column_name = column_name, kwargs...), entry_names)
 
-function update_entry(df::DataFrame, entry_idx)
+function update_entry(df::DataFrame, entry_idx; kwargs...)
      new_df = deepcopy(df)
-     update_entry!(new_df, entry_idx)
+     update_entry!(new_df, entry_idx, kwargs...)
      new_df
 end
 
