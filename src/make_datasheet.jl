@@ -243,7 +243,7 @@ function channel_analysis(data::Experiment; mode = :A, verbose = true, use_satur
           analysis[!, :Minima] = -minimum(data, dims = 2)[:, 1, :] |> vec
           #Extract the response 
           if use_saturated_response
-               resp = minimum(data, dims = 2)[:,1,:]
+               resp = abs.(minimum(data, dims = 2)[:,1,:])
           else
                resp = abs.(saturated_response(data))
           end
