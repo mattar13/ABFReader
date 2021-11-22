@@ -26,9 +26,12 @@ all_files = update_datasheet(all_paths, calibration_file, data_file, verbose = t
 run_analysis(all_files, data_file, analyze_subtraction = false)
 
 #%%
-test_root = "E:\\Data\\ERG\\Paul" #This comes from my portable hardrive
+test_root = "E:\\Data\\ERG\\Paul\\NotDetermined\\2019_03_19_WT_P9_m1\\" #This comes from my portable hardrive
 test_paths = test_root |> parse_abf
+sheet = make_sheet(test_paths, calibration_file)
+
 failed_paths = []
+correct_paths = []
 for (i, path) in enumerate(test_paths)
      nt = formatted_split(path, format_bank) #At this time all necessary information is contained in the path name
      if isnothing(nt)
@@ -45,11 +48,12 @@ for (i, path) in enumerate(test_paths)
                println(nt2)
                push!(failed_paths, path)
           else
-               #push!(added_files, path)
+               push!(correct_paths, path)
           end
      end
 end
 failed_paths
+correct_paths
 #%%
 
 fpath = failed_paths[end]
