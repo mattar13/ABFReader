@@ -84,11 +84,11 @@ if Response values are normalized to 1, then \$R_{max}\$ = 1 and can be cancelle
 - (\$\\alpha\$): The temperature-dependent weighting coefficient:  
 - S: he fractional sensitivity
 ### Function usage
-[IN 1]:  IR_dev(I, Ih, n, α, SI, S)
+[IN 1]:  IR_dev(I, Ih, n, α, S)
 
 [OUT 1]: Response_dev
 """
-IR_dev(I, Ih, n, α, SI, S) = α*(1-exp(SI)) + (1-α)*(I^n / (Ih^n + S))
+IR_dev(I, Ih, n, α, S) = α*(1-exp(S*I)) + (1-α)*(I^n / (Ih^n + S))
 
 """
 # Amplification 
