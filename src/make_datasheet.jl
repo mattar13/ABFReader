@@ -233,7 +233,7 @@ end
 update_datasheet(root::String, calibration_file; kwargs...) = update_RS_datasheet(root |> parse_abf, calibration_file; kwargs...)
 
 
-function channel_analysis(data::Experiment; mode = :A, verbose = true)
+function channel_analysis(data::Experiment; mode = :A, verbose = true, use_saturated_response = true)
      analysis = DataFrame()
      #Extract the channel names
      analysis[:, :Path] = fill(data.infoDict["abfPath"], (size(data, 3)))
@@ -242,7 +242,12 @@ function channel_analysis(data::Experiment; mode = :A, verbose = true)
           #Extract the minimum value
           analysis[!, :Minima] = -minimum(data, dims = 2)[:, 1, :] |> vec
           #Extract the response 
-          resp = abs.(saturated_response(data))
+          if use_saturated_response
+               resp = minimum(data, dims = 2)[:,1,:]
+          else
+               resp = abs.(saturated_response(data))
+          end
+          
           analysis[!, :Response] = resp |> vec
           #Extract the latency to response
           analysis[!, :Peak_Time] = time_to_peak(data) |> vec
