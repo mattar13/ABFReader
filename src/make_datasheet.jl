@@ -903,14 +903,14 @@ update_entry!(df::DataFrame, entry_idxs::Vector{Int64}; kwargs...) = map(entry_i
 update_entry!(df::DataFrame, entry_rng::UnitRange{Int64}; kwargs...) = map(entry_idx -> update_entry!(df, entry_idx; kwargs...), collect(entry_rng))
 
 #For now this will be sufficient
-function update_entry!(df::DataFrame, entry_name; column_name::Symbol = :Path, kwargs...)
-     @assert entry_name ∈ df[:, column_name]
+function update_entry!(df::DataFrame, entry_name::String; column_name::Symbol = :Path, kwargs...)
+     #@assert entry_name ∈ df[:, column_name]
      entry_idx = findall(df[:, column_name] .== entry_name)
-     update_entry!(df, entry_idx, kwargs...)
+     update_entry!(df, entry_idx; kwargs...)
 end
 
 #For now this will be sufficient
-update_entry!(df::DataFrame, entry_names::Vector; column_name::Symbol = :Path, kwargs...) = map(entry_name -> update_entry!(df, entry_name; column_name = column_name, kwargs...), entry_names)
+update_entry!(df::DataFrame, entry_names::Vector{String}; kwargs...) = map(entry_name -> update_entry!(df, entry_name; kwargs...), entry_names)
 
 function update_entry(df::DataFrame, entry_idx; kwargs...)
      new_df = deepcopy(df)
@@ -919,7 +919,7 @@ function update_entry(df::DataFrame, entry_idx; kwargs...)
 end
 
 #This function uses the above to actually access the xlsx file and then save it
-function update_entry(filename::String, sheet_name::String, entry_id; save_entry = true, kwargs...)
+function update_entry(filename::String, sheet_name::String, entry_id::Vector{String}; save_entry = true, kwargs...)
      df = DataFrame(XLSX.readtable(filename, sheet_name)...) #open the sheet
      update_entry!(df, entry_id; kwargs...)
      if save_entry
