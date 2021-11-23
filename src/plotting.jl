@@ -145,7 +145,7 @@ Plotting function.
                     linewidth := 1.0
                     linecolor := stim_color
                     seriesalpha := stim_alpha
-                    seriestype := vspan
+                    seriestype := :vspan
                     y := [exp.stim_protocol[swp].timestamps...]
                     #yguide := "$(exp.chNames[ch])($(exp.chUnits[ch]))"
                     ()
