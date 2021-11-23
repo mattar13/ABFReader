@@ -233,7 +233,7 @@ end
 update_datasheet(root::String, calibration_file; kwargs...) = update_RS_datasheet(root |> parse_abf, calibration_file; kwargs...)
 
 
-function channel_analysis(data::Experiment; mode = :A, verbose = true, use_saturated_response = true)
+function channel_analysis(data::Experiment; mode = :A, polarity = 1, verbose = true, use_saturated_response = true)
      analysis = DataFrame()
      #Extract the channel names
 
@@ -265,7 +265,11 @@ function channel_analysis(data::Experiment; mode = :A, verbose = true, use_satur
           analysis[!, :Amp_GOF] = amp_res[2] |> vec
           #println("Analyzed amplification")
      elseif mode == :B
-          resp = abs.(maximum(data, dims = 2))[1, :, :]
+          if polarity == -1 #Because Developmental data doesn't always fit the mode of a depolarization
+               resp = abs.(minimum(data, dims = 2))[1, :, :]
+          else
+               resp = abs.(maximum(data, dims = 2))[1, :, :]
+          end
           analysis[:, :A_Path] = fill(data.infoDict["abfPath"], (size(data, 3)))
           analysis[!, :Response] = resp |> vec
           analysis[!, :Peak_Time] = time_to_peak(data) |> vec
@@ -886,12 +890,12 @@ This function selects a specific entry in the excel file and changes it
      However the functionality of this will not be in adding your data into the cell, 
      but rather rerunning the data analysis on specific entries after they have been updated
 """
-function update_entry!(df::DataFrame, entry_idx::Int64; mode::Symbol = :B, kwargs...)
+function update_entry!(df::DataFrame, entry_idx::Int64; mode::Symbol = :B, t_post = 0.5, kwargs...)
      #first we pull out the data from the dataframe
      println("Adjusting index $entry_idx")
      target_df = df[entry_idx, :]
      data = readABF(target_df) #reread the file
-     data = filter_data(data, t_post = 2.0) #refilter the data
+     data = filter_data(data, t_post = t_post) #refilter the data
      analysis = channel_analysis(data; mode = mode, kwargs...) #re analyze the channel
      for col in Symbol.(DataFrames.names(analysis))
           #println(col)
