@@ -190,23 +190,27 @@ function notch_filter!(trace::Experiment;  center = 60.0, std = 10.0)
     end
 end
 
-function cwt_filter(trace::Experiment; wave = WT.dog2, periods = 1:7, return_cwt = true)
+function cwt_filter(trace::Experiment; wave = dog2, β = 2, periods = 1:7, return_cwt = true)
     data = deepcopy(trace)
-    for swp in 1:size(trace,1)
-        for ch in 1:size(trace,3)
-            y = cwt(trace[swp, :, ch], wavelet(wave))
-            data.data_array[swp,:,ch] .= -sum(real.(y[:,periods]), dims = 2) |> vec;
+    for swp = 1:size(trace, 1)
+        for ch = 1:size(trace, 3)
+            c = wavelet(wave, β = β)
+            y = ContinuousWavelets.cwt(trace[swp, :, ch], c)
+            y[:, periods] .= 0
+            data.data_array[swp, :, ch] .= ContinuousWavelets.icwt(y, c, NaiveDelta()) |> vec
         end
     end
     data
 end
 
-function cwt_filter!(trace::Experiment; wave = WT.dog2, periods = 1:9)
-    
-    for swp in 1:size(trace,1)
-        for ch in 1:size(trace,3)
-            y = cwt(trace[swp, :, ch], wavelet(wave))
-            trace.data_array[swp,:,ch] .= -sum(real.(y[:,periods]), dims = 2) |> vec;
+function cwt_filter!(trace::Experiment; wave = dog2, β = 2, periods = 1:9)
+
+    for swp = 1:size(trace, 1)
+        for ch = 1:size(trace, 3)
+            c = wavelet(wave, β = β)
+            y = ContinuousWavelets.cwt(trace[swp, :, ch], c)
+            y[:, periods] .= 0
+            trace.data_array[swp, :, ch] .= ContinuousWavelets.icwt(y, c, NaiveDelta()) |> vec
         end
     end
 end

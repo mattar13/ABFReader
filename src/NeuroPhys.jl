@@ -10,7 +10,7 @@ using PyCall
 using RecipesBase #This can be removed if plotting is not desired. This makes the code run much faster
 using StatsBase, Statistics
 using Polynomials, Distributions #Used for polynomial fitting
-using DSP, Wavelets, FFTW #Used for filtering
+using DSP, ContinuousWavelets, Wavelets, FFTW #Used for filtering
 using LsqFit #Used for fitting amplification and Intensity Response models
 using JSON2, DataFrames, Query, XLSX #Used for saving data
 using Dates
