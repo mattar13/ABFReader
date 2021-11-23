@@ -116,7 +116,7 @@ function update_datasheet(
      data_file::String;
      verbose = false
 )
-     try
+     #try
           #First we check if the root file exists
           if !isfile(data_file) #If the root file does not exist we need to make it
                all_files = make_sheet(all_paths, calibration_file, verbose = verbose)
@@ -167,7 +167,7 @@ function update_datasheet(
                     end
                end
 
-               removed_files = String[] #If a entry in the dataframe was deleted in the file tree, then remove it 
+               removed_files = Int64[] #If a entry in the dataframe was deleted in the file tree, then remove it 
                for (idx, path) in enumerate(all_files.Path)
                     if path ∉ all_paths
                          push!(removed_files, idx)
@@ -219,15 +219,15 @@ function update_datasheet(
                end
                return all_files
           end
-     catch error
-          println(error)
-          if isa(error, UndefVarError)
-               println("There is a posibility that $(error.var) was not defined in the overall script")
-               throw(error)
-          else
-               throw(error)
-          end
-     end
+     #catch error
+     #     println(error)
+     #     if isa(error, UndefVarError)
+     #          println("There is a posibility that $(error.var) was not defined in the overall script")
+     #          throw(error)
+     #     else
+     #          throw(error)
+     #     end
+     #end
 end
 
 update_datasheet(root::String, calibration_file; kwargs...) = update_RS_datasheet(root |> parse_abf, calibration_file; kwargs...)
