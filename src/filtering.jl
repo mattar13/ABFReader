@@ -190,32 +190,34 @@ function notch_filter!(trace::Experiment;  center = 60.0, std = 10.0)
     end
 end
 
-function cwt_filter(trace::Experiment; wave = dog2, β = 2, periods = 1:9)
+function cwt_filter(trace::Experiment; wave = dog2, β = 2, period_window::Tuple{Int64,Int64} = (1, 9))
     data = deepcopy(trace)
     for swp = 1:size(trace, 1)
         for ch = 1:size(trace, 3)
             c = wavelet(wave, β = β)
             y = ContinuousWavelets.cwt(trace[swp, :, ch], c)
-            y[:, periods] .= 0
-            data.data_array[swp, :, ch] .= ContinuousWavelets.icwt(y, c, NaiveDelta()) |> vec
+            reconstruct = zeros(size(y))
+            reconstruct[:, period_window[1]:period_window[2]] .= y[:, period_window[1]:period_window[2]]
+            data.data_array[swp, :, ch] .= ContinuousWavelets.icwt(reconstruct, c, PenroseDelta()) |> vec
         end
     end
     data
 end
 
-function cwt_filter!(trace::Experiment; wave = dog2, β = 2, periods = 1:9)
+function cwt_filter!(trace::Experiment; wave = dog2, β::Int64 = 2, period_window::Tuple{Int64, Int64} = (1,9))
 
     for swp = 1:size(trace, 1)
         for ch = 1:size(trace, 3)
             c = wavelet(wave, β = β)
             y = ContinuousWavelets.cwt(trace[swp, :, ch], c)
-            y[:, periods] .= 0
-            trace.data_array[swp, :, ch] .= ContinuousWavelets.icwt(y, c, NaiveDelta()) |> vec
+            reconstruct = zeros(size(y))
+            reconstruct[:, period_window[1]:period_window[2]] .= y[:, period_window[1]:period_window[2]]
+            trace.data_array[swp, :, ch] .= ContinuousWavelets.icwt(reconstruct, c, PenroseDelta()) |> vec
         end
     end
 end
 
-function dwt_filter(trace::Experiment; wave = WT.db4, filter_cutoff::Int64 = 8)
+function dwt_filter(trace::Experiment; wave = WT.db4, period_window::Tuple{Int64, Int64} = (1,8))
     #In this case we have to limit the analyis to the window of dyadic time
     #This means that we can only analyze sizes if they are equal to 2^dyadic
     data = deepcopy(trace)
@@ -224,7 +226,7 @@ function dwt_filter(trace::Experiment; wave = WT.db4, filter_cutoff::Int64 = 8)
     for swp = 1:size(data, 1), ch = 1:size(data, 3)
         x = data[swp, 1:2^dyad_n, ch]
         xt = dwt(x, wavelet(wave), dyad_n)
-        xt[2^filter_cutoff:end] .= 0.0
+        xt[2^period_window[1]:2^period_window[2]] .= 0.0
         data.data_array[swp, 1:2^dyad_n, ch] .= idwt(xt, wavelet(wave))
     end
     data
@@ -311,7 +313,12 @@ function fft_spectrum(data::Experiment)
 end
 
 #%% a common filter function for simplification. Remember that this is an inplace version
-function filter_data!(data::Experiment; t_pre = 1.0, t_post = 4.0, highpass = false, EI_bandpass = 100.0, lowpass = 300.0) 
+function filter_data!(data::Experiment; 
+        t_pre = 1.0, t_post = 4.0, 
+        highpass = false, EI_bandpass = 100.0, lowpass = 300.0, 
+        dwt_pick = false, dwt_periods = 9,
+        cwt_pick = false, cwt_periods = 1:10
+    ) 
     truncate_data!(data, t_pre = t_pre, t_post = t_post);
 	baseline_cancel!(data, mode = :slope); 
 
