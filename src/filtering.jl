@@ -190,7 +190,7 @@ function notch_filter!(trace::Experiment;  center = 60.0, std = 10.0)
     end
 end
 
-function cwt_filter(trace::Experiment; wave = dog2, β = 2, period_window::Tuple{Int64,Int64} = (1, 9))
+function cwt_filter(trace::Experiment; wave = cDb2, β = 2, dual_window = NaiveDelta(), period_window::Tuple{Int64,Int64} = (1, 9))
     data = deepcopy(trace)
     for swp = 1:size(trace, 1)
         for ch = 1:size(trace, 3)
@@ -198,13 +198,13 @@ function cwt_filter(trace::Experiment; wave = dog2, β = 2, period_window::Tuple
             y = ContinuousWavelets.cwt(trace[swp, :, ch], c)
             reconstruct = zeros(size(y))
             reconstruct[:, period_window[1]:period_window[2]] .= y[:, period_window[1]:period_window[2]]
-            data.data_array[swp, :, ch] .= ContinuousWavelets.icwt(reconstruct, c, PenroseDelta()) |> vec
+            data.data_array[swp, :, ch] .= ContinuousWavelets.icwt(reconstruct, c, dual_window) |> vec
         end
     end
     data
 end
 
-function cwt_filter!(trace::Experiment; wave = dog2, β::Int64 = 2, period_window::Tuple{Int64, Int64} = (1,9))
+function cwt_filter!(trace::Experiment; wave = cDb2, β::Int64 = 2, period_window::Tuple{Int64, Int64} = (1,9))
 
     for swp = 1:size(trace, 1)
         for ch = 1:size(trace, 3)
