@@ -217,17 +217,21 @@ function cwt_filter!(trace::Experiment; wave = dog2, β::Int64 = 2, period_windo
     end
 end
 
-function dwt_filter(trace::Experiment; wave = WT.db4, period_window::Tuple{Int64, Int64} = (1,8))
+function dwt_filter(trace::Experiment; wave = WT.db4, period_window::Tuple{Int64, Int64} = (1, 8))
     #In this case we have to limit the analyis to the window of dyadic time
     #This means that we can only analyze sizes if they are equal to 2^dyadic
     data = deepcopy(trace)
     dyad_n = trunc(Int64, log(2, size(data, 2)))
-    println(dyad_n)
+    if period_window[2] > dyad_n
+        println("Period Window larger than dyad")
+        period_window = (period_window[1], dyad_n)
+    end
     for swp = 1:size(data, 1), ch = 1:size(data, 3)
         x = data[swp, 1:2^dyad_n, ch]
         xt = dwt(x, wavelet(wave), dyad_n)
-        xt[2^period_window[1]:2^period_window[2]] .= 0.0
-        data.data_array[swp, 1:2^dyad_n, ch] .= idwt(xt, wavelet(wave))
+        reconstruct = zeros(size(xt))
+        reconstruct[2^period_window[1]:2^(period_window[2])] .= xt[2^period_window[1]:2^(period_window[2])]
+        data.data_array[swp, 1:2^dyad_n, ch] .= idwt(reconstruct, wavelet(wave))
     end
     data
 end
