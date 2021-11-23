@@ -894,7 +894,7 @@ function update_entry!(df::DataFrame, entry_idx::Int64; mode::Symbol = :B, kwarg
      data = filter_data(data, t_post = 2.0) #refilter the data
      analysis = channel_analysis(data; mode = mode, kwargs...) #re analyze the channel
      for col in Symbol.(DataFrames.names(analysis))
-          println(col)
+          #println(col)
           target_df[col] = analysis[1, col]
      end
      #target_df.Response = 10.0
@@ -933,7 +933,7 @@ end
 #This function uses the above to actually access the xlsx file and then save it
 function update_entry(filename::String, sheet_name::String, entry_id; save_entry = true, kwargs...)
      df = DataFrame(XLSX.readtable(filename, sheet_name)...) #open the sheet
-     println(kwargs)
+     #println(kwargs)
      update_entry!(df, entry_id; kwargs...)
      if save_entry
           XLSX.openxlsx(filename, mode = "rw") do xf
