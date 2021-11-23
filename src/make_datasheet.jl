@@ -236,18 +236,19 @@ update_datasheet(root::String, calibration_file; kwargs...) = update_RS_datashee
 function channel_analysis(data::Experiment; mode = :A, verbose = true, use_saturated_response = true)
      analysis = DataFrame()
      #Extract the channel names
-     analysis[:, :Path] = fill(data.infoDict["abfPath"], (size(data, 3)))
-     analysis[!, :Channel] = data.chNames
+
      if mode == :A
+          analysis[:, :Path] = fill(data.infoDict["abfPath"], (size(data, 3)))
+          analysis[!, :Channel] = data.chNames
           #Extract the minimum value
           analysis[!, :Minima] = -minimum(data, dims = 2)[:, 1, :] |> vec
           #Extract the response 
           if use_saturated_response
-               resp = abs.(minimum(data, dims = 2)[:,1,:])
+               resp = abs.(minimum(data, dims = 2)[:, 1, :])
           else
                resp = abs.(saturated_response(data))
           end
-          
+     
           analysis[!, :Response] = resp |> vec
           #Extract the latency to response
           analysis[!, :Peak_Time] = time_to_peak(data) |> vec
@@ -265,10 +266,11 @@ function channel_analysis(data::Experiment; mode = :A, verbose = true, use_satur
           #println("Analyzed amplification")
      elseif mode == :B
           resp = abs.(maximum(data, dims = 2))[1, :, :]
+          analysis[:, :A_Path] = fill(data.infoDict["abfPath"], (size(data, 3)))
           analysis[!, :Response] = resp |> vec
           analysis[!, :Peak_Time] = time_to_peak(data) |> vec
           analysis[!, :Int_Time] = integral(data) |> vec
-
+     
           rec_res = recovery_tau(data, resp)
           analysis[!, :Tau_Rec] = rec_res[1] |> vec
           analysis[!, :Tau_GOF] = rec_res[2] |> vec
@@ -277,7 +279,7 @@ function channel_analysis(data::Experiment; mode = :A, verbose = true, use_satur
           analysis[!, :Response] = resp |> vec
           analysis[!, :Peak_Time] = time_to_peak(data) |> vec
           analysis[!, :Int_Time] = integral(data) |> vec
-
+     
           rec_res = recovery_tau(data, resp)
           analysis[!, :Tau_Rec] = rec_res[1] |> vec
           analysis[!, :Tau_GOF] = rec_res[2] |> vec
@@ -884,33 +886,43 @@ This function selects a specific entry in the excel file and changes it
      However the functionality of this will not be in adding your data into the cell, 
      but rather rerunning the data analysis on specific entries after they have been updated
 """
-function update_entry!(df::DataFrame, entry_idx::Int64; kwargs...)
+function update_entry!(df::DataFrame, entry_idx::Int64; mode::Symbol = :B, kwargs...)
      #first we pull out the data from the dataframe
      println("Adjusting index $entry_idx")
      target_df = df[entry_idx, :]
      data = readABF(target_df) #reread the file
      data = filter_data(data, t_post = 2.0) #refilter the data
-     analysis = channel_analysis(data; kwargs...) #re analyze the channel
+     analysis = channel_analysis(data; mode = mode, kwargs...) #re analyze the channel
      for col in Symbol.(DataFrames.names(analysis))
+          println(col)
           target_df[col] = analysis[1, col]
      end
      #target_df.Response = 10.0
      df[entry_idx, :] = target_df
 end
 
-update_entry!(df::DataFrame, entry_idxs::Vector{Int64}; kwargs...) = map(entry_idx -> update_entry!(df, entry_idx; kwargs...), entry_idxs)
-
-update_entry!(df::DataFrame, entry_rng::UnitRange{Int64}; kwargs...) = map(entry_idx -> update_entry!(df, entry_idx; kwargs...), collect(entry_rng))
-
-#For now this will be sufficient
-function update_entry!(df::DataFrame, entry_name::String; column_name::Symbol = :Path, kwargs...)
+function update_entry!(df::DataFrame, entry_name::String; column_name::Symbol = :A_Path, kwargs...)
      #@assert entry_name ∈ df[:, column_name]
+     println(column_name)
+     println(kwargs)
      entry_idx = findall(df[:, column_name] .== entry_name)
      update_entry!(df, entry_idx; kwargs...)
 end
 
+function update_entry!(df::DataFrame, entry_idxs::Vector{Int64}; kwargs...) 
+     for entry in entry_idxs
+          update_entry!(df, entry; kwargs...)
+     end
+end
+
+update_entry!(df::DataFrame, entry_rng::UnitRange{Int64}; kwargs...) = map(entry_idx -> update_entry!(df, entry_idx; kwargs...), collect(entry_rng))
+
 #For now this will be sufficient
-update_entry!(df::DataFrame, entry_names::Vector{String}; kwargs...) = map(entry_name -> update_entry!(df, entry_name; kwargs...), entry_names)
+function update_entry!(df::DataFrame, entry_names::Vector{String}; kwargs...)
+     for entry in entry_names
+          update_entry!(df, entry; kwargs...)
+     end
+end
 
 function update_entry(df::DataFrame, entry_idx; kwargs...)
      new_df = deepcopy(df)
@@ -919,8 +931,9 @@ function update_entry(df::DataFrame, entry_idx; kwargs...)
 end
 
 #This function uses the above to actually access the xlsx file and then save it
-function update_entry(filename::String, sheet_name::String, entry_id::Vector{String}; save_entry = true, kwargs...)
+function update_entry(filename::String, sheet_name::String, entry_id; save_entry = true, kwargs...)
      df = DataFrame(XLSX.readtable(filename, sheet_name)...) #open the sheet
+     println(kwargs)
      update_entry!(df, entry_id; kwargs...)
      if save_entry
           XLSX.openxlsx(filename, mode = "rw") do xf
