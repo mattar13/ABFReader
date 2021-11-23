@@ -518,9 +518,13 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true)
           if analyze_subtraction
                resp = abs.(maximum(B_data, dims = 2))[1, :, :]
           else
-               minima = minimum(B_data, dims = 2)[1, :, :]
-               maxima = maximum(B_data, dims = 2)[1, :, :]
-               resp = abs.(minima .- maxima)
+               if exp.Age > 11 #There is no b-wave below P11, so we just need to take the minimum
+                    minima = minimum(B_data, dims = 2)[1, :, :]
+                    maxima = maximum(B_data, dims = 2)[1, :, :]
+                    resp = abs.(minima .- maxima)
+               else
+                    resp = abs.(minimum(B_data, dims = 2)[1, :, :])
+               end
           end
           peak_time = time_to_peak(B_data)
           #Extract the integrated time
