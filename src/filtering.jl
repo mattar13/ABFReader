@@ -190,7 +190,7 @@ function notch_filter!(trace::Experiment;  center = 60.0, std = 10.0)
     end
 end
 
-function cwt_filter(trace::Experiment; wave = dog2, β = 2, periods = 1:7, return_cwt = true)
+function cwt_filter(trace::Experiment; wave = dog2, β = 2, periods = 1:9)
     data = deepcopy(trace)
     for swp = 1:size(trace, 1)
         for ch = 1:size(trace, 3)
