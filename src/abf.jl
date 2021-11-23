@@ -4,7 +4,7 @@ ByteDict = Dict(
     :I => Int32, :i => UInt32,
     :H => Int16, :h => UInt16,
     :B => Int8, :b => UInt8,
-    :s => String, :f => Float32, 
+    :s => String, :f => Float32,
 )
 
 digitizers = Dict(
@@ -20,55 +20,55 @@ digitizers = Dict(
 )
 
 epoch_type = Dict(
-    0 => "Off", 
-    1 => "Step", 
-    2 => "Ramp", 
-    3 => "Pulse", 
-    4 => "Tri", 
-    5 => "Cos", 
+    0 => "Off",
+    1 => "Step",
+    2 => "Ramp",
+    3 => "Pulse",
+    4 => "Tri",
+    5 => "Cos",
     7 => "Biphasic"
 )
 
 #This is the default ABF2 Header bytemap
 header_bytemap = [
-     ("sFileSignature", "4s"),
-     ("fFileVersionNumber", "4b"),
-     ("uFileInfoSize", "I"),
-     ("lActualEpisodes", "I"),
-     ("uFileStartDate", "I"),
-     ("uFileStartTimeMS", "I"),
-     ("uStopwatchTime", "I"),
-     ("nFileType", "H"),
-     ("nDataFormat", "H"),
-     ("nSimultaneousScan", "H"),
-     ("nCRCEnable", "H"),
-     ("uFileCRC", "I"),
-     ("FileGUID", "16b"),
-     ("uCreatorVersion", "4b"),
-     ("uCreatorNameIndex", "I"),
-     ("uModifierVersion", "I"),
-     ("uModifierNameIndex", "I"),
-     ("uProtocolPathIndex", "I"),
-     #These are the useful sections
-     ("ProtocolSection", "IIL", 76),
-     ("ADCSection", "IIL", 92),
-     ("DACSection", "IIL", 108),
-     ("EpochSection", "IIL", 124),
-     ("ADCPerDACSection", "IIL", 140),
-     ("EpochPerDACSection", "IIL", 156),
-     ("StringsSection", "IIL", 220),
-     ("DataSection", "IIL", 236),
-     ("TagSection", "IIL", 252),
-     # Sections I don't find useful
-     ("UserListSection", "IIL", 172),
-     ("StatsRegionSection", "IIL", 188),
-     ("MathSection", "IIL", 204),
-     ("ScopeSection", "IIL", 268),
-     ("DeltaSection", "IIL", 284),
-     ("VoiceTagSection", "IIL", 300),
-     ("SynchArraySection", "IIL", 316),
-     ("AnnotationSection", "IIL", 332),
-     ("StatsSection", "IIL", 348)
+    ("sFileSignature", "4s"),
+    ("fFileVersionNumber", "4b"),
+    ("uFileInfoSize", "I"),
+    ("lActualEpisodes", "I"),
+    ("uFileStartDate", "I"),
+    ("uFileStartTimeMS", "I"),
+    ("uStopwatchTime", "I"),
+    ("nFileType", "H"),
+    ("nDataFormat", "H"),
+    ("nSimultaneousScan", "H"),
+    ("nCRCEnable", "H"),
+    ("uFileCRC", "I"),
+    ("FileGUID", "16b"),
+    ("uCreatorVersion", "4b"),
+    ("uCreatorNameIndex", "I"),
+    ("uModifierVersion", "I"),
+    ("uModifierNameIndex", "I"),
+    ("uProtocolPathIndex", "I"),
+    #These are the useful sections
+    ("ProtocolSection", "IIL", 76),
+    ("ADCSection", "IIL", 92),
+    ("DACSection", "IIL", 108),
+    ("EpochSection", "IIL", 124),
+    ("ADCPerDACSection", "IIL", 140),
+    ("EpochPerDACSection", "IIL", 156),
+    ("StringsSection", "IIL", 220),
+    ("DataSection", "IIL", 236),
+    ("TagSection", "IIL", 252),
+    # Sections I don't find useful
+    ("UserListSection", "IIL", 172),
+    ("StatsRegionSection", "IIL", 188),
+    ("MathSection", "IIL", 204),
+    ("ScopeSection", "IIL", 268),
+    ("DeltaSection", "IIL", 284),
+    ("VoiceTagSection", "IIL", 300),
+    ("SynchArraySection", "IIL", 316),
+    ("AnnotationSection", "IIL", 332),
+    ("StatsSection", "IIL", 348)
 ]
 
 protocol_bytemap = [
@@ -172,11 +172,7 @@ adc_bytemap = [
     ("bEnabledDuringPN", "b"),  # 71
     ("nStatsChannelPolarity", "H"),  # 72
     ("lADCChannelNameIndex", "I"),  # 74
-    ("lADCUnitsIndex", "I"),  # 78
-
-
-
-]
+    ("lADCUnitsIndex", "I"),]
 
 
 dac_bytemap = [
@@ -272,7 +268,7 @@ mutable struct Epoch{T}
     pulseWidth::T
 end
 
-Epoch() =  Epoch(" ", "Off", 0, 0, 0.0, 0.0, 0.0, 0.0, zeros(Int64, 8), 0.0, 0.0)
+Epoch() = Epoch(" ", "Off", 0, 0, 0.0, 0.0, 0.0, 0.0, zeros(Int64, 8), 0.0, 0.0)
 #EpochTable will be instantiated last
 
 mutable struct EpochSweepWaveform
@@ -299,16 +295,16 @@ EpochSweepWaveform() = EpochSweepWaveform([], [], [], [], [], [], [])
 
 function addEpoch(e::EpochSweepWaveform, pt1, pt2, level, type, pulseWidth, pulsePeriod, digitalState)
     push!(e.p1s, round(Int64, pt1))
-    push!(e.p2s, round(Int64, pt2)) 
+    push!(e.p2s, round(Int64, pt2))
     push!(e.levels, level)
-    push!(e.types, type) 
+    push!(e.types, type)
     push!(e.pulseWidths, pulseWidth)
     push!(e.pulsePeriods, pulsePeriod)
     push!(e.digitalStates, digitalState)
 end
 
 
-function EpochTable(abf::Dict{String, Any}, channel::Int64)
+function EpochTable(abf::Dict{String,Any}, channel::Int64)
     #channel has to be a channel number in this case
     sampleRateHz = abf["dataRate"]
     holdingLevel = abf["holdingCommand"][channel]
@@ -326,7 +322,7 @@ function EpochTable(abf::Dict{String, Any}, channel::Int64)
         #Create a list of Epochs
         for (i, epochDACNum) in enumerate(abf["EpochPerDACSection"]["nDACNum"])
             #only create a table for the selected channel
-            if epochDACNum == (channel-1)
+            if epochDACNum == (channel - 1)
                 epoch = Epoch()
                 epoch.dacNum = epochDACNum
                 epochNumber = abf["EpochPerDACSection"]["nEpochNum"][i]
@@ -338,7 +334,7 @@ function EpochTable(abf::Dict{String, Any}, channel::Int64)
                 epoch.durationDelta = abf["EpochPerDACSection"]["lEpochDurationInc"][i]
                 epoch.pulsePeriod = abf["EpochPerDACSection"]["lEpochPulsePeriod"][i]
                 epoch.pulseWidth = abf["EpochPerDACSection"]["lEpochPulseWidth"][i]
-                
+
                 #Add the digital channel
                 if epochDACNum == abf["ProtocolSection"]["nActiveDACChannel"]
                     digOut = abf["EpochSection"]["nEpochDigitalOutput"][i]
@@ -362,23 +358,23 @@ function EpochTable(abf::Dict{String, Any}, channel::Int64)
         end
         returnToHold = abf["DACSection"]["nInterEpisodeLevel"][channel] == 1
     end
-    
+
     epochWaveformsBySweep = []
     #Create a list of waveform objects by sweep    
     lastSweepLastLevel = holdingLevel
     for sweep in abf["sweepList"]
         ep = EpochSweepWaveform()
         #Add pre epoch values
-        preEpochEndPoint = abf["sweepPointCount"]/64.0
+        preEpochEndPoint = abf["sweepPointCount"] / 64.0
         pt2 = preEpochEndPoint
         addEpoch(ep, 0.0, preEpochEndPoint, lastSweepLastLevel, "Step", 0, 0, zeros(Int64, 8))
-        
+
         position = preEpochEndPoint
         level = holdingLevel
         for epoch in epochs
             duration = epoch.duration + epoch.durationDelta * sweep
             pt1, pt2 = (position, position + duration)
-            level = epoch.level + epoch.levelDelta*sweep
+            level = epoch.level + epoch.levelDelta * sweep
             addEpoch(ep, pt1, pt2, level, epoch.epochType, epoch.pulseWidth, epoch.pulsePeriod, epoch.digitalPattern)
             position = pt2
         end
@@ -396,7 +392,7 @@ end
 
 function getAnalogWaveform(e::EpochSweepWaveform)
     sweepC = zeros(e.p2s[end])
-    for i in 1:length(e.levels)
+    for i = 1:length(e.levels)
         #Easier access to epoch
         epochType = e.types[i]
         chunkSize = e.p2s[i] - e.p1s[i]
@@ -410,20 +406,20 @@ function getAnalogWaveform(e::EpochSweepWaveform)
         end
         levelDelta = level - levelBefore
         if e.pulsePeriods[i] > 0
-            pulseCount = Int64(chunkSize/e.pulsePeriods[i])
+            pulseCount = Int64(chunkSize / e.pulsePeriods[i])
         else
             pulseCount = 0
         end
 
         if epochType == "Step"
-            chunk = fill(level, chunkSize)               
+            chunk = fill(level, chunkSize)
         elseif epochType == "Ramp"
             chunk = LinRange(levelBefore, level, chunkSize)
         elseif epochType == "Pulse"
             chunk = fill(levelBefore, chunkSize)
-            for pulse in 1:pulseCount
-                p1 = Int64(pulsePeriod*pulse)
-                p2 = Int64(p1+pulseWidth)
+            for pulse = 1:pulseCount
+                p1 = Int64(pulsePeriod * pulse)
+                p2 = Int64(p1 + pulseWidth)
                 chunk[p1:p2] = level
             end
         elseif epochType == "Tri"
@@ -432,19 +428,19 @@ function getAnalogWaveform(e::EpochSweepWaveform)
         #digitalStateForChannel = digitalState[channel]
         #add the chunk to the sweep
         sweepC[(e.p1s[i]+1):(e.p2s[i])]
-    end 
+    end
     return sweepC
 end
 
 function getDigitalWaveform(e::EpochSweepWaveform, channel)
     sweepD = zeros(e.p2s[end])
-    for i in 1:length(e.levels)-1
+    for i = 1:length(e.levels)-1
         digitalState = e.digitalStates[i]
-        digitalStateForChannel = digitalState[channel]*5 #for voltage output
+        digitalStateForChannel = digitalState[channel] * 5 #for voltage output
         #println(e.p1s[i])
         #println(e.p2s[i])
         sweepD[(e.p1s[i]+1):(e.p2s[i]+1)] .= digitalStateForChannel
-    end 
+    end
     return sweepD
 end
 
@@ -468,9 +464,9 @@ extracts a waveform from the data, digital stimuli, or analog stimuli
         digital -> this is the digital stimulus of the file
 ...
 """
-function getWaveform(abf::Dict{String, Any}, sweep::Int64, channel::Int64; 
-        channel_type = :analog
-    )
+function getWaveform(abf::Dict{String,Any}, sweep::Int64, channel::Int64;
+    channel_type = :analog
+)
     if channel_type == :data
         #rather than extracting the digital or analog stimuli, we use the actual ADC
         return abf["data"][sweep, :, channel]
@@ -479,7 +475,7 @@ function getWaveform(abf::Dict{String, Any}, sweep::Int64, channel::Int64;
         epoch = epochTable.epochWaveformBySweep[sweep] #Load the sweep
         return getAnalogWaveform(epoch)
     elseif channel_type == :digital
-        activeDACch = abf["ProtocolSection"]["nActiveDACChannel"]+1
+        activeDACch = abf["ProtocolSection"]["nActiveDACChannel"] + 1
         epochTable = abf["EpochTableByChannel"][activeDACch] #Load the location of the digital stim
         epoch = epochTable.epochWaveformBySweep[sweep] #Load the sweep
         return getDigitalWaveform(epoch, channel) #Load the digital channel
@@ -487,11 +483,11 @@ function getWaveform(abf::Dict{String, Any}, sweep::Int64, channel::Int64;
     end
 end
 
-function getWaveform(abf::Dict{String, Any}, sweep::Union{Vector{Int64}, Int64}, channel::String; 
-        warn_bad_channel = true
-    )
+function getWaveform(abf::Dict{String,Any}, sweep::Union{Vector{Int64},Int64}, channel::String;
+    warn_bad_channel = true
+)
     #first we check to see if the channel name is in the adc names
-    adc_idx = findall(x -> channel == x,  abf["adcNames"])
+    adc_idx = findall(x -> channel == x, abf["adcNames"])
     dac_idx = findall(x -> channel == x, abf["dacNames"])
     if !isempty(adc_idx)
         return getWaveform(abf, sweep, adc_idx[1]; channel_type = :data)
@@ -500,24 +496,25 @@ function getWaveform(abf::Dict{String, Any}, sweep::Union{Vector{Int64}, Int64},
     else
         channel_ID = lowercase(channel[1:end-1])
         channel_ID = split(channel_ID, " ")[1] |> string
-        channel_num = tryparse(Int64, channel[end]|>string)
+        channel_num = tryparse(Int64, channel[end] |> string)
         if channel_ID == "d" || channel_ID == "dig" || channel_ID == "digital"
-            return getWaveform(abf, sweep, channel_num+1; channel_type = :digital)
-        elseif channel_ID == "an" || channel_ID == "a" || channel_ID == "ana" ||channel_ID == "analog"
-            return getWaveform(abf, sweep, channel_num+1)
+            return getWaveform(abf, sweep, channel_num + 1; channel_type = :digital)
+        elseif channel_ID == "an" || channel_ID == "a" || channel_ID == "ana" || channel_ID == "analog"
+            return getWaveform(abf, sweep, channel_num + 1)
         elseif warn_bad_channel
-            @warn begin "
-            Format [$channel] is invalid
-            
-            Please use one of these formats:
+            @warn begin
+                "
+    Format [$channel] is invalid
+    
+    Please use one of these formats:
 
-            1) An ADC name from one of these: [$(map(x -> "$x, ", abf["adcNames"]) |>join)]   
-            2) Analog: [A, An , Ana  , Analog ]
-            3) A DAC name from one of these: [$(map(x -> "$x, ", abf["dacNames"]) |>join)]
-            4) Digital: [D , Dig , Digital]
+    1) An ADC name from one of these: [$(map(x -> "$x, ", abf["adcNames"]) |>join)]   
+    2) Analog: [A, An , Ana  , Analog ]
+    3) A DAC name from one of these: [$(map(x -> "$x, ", abf["dacNames"]) |>join)]
+    4) Digital: [D , Dig , Digital]
 
-            "
-            end 
+    "
+            end
             #throw("Improper channel ID")
             return nothing #This may be because of a bad channel
         else
@@ -526,16 +523,16 @@ function getWaveform(abf::Dict{String, Any}, sweep::Union{Vector{Int64}, Int64},
     end
 end
 
-function getWaveform(abf::Dict{String, Any}, sweep::Int64, channels::Vector{T}; kwargs...) where T
-    waveforms = zeros(1, abf["sweepPointCount"], channels|>length)
+function getWaveform(abf::Dict{String,Any}, sweep::Int64, channels::Vector{T}; kwargs...) where {T}
+    waveforms = zeros(1, abf["sweepPointCount"], channels |> length)
     for (i, channel) in enumerate(channels)
         waveforms[1, :, i] = getWaveform(abf, sweep, channel; kwargs...)
     end
     return waveforms
 end
 
-function getWaveform(abf::Dict{String, Any}, sweeps::Vector{Int64}, channel::T; kwargs...) where T
-    waveforms = zeros(sweeps|>length, abf["sweepPointCount"], 1)
+function getWaveform(abf::Dict{String,Any}, sweeps::Vector{Int64}, channel::T; kwargs...) where {T}
+    waveforms = zeros(sweeps |> length, abf["sweepPointCount"], 1)
     for (i, sweep) in enumerate(sweeps)
         waveforms[i, :, 1] = getWaveform(abf, sweep, channel; kwargs...)
     end
@@ -543,27 +540,27 @@ function getWaveform(abf::Dict{String, Any}, sweeps::Vector{Int64}, channel::T; 
 end
 
 #In this case, channels can come as a string or a int, it will get passes to the correct place
-function getWaveform(abf::Dict{String, Any}, sweeps::Vector{Int64}, channels::Vector{T}; kwargs...) where T
-    waveforms = zeros(sweeps|>length, abf["sweepPointCount"], channels|>length)
+function getWaveform(abf::Dict{String,Any}, sweeps::Vector{Int64}, channels::Vector{T}; kwargs...) where {T}
+    waveforms = zeros(sweeps |> length, abf["sweepPointCount"], channels |> length)
     for (i, sweep) in enumerate(sweeps), (j, channel) in enumerate(channels)
         waveforms[i, :, j] .= getWaveform(abf, sweep, channel; kwargs...)
     end
     return waveforms
 end
 
-function getWaveform(abf::Dict{String, Any}, channel::String; kwargs...)
+function getWaveform(abf::Dict{String,Any}, channel::String; kwargs...)
     #This function gets called to iterate through all sweeps
     waveforms = zeros(abf["sweepCount"], abf["sweepPointCount"], 1)
-    for i in 1:abf["sweepCount"]
+    for i = 1:abf["sweepCount"]
         waveforms[i, :, 1] .= getWaveform(abf, i, channel; kwargs...)
     end
     return waveforms
 end
 
-function getWaveform(abf::Dict{String, Any}, channels::Vector{String}; kwargs...)
+function getWaveform(abf::Dict{String,Any}, channels::Vector{String}; kwargs...)
     #This function gets called to iterate through all sweeps
     waveforms = zeros(abf["sweepCount"], abf["sweepPointCount"], length(channels))
-    for i in 1:abf["sweepCount"], (j, channel) = enumerate(channels)
+    for i = 1:abf["sweepCount"], (j, channel) in enumerate(channels)
         #we need to protect against mismatched channels
         waveform = getWaveform(abf, i, channel; kwargs...)
         if !isnothing(waveform)
@@ -575,9 +572,9 @@ function getWaveform(abf::Dict{String, Any}, channels::Vector{String}; kwargs...
     return waveforms
 end
 
-function getWaveform(abf::Dict{String, Any}, channel::Int64; kwargs...)
+function getWaveform(abf::Dict{String,Any}, channel::Int64; kwargs...)
     waveforms = zeros(abf["sweepCount"], abf["sweepPointCount"], 1)
-    for i in 1:abf["sweepCount"]
+    for i = 1:abf["sweepCount"]
         waveforms[i, :, 1] = getWaveform(abf, i, channel; kwargs...)
     end
     return waveforms
@@ -587,7 +584,7 @@ end
 These functions handle the byte interpretations of the ABF file
 
 """
-function readStruct(f::IOStream, byteType::String)
+function readStruct(f::IO, byteType::String)
     b = UInt8[0x00] #Either this needs to be UInt8 or Int8
     if length(byteType) > 1
         first_char = tryparse(Int64, byteType[1] |> string)
@@ -599,7 +596,7 @@ function readStruct(f::IOStream, byteType::String)
             if type_conv == String
                 n_bytes = parse(Int64, byteType[1:end-1])
             else
-                n_bytes = parse(Int64, byteType[1:end-1])*sizeof(type_conv)
+                n_bytes = parse(Int64, byteType[1:end-1]) * sizeof(type_conv)
             end
         end
     else
@@ -614,7 +611,7 @@ function readStruct(f::IOStream, byteType::String)
     readbytes!(f, b, n_bytes)
     if type_conv == String
         val = b |> String
-    elseif type_conv == Int16 || type_conv == UInt16 
+    elseif type_conv == Int16 || type_conv == UInt16
         val = Vector{type_conv}(b)[1:2:end]
     elseif type_conv == Int8 || type_conv == UInt8
         val = bytes2hex(b)
@@ -624,7 +621,7 @@ function readStruct(f::IOStream, byteType::String)
     return val
 end
 
-function readStruct(f::IOStream, byteType::String, seekTo::Int64; repeat = 1)
+function readStruct(f::IO, byteType::String, seekTo::Int64; repeat = 1)
     seek(f, seekTo)
     if repeat == 1
         return readStruct(f, byteType)
@@ -633,12 +630,12 @@ function readStruct(f::IOStream, byteType::String, seekTo::Int64; repeat = 1)
     end
 end
 
-function readHeaderSection(f::IOStream; 
-        bytemap = header_bytemap, 
-        check_bit_pos = false
-    )
+function readHeaderSection(f::IO;
+    bytemap = header_bytemap,
+    check_bit_pos = false
+)
     #check the version
-    headerSection = Dict{String, Any}()
+    headerSection = Dict{String,Any}()
     sFileSignature = readStruct(f, "4s")
     headerSection["sFileSignature"] = sFileSignature
     if sFileSignature == "ABF "
@@ -659,7 +656,7 @@ function readHeaderSection(f::IOStream;
         headerSection["lDataSectionPtr"] = readStruct(f, "i", 40)
         headerSection["lTagSectionPtr"] = readStruct(f, "i", 44)
         headerSection["lNumTagEntries"] = readStruct(f, "i", 48)
-        
+
         # missing entries
         headerSection["lSynchArrayPtr"] = readStruct(f, "i", 92)
         headerSection["lSynchArraySize"] = readStruct(f, "i", 96)
@@ -707,7 +704,7 @@ function readHeaderSection(f::IOStream;
         headerSection["fInstrumentOffset"] = readStruct(f, "16f", 986)
         headerSection["fSignalGain"] = readStruct(f, "16f", 1050)
         headerSection["fSignalOffset"] = readStruct(f, "16f", 1114)
-        
+
         headerSection["sDACChannelName"] = readStruct(f, "10s", 1306, repeat = 4)
         headerSection["sDACChannelUnit"] = readStruct(f, "8s", 1346, repeat = 4)
         # missing entries
@@ -800,8 +797,8 @@ function readHeaderSection(f::IOStream;
         headerSection["nCreatorMinorVersion"] = readStruct(f, "h", 5800)
         headerSection["nCreatorBugfixVersion"] = readStruct(f, "h", 5802)
         headerSection["nCreatorBuildVersion"] = readStruct(f, "h", 5804)
-        
-         # EXTENDED GROUP 13 - Statistics measurements (388 bytes)
+
+        # EXTENDED GROUP 13 - Statistics measurements (388 bytes)
         # missing entries
         # GROUP 18 - Application version data (16 bytes)
         headerSection["uFileGUID"] = readStruct(f, "16B", 5282)
@@ -817,11 +814,11 @@ function readHeaderSection(f::IOStream;
         # GROUP 23 - Post-processing actions (210 bytes)
         # missing entries
         # format version number
-        versionPartsInt = digits(Int64(headerSection["fFileVersionNumber"][1]*1000), base = 10) |> reverse
+        versionPartsInt = digits(Int64(headerSection["fFileVersionNumber"][1] * 1000), base = 10) |> reverse
         versionParts = map(x -> "$(string(x)).", collect(versionPartsInt)) |> join
         headerSection["abfVersion"] = versionPartsInt
         headerSection["abfVersionString"] = versionParts
-        abfVersionDict = Dict{String, Int}()
+        abfVersionDict = Dict{String,Int}()
 
         abfVersionDict["major"] = versionPartsInt[1]
         abfVersionDict["minor"] = versionPartsInt[2]
@@ -829,7 +826,7 @@ function readHeaderSection(f::IOStream;
         abfVersionDict["build"] = versionPartsInt[4]
         headerSection["abfVersionDict"] = abfVersionDict
         #Format the Creater Info Dict
-        headerSection["creatorVersionDict"] = Dict{String, Any}()
+        headerSection["creatorVersionDict"] = Dict{String,Any}()
         headerSection["creatorVersionDict"]["major"] = headerSection["nCreatorMajorVersion"]
         headerSection["creatorVersionDict"]["minor"] = headerSection["nCreatorMinorVersion"]
         headerSection["creatorVersionDict"]["bugfix"] = headerSection["nCreatorBugfixVersion"]
@@ -841,24 +838,24 @@ function readHeaderSection(f::IOStream;
             push!(guid, headerSection["uFileGUID"][i] |> string)
         end
         headerSection["sFileGUID"] = join(guid)
-        d = DateTime(headerSection["lFileStartDate"][1]|>string, DateFormat("yyyymmdd"))
+        d = DateTime(headerSection["lFileStartDate"][1] |> string, DateFormat("yyyymmdd"))
         t = Millisecond(headerSection["lFileStartTime"][1])
-        headerSection["FileStartDateTime"] = d+t
+        headerSection["FileStartDateTime"] = d + t
         headerSection["dataByteStart"] = (headerSection["lDataSectionPtr"][1] * 512) + headerSection["nNumPointsIgnored"][1]
         headerSection["dataPointCount"] = dataPointCount = headerSection["lActualAcqLength"][1] |> Int64
-        headerSection["channelCount"] = channelCount = headerSection["nADCNumChannels"][1]|>Int64
-        headerSection["nDataPoints"] =  Int64(dataPointCount/channelCount)
+        headerSection["channelCount"] = channelCount = headerSection["nADCNumChannels"][1] |> Int64
+        headerSection["nDataPoints"] = Int64(dataPointCount / channelCount)
         if headerSection["nOperationMode"][1] |> Int64 == 3 #This means that sweeps are gap-free
             headerSection["sweepCount"] = sweepCount = 1
         else
-            headerSection["sweepCount"] = sweepCount = headerSection["lActualEpisodes"][1]|>Int64
+            headerSection["sweepCount"] = sweepCount = headerSection["lActualEpisodes"][1] |> Int64
         end
-        headerSection["sweepPointCount"] = Int64(dataPointCount/sweepCount/channelCount)
-        
-        headerSection["dataRate"] = dataRate = (1e6/headerSection["fADCSampleInterval"][1])
-        headerSection["dataRate"] = dataRate/channelCount
-        headerSection["dataPointsPerMS"] = dataRate/1000
-        headerSection["dataSecPerPoint"] = 1.0/dataRate
+        headerSection["sweepPointCount"] = Int64(dataPointCount / sweepCount / channelCount)
+
+        headerSection["dataRate"] = dataRate = (1e6 / headerSection["fADCSampleInterval"][1])
+        headerSection["dataRate"] = dataRate / channelCount
+        headerSection["dataPointsPerMS"] = dataRate / 1000
+        headerSection["dataSecPerPoint"] = 1.0 / dataRate
 
         if headerSection["nDataFormat"][1] == 0
             headerSection["dataType"] = Int16
@@ -872,19 +869,19 @@ function readHeaderSection(f::IOStream;
         headerSection["adcUnits"] = []
         headerSection["adcNames"] = []
         headerSection["channelList"] = []
-        for i in 1:channelCount
-            physicalChannel = headerSection["nADCSamplingSeq"][i]+1
+        for i = 1:channelCount
+            physicalChannel = headerSection["nADCSamplingSeq"][i] + 1
             logicalChannel = headerSection["nADCPtoLChannelMap"][physicalChannel]
             push!(headerSection["channelList"], i)
             push!(headerSection["adcUnits"], rstrip(headerSection["sADCUnits"][physicalChannel]))
             push!(headerSection["adcNames"], rstrip(headerSection["sADCChannelName"][physicalChannel]))
         end
-        
+
         headerSection["dacUnits"] = rstrip.(headerSection["sDACChannelUnit"])
         headerSection["dacNames"] = rstrip.(headerSection["sDACChannelName"])
         headerSection["dataGain"] = []
         headerSection["dataOffset"] = []
-        for i in 1:channelCount
+        for i = 1:channelCount
             gain = 1
             offset = 0
             gain /= (headerSection["fInstrumentScaleFactor"][i])
@@ -900,12 +897,12 @@ function readHeaderSection(f::IOStream;
             offset -= headerSection["fSignalOffset"][i]
 
             push!(headerSection["dataGain"], gain)
-            push!(headerSection["dataOffset"],  offset)
+            push!(headerSection["dataOffset"], offset)
         end
 
 
-        
-        return headerSection 
+
+        return headerSection
 
     elseif sFileSignature == "ABF2"
         seek(f, 0) #Ensure that the 
@@ -923,7 +920,7 @@ function readHeaderSection(f::IOStream;
                 val = readStruct(f, byte_format, start_byte)
                 headerSection[key] = val
             end
-        end  
+        end
         #read all of the section variables
         headerSection["ProtocolSection"] = ProtocolSection = readProtocolSection(f, headerSection["ProtocolSection"]...) #Read the binary info for the ProtocolSection
         headerSection["StringSection"] = StringSection = readStringSection(f, headerSection["StringsSection"]...) # Read the binary info for the StringsSection
@@ -933,7 +930,7 @@ function readHeaderSection(f::IOStream;
         headerSection["DACSection"] = DACSection = readDACSection(f, headerSection["DACSection"]...)
         headerSection["TagSection"] = TagSection = readTagSection(f, headerSection["TagSection"]...)
         headerSection["SyncArraySection"] = SyncArraySection = readSyncArraySection(f, headerSection["SynchArraySection"]...)
-        
+
         headerSection["channelCount"] = ADCSection["entryCount"]
         headerSection["nOperationMode"] = ProtocolSection["nOperationMode"]
 
@@ -942,11 +939,11 @@ function readHeaderSection(f::IOStream;
         versionParts = map(x -> "$(string(x)).", collect(versionPartsInt)) |> join
         headerSection["abfVersion"] = versionPartsInt
         headerSection["abfVersionString"] = versionParts
-        abfVersionDict = Dict{String, Int}()
-        abfVersionDict["major"] = parse(Int64,versionPartsInt[1])
-        abfVersionDict["minor"] = parse(Int64,versionPartsInt[2])
-        abfVersionDict["bugfix"] = parse(Int64,versionPartsInt[3])
-        abfVersionDict["build"] = parse(Int64,versionPartsInt[4])
+        abfVersionDict = Dict{String,Int}()
+        abfVersionDict["major"] = parse(Int64, versionPartsInt[1])
+        abfVersionDict["minor"] = parse(Int64, versionPartsInt[2])
+        abfVersionDict["bugfix"] = parse(Int64, versionPartsInt[3])
+        abfVersionDict["build"] = parse(Int64, versionPartsInt[4])
         headerSection["abfVersionDict"] = abfVersionDict
         #Format the Creater Info Dict
         creatorPartsInt = reverse(headerSection["uCreatorVersion"])
@@ -962,25 +959,25 @@ function readHeaderSection(f::IOStream;
         headerSection["sFileGUID"] = join(guid)
 
         #Format the date found in the header
-        d = DateTime(headerSection["uFileStartDate"][1]|>string, DateFormat("yyyymmdd"))
+        d = DateTime(headerSection["uFileStartDate"][1] |> string, DateFormat("yyyymmdd"))
         t = Millisecond(headerSection["uFileStartTimeMS"][1])
-        headerSection["FileStartDateTime"] = d+t
-        
+        headerSection["FileStartDateTime"] = d + t
+
         headerSection["ProtocolPath"] = StringSection[headerSection["uProtocolPathIndex"][1]+1] #Read the protocol path
         headerSection["abfFileComment"] = StringSection[ProtocolSection["lFileCommentIndex"][1]+1]
         headerSection["creator"] = join([
             StringSection[headerSection["uCreatorNameIndex"][1]+1], " ",
             headerSection["creatorVersionString"]
         ])
-        
 
-        dataRate = 1e6/ProtocolSection["fADCSequenceInterval"][1] #This is the data rate as
+
+        dataRate = 1e6 / ProtocolSection["fADCSequenceInterval"][1] #This is the data rate as
         headerSection["dataRate"] = dataRate
-        headerSection["dataSecPerPoint"] = 1.0/dataRate
-        headerSection["dataPointsPerMS"] = dataRate/1000
+        headerSection["dataSecPerPoint"] = 1.0 / dataRate
+        headerSection["dataPointsPerMS"] = dataRate / 1000
         headerSection["channelCount"] = channelCount = ADCSection["entryCount"]
-        headerSection["channelList"] = ADCSection["channelList"] 
-        
+        headerSection["channelList"] = ADCSection["channelList"]
+
         if ProtocolSection["nOperationMode"][1] |> Int64 == 3
             headerSection["sweepCount"] = sweepCount = 1 #This is gap-free mode
         else
@@ -994,43 +991,43 @@ function readHeaderSection(f::IOStream;
         else
             throw("unknown data format")
         end
-        
+
         #Start decoding the sections
         FileInfoSize = headerSection["uFileInfoSize"][1] #This is the block size for all sections
-        
+
         #data section
         blockStart, dataPointByteSize, dataPointCount = headerSection["DataSection"]
-        dataByteStart = blockStart*FileInfoSize
+        dataByteStart = blockStart * FileInfoSize
         headerSection["dataByteStart"] = dataByteStart
-        headerSection["dataPointCount"] = dataPointCount 
-        headerSection["dataPointByteSize"] = dataPointByteSize 
-      
+        headerSection["dataPointCount"] = dataPointCount
+        headerSection["dataPointByteSize"] = dataPointByteSize
+
         #Parse ADC channel names
         headerSection["adcNames"] = map(i -> StringSection[i+1], ADCSection["lADCChannelNameIndex"])
         headerSection["adcUnits"] = map(i -> StringSection[i+1], ADCSection["lADCUnitsIndex"])
         #The data should have a gain and an offset
 
-        
+
         #Parse DAC channel names
         headerSection["dacNames"] = map(i -> StringSection[i+1], DACSection["lDACChannelNameIndex"])
         headerSection["dacUnits"] = map(i -> StringSection[i+1], DACSection["lDACChannelUnitsIndex"])
         #get the holding command section
-        headerSection["holdingCommand"] = DACSection["fDACHoldingLevel"] 
+        headerSection["holdingCommand"] = DACSection["fDACHoldingLevel"]
         if sweepCount == 0 || channelCount == 0
             println("There is something going on here")
             println(sweepCount)
             println(channelCount)
             throw("Divide By Zero error")
         end
-        headerSection["sweepPointCount"] = sweepPointCount = Int64(dataPointCount/sweepCount/channelCount)
-        headerSection["sweepLengthSec"] = sweepPointCount/dataRate
+        headerSection["sweepPointCount"] = sweepPointCount = Int64(dataPointCount / sweepCount / channelCount)
+        headerSection["sweepLengthSec"] = sweepPointCount / dataRate
         headerSection["sweepList"] = collect(1:sweepCount)
         #Once we have both adc info and dac info as well as data, we can start actually parsing data
-        headerSection["nDataPoints"] = Int64(dataPointCount/channelCount)
-                dataGain = zeros(channelCount)
+        headerSection["nDataPoints"] = Int64(dataPointCount / channelCount)
+        dataGain = zeros(channelCount)
         dataOffset = zeros(channelCount)
-        
-        for i in 1:channelCount
+
+        for i = 1:channelCount
             gain = 1
             offset = 0
             gain /= (ADCSection["fInstrumentScaleFactor"][i])
@@ -1057,29 +1054,29 @@ function readHeaderSection(f::IOStream;
             push!(EpochTableByChannel, et)
         end
         headerSection["EpochTableByChannel"] = EpochTableByChannel
-        
 
-        
+
+
         return headerSection
     end
 end
 
-function readStringSection(f::IOStream, blockStart, entrySize, entryCount;
-        FileInfoSize = 512
-    )
+function readStringSection(f::IO, blockStart, entrySize, entryCount;
+    FileInfoSize = 512
+)
 
-    byteStart = blockStart*FileInfoSize #Look at the 
+    byteStart = blockStart * FileInfoSize #Look at the 
     stringsRaw = fill(UInt8[], entryCount) #The raw string data
     strings = fill("", entryCount) #The formatted strings
     #Parse through the data and read the bytes 
-    for i in 0:entryCount-1 #iterate through each entry
-        seek(f, byteStart+i*entrySize) #advance the file x bytes
+    for i = 0:entryCount-1 #iterate through each entry
+        seek(f, byteStart + i * entrySize) #advance the file x bytes
         b = [0x00] #memory entry for bytes
         readbytes!(f, b, entrySize)
         #In these scenarios, mu -> u
         b[b.==0xb5] .= 0x75 #remove all instances of mu
-        stringsRaw[i+1] =  b #put the byte data into raw data
-        strings[i+1] =  b |> String #convert the byte data to string
+        stringsRaw[i+1] = b #put the byte data into raw data
+        strings[i+1] = b |> String #convert the byte data to string
     end
     #Now we will try to deconstruct all the important information from each string
     indexedStrings = split(strings[1], "\00")
@@ -1089,13 +1086,13 @@ function readStringSection(f::IOStream, blockStart, entrySize, entryCount;
     return indexedStrings
 end
 
-function readProtocolSection(f::IOStream, blockStart, entrySize, entryCount;
-        check_bitSection = false,
-        protocolBytemap = protocol_bytemap,
-        FileInfoSize = 512, 
-    )
-    byteStart = blockStart*FileInfoSize 
-    protocolSection = Dict{String, Any}(
+function readProtocolSection(f::IO, blockStart, entrySize, entryCount;
+    check_bitSection = false,
+    protocolBytemap = protocol_bytemap,
+    FileInfoSize = 512
+)
+    byteStart = blockStart * FileInfoSize
+    protocolSection = Dict{String,Any}(
         "byteStart" => byteStart, "entrySize" => entrySize, "entryCount" => entryCount
     )
     seek(f, byteStart) #advance the file x bytes
@@ -1112,18 +1109,18 @@ function readProtocolSection(f::IOStream, blockStart, entrySize, entryCount;
     return protocolSection
 end
 
-function readADCSection(f::IOStream, blockStart, entrySize, entryCount; 
-        adcBytemap = adc_bytemap, check_bit_pos = false, 
-        FileInfoSize = 512
-    )
+function readADCSection(f::IO, blockStart, entrySize, entryCount;
+    adcBytemap = adc_bytemap, check_bit_pos = false,
+    FileInfoSize = 512
+)
     byteStart = blockStart * FileInfoSize
-    ADCSection = Dict{String, Any}(
+    ADCSection = Dict{String,Any}(
         "byteStart" => byteStart, "entrySize" => entrySize, "entryCount" => entryCount
     ) #This will be in the form entry -> [adc1, adc2, adc3, adc4]
     ADCSection["channelList"] = collect(1:entryCount)
     #open(filename, "r") do f
-    for i in 1:entryCount
-        seek(f, byteStart + (i-1)*entrySize) #advance the file x bytes
+    for i = 1:entryCount
+        seek(f, byteStart + (i - 1) * entrySize) #advance the file x bytes
         for (j, bmp) in enumerate(adcBytemap)
             if check_bit_pos
                 println("Entry $j Value $i => $(position(f)-byteStart*i)")
@@ -1142,27 +1139,27 @@ function readADCSection(f::IOStream, blockStart, entrySize, entryCount;
     return ADCSection
 end
 
-function readTagSection(f::IOStream, blockStart, entrySize, entryCount;
-        FileInfoSize = 512
-    )
+function readTagSection(f::IO, blockStart, entrySize, entryCount;
+    FileInfoSize = 512
+)
     byteStart = blockStart * FileInfoSize
     if entrySize == 0
         return nothing
-    else    
-        TagSection = Dict{String, Any}(
+    else
+        TagSection = Dict{String,Any}(
             "byteStart" => byteStart, "entrySize" => entrySize, "entryCount" => entryCount
-        ) 
+        )
         #open(filename, "r") do f
-        seek(f, byteStart+(i-1)*entrySize) #advance the file x bytes
-        for i in 1:entryCount
+        seek(f, byteStart + (i - 1) * entrySize) #advance the file x bytes
+        for i = 1:entryCount
             if i == 1
                 TagSection["lTagTime"] = [readStruct(f, "I")]
-                TagSection["sComment"] = [readStruct(f, "56s")] 
+                TagSection["sComment"] = [readStruct(f, "56s")]
                 TagSection["nTagType"] = [readStruct(f, "H")]
             else
                 push!(TagSection["lTagTime"], readStruct(f, "I"))
-                push!(TagSection["sComment"], readStruct(f, "56s")) 
-                push!(TagSection["nTagType"],  readStruct(f, "H"))
+                push!(TagSection["sComment"], readStruct(f, "56s"))
+                push!(TagSection["nTagType"], readStruct(f, "H"))
             end
         end
         #end
@@ -1170,18 +1167,18 @@ function readTagSection(f::IOStream, blockStart, entrySize, entryCount;
     end
 end
 
-function readDACSection(f::IOStream, blockStart, entrySize, entryCount; 
-        dacBytemap = dac_bytemap, check_bit_pos = false, 
-        FileInfoSize = 512
-    )
+function readDACSection(f::IO, blockStart, entrySize, entryCount;
+    dacBytemap = dac_bytemap, check_bit_pos = false,
+    FileInfoSize = 512
+)
     byteStart = blockStart * FileInfoSize
-    DACSection = Dict{String, Any}(
+    DACSection = Dict{String,Any}(
         "byteStart" => byteStart, "entrySize" => entrySize, "entryCount" => entryCount
     ) #This will be in the form entry -> [adc1, adc2, adc3, adc4]
     #DACSection["channelList"] = collect(1:entryCount)
     #open(filename, "r") do f
-    for i in 1:entryCount
-        seek(f, byteStart + (i-1)*entrySize) #advance the file x bytes
+    for i = 1:entryCount
+        seek(f, byteStart + (i - 1) * entrySize) #advance the file x bytes
         for (j, bmp) in enumerate(dacBytemap)
             if check_bit_pos
                 println("Entry $j Value $i => $(position(f)-byteStart*i)")
@@ -1200,32 +1197,32 @@ function readDACSection(f::IOStream, blockStart, entrySize, entryCount;
     return DACSection
 end
 
-function readSyncArraySection(f::IOStream, blockStart, entrySize, entryCount; 
-        FileInfoSize = 512
-    )
+function readSyncArraySection(f::IO, blockStart, entrySize, entryCount;
+    FileInfoSize = 512
+)
     byteStart = blockStart * FileInfoSize
-    SyncArraySection = Dict{String, Any}(
+    SyncArraySection = Dict{String,Any}(
         "byteStart" => byteStart, "entrySize" => entrySize, "entryCount" => entryCount,
         "lStart" => Int32[], "lLength" => Int32[]
     )
-    for i in 1:entryCount
-        seek(f, byteStart + (i-1)*entrySize)
+    for i = 1:entryCount
+        seek(f, byteStart + (i - 1) * entrySize)
         push!(SyncArraySection["lStart"], readStruct(f, "I")[1])
         push!(SyncArraySection["lLength"], readStruct(f, "I")[1])
     end
     SyncArraySection
 end
 
-function readEpochPerDACSection(f::IOStream, blockStart, entrySize, entryCount; 
-        EpochPerDACBytemap = EpochPerDAC_bytemap, check_bit_pos = false, 
-        FileInfoSize = 512    
-    )
+function readEpochPerDACSection(f::IO, blockStart, entrySize, entryCount;
+    EpochPerDACBytemap = EpochPerDAC_bytemap, check_bit_pos = false,
+    FileInfoSize = 512
+)
     byteStart = blockStart * FileInfoSize
-    EpochPerDACSection = Dict{String, Any}(
+    EpochPerDACSection = Dict{String,Any}(
         "byteStart" => byteStart, "entrySize" => entrySize, "entryCount" => entryCount
     )
-    for i in 1:entryCount
-        seek(f, byteStart + (i-1)*entrySize) #advance the file x bytes
+    for i = 1:entryCount
+        seek(f, byteStart + (i - 1) * entrySize) #advance the file x bytes
         for (j, bmp) in enumerate(EpochPerDACBytemap)
             if check_bit_pos
                 println("Entry $j Value $i => $(position(f)-byteStart*i)")
@@ -1243,21 +1240,60 @@ function readEpochPerDACSection(f::IOStream, blockStart, entrySize, entryCount;
     return EpochPerDACSection
 end
 
-function readEpochSection(f::IOStream, blockStart, entrySize, entryCount; 
-        FileInfoSize = 512
-    )
+function readEpochSection(f::IO, blockStart, entrySize, entryCount;
+    FileInfoSize = 512
+)
     byteStart = blockStart * FileInfoSize
-    EpochSection = Dict{String, Any}(
-        "byteStart" => byteStart, "entrySize" => entrySize, "entryCount" => entryCount, 
+    EpochSection = Dict{String,Any}(
+        "byteStart" => byteStart, "entrySize" => entrySize, "entryCount" => entryCount,
         "nEpochNum" => Int16[], "nEpochDigitalOutput" => Int16[]
     )
-    for i in 1:entryCount
-        seek(f, byteStart + (i-1)*entrySize)
+    for i = 1:entryCount
+        seek(f, byteStart + (i - 1) * entrySize)
         push!(EpochSection["nEpochNum"], readStruct(f, "H")[1])
         push!(EpochSection["nEpochDigitalOutput"], readStruct(f, "H")[1])
     end
     return EpochSection
 end
+
+"""
+It may become useful (in the case of Pluto.jl) to read the data directly from Binary Data
+"""
+function readABFInfo(::Type{T}, binary_file::Vector{UInt8}; loadData = true, data_format = [3, 2, 1]) where {T<:Real}
+    #the first 4 bytes contain the version 
+    #convert the binary_file into a IOBuffer
+    f = IOBuffer(binary_file)
+    headerSection = readHeaderSection(f) #version is automatically determined
+    dataByteStart = headerSection["dataByteStart"]
+    dataPointCount = headerSection["dataPointCount"]
+    nDataPoints = headerSection["nDataPoints"]
+    sweepPointCount = headerSection["sweepPointCount"]
+    sweepCount = headerSection["sweepCount"]
+    channelCount = headerSection["channelCount"]
+    dataType = headerSection["dataType"]
+    dataGain = headerSection["dataGain"]
+    dataOffset = headerSection["dataOffset"]
+
+    if loadData
+        seek(f, dataByteStart)
+        raw = read(f, dataPointCount * sizeof(dataType)) #Read the raw data into a byte array
+        raw = reinterpret(dataType, raw) #convert the byte array into the dataType
+        raw = reshape(raw, (channelCount, nDataPoints)) #Reshape the raw data array
+        if dataType == Int16
+            raw = raw .* dataGain #Multiply the data by the gain
+            raw = raw .+ dataOffset #Scale the data by the offset
+        end
+        #We can try to convert the data into a array of shape [sweeps, data, channels]
+        raw = reshape(raw, (channelCount, sweepPointCount, sweepCount)) #Reshape the data
+        raw = permutedims(raw, data_format) #permute the dims
+        headerSection["data"] = Array{T}(raw)
+    end
+    #We want to try to read more info from the DAC
+
+    return headerSection
+end
+
+readABFInfo(binary_file::Vector{UInt8}; kwargs...) = readABFInfo(Float64, binary_file; kwargs...)
 
 """
 This scans the axon binary and extracts all the most useful header information
@@ -1267,17 +1303,13 @@ For datashape
     2 -> dataspan
     3 -> Sweeps
 """
-function readABFInfo(::Type{T}, filename::String; 
-        loadData = true, data_format = [3,2,1] #
-    ) where T <: Real
-    data = T[]
+function readABFInfo(::Type{T}, filename::String; loadData = true, data_format = [3, 2, 1]) where {T<:Real}
     #Can we go through and convert anything before loading
     file_dir = splitpath(filename)
 
-    headerSection = Dict{String, Any}()
+    headerSection = Dict{String,Any}()
     open(filename, "r") do f #Do everything within this loop
         #the first 4 bytes contain the version 
-        
         headerSection = readHeaderSection(f) #version is automatically determined
         dataByteStart = headerSection["dataByteStart"]
         dataPointCount = headerSection["dataPointCount"]
@@ -1291,27 +1323,27 @@ function readABFInfo(::Type{T}, filename::String;
 
         if loadData
             seek(f, dataByteStart)
-            raw = read(f, dataPointCount*sizeof(dataType)) #Read the raw data into a byte array
+            raw = read(f, dataPointCount * sizeof(dataType)) #Read the raw data into a byte array
             raw = reinterpret(dataType, raw) #convert the byte array into the dataType
-            raw = reshape(raw,  (channelCount, nDataPoints)) #Reshape the raw data array
+            raw = reshape(raw, (channelCount, nDataPoints)) #Reshape the raw data array
             if dataType == Int16
                 raw = raw .* dataGain #Multiply the data by the gain
                 raw = raw .+ dataOffset #Scale the data by the offset
             end
             #We can try to convert the data into a array of shape [sweeps, data, channels]
             raw = reshape(raw, (channelCount, sweepPointCount, sweepCount)) #Reshape the data
-            raw = permutedims(raw, [3, 2, 1]) #permute the dims
+            raw = permutedims(raw, data_format) #permute the dims
             headerSection["data"] = Array{T}(raw)
         end
-        
+
         #We want to try to read more info from the DAC
     end
 
     if length(file_dir) > 1
-        headerSection["abfPath"] = filename 
+        headerSection["abfPath"] = filename
         headerSection["abfFolder"] = joinpath(file_dir[1:end-1]...)
     else
-        headerSection["abfPath"] = filename 
+        headerSection["abfPath"] = filename
         headerSection["abfFolder"] = "\\"
     end
 
@@ -1327,24 +1359,24 @@ This file contains the ABF data traces. It is a generic experiment which doesn't
 mutable struct StimulusProtocol{T}
     type::Symbol
     sweep::Int64
-    channel::Union{String, Int64}
+    channel::Union{String,Int64}
     index_range::Tuple{Int64,Int64}
     timestamps::Tuple{T,T}
 end
 
 
 mutable struct Experiment{T}
-    infoDict::Dict{String, Any}
+    infoDict::Dict{String,Any}
     dt::T
-    t::Array{T, 1}
-    data_array::Array{T, 3}
-    chNames::Array{String, 1}
-    chUnits::Array{String, 1}
+    t::Array{T,1}
+    data_array::Array{T,3}
+    chNames::Array{String,1}
+    chUnits::Array{String,1}
     stim_protocol::Vector{StimulusProtocol{T}}
     #labels::Array{String, 1}
 end
 
-function StimulusProtocol(type::Symbol, sweep::Int64, channel::Union{Int64, String}, index_range::Tuple{T, T}, t::Vector) where T <: Real
+function StimulusProtocol(type::Symbol, sweep::Int64, channel::Union{Int64,String}, index_range::Tuple{T,T}, t::Vector) where {T<:Real}
     t1 = t[index_range[1]]
     t2 = t[index_range[2]]
     StimulusProtocol(type, sweep, channel, index_range, (t1, t2))
@@ -1354,12 +1386,12 @@ end
 this function utilizes all julia to extract ABF file data
 """
 
-function extract_stimulus(abfInfo::Dict{String, Any}, sweep::Int64; stimulus_name = "IN 7", stimulus_threshold::Float64 = 2.5)
+function extract_stimulus(abfInfo::Dict{String,Any}, sweep::Int64; stimulus_name = "IN 7", stimulus_threshold::Float64 = 2.5)
     dt = abfInfo["dataSecPerPoint"]
     stimulus_waveform = getWaveform(abfInfo, stimulus_name)
     idx1 = findfirst(stimulus_waveform[sweep, :] .> stimulus_threshold)
     idx2 = findlast(stimulus_waveform[sweep, :] .> stimulus_threshold)
-    StimulusProtocol(:test, sweep, stimulus_name, (idx1, idx2), (idx1*dt, idx2*dt))
+    StimulusProtocol(:test, sweep, stimulus_name, (idx1, idx2), (idx1 * dt, idx2 * dt))
 end
 
 extract_stimulus(abf_path::String, sweep::Int64; kwargs...) = extract_stimulus(readABFInfo(abf_path), sweep; kwargs...)
@@ -1370,18 +1402,18 @@ extract_stimulus(abf_path::String, sweep::Int64; kwargs...) = extract_stimulus(r
     julia> readABF(target_path1)
 
 """
-function readABF(::Type{T}, abf_path::String; 
-        sweeps = -1, 
-        channels::Vector{String} = ["Vm_prime","Vm_prime4"], 
-        average_sweeps::Bool = false,
-        stimulus_name = "IN 7",  #One of the best places to store digital stimuli
-        stimulus_threshold::T = 2.5, #This is the normal voltage rating on digital stimuli
-        warn_bad_channel = false, #This will warn if a channel is improper
-        flatten_episodic::Bool = false, #If the stimulation is episodic and you want it to be continuous
-        time_unit = :s, #The time unit is s, change to ms
-        verbose::Bool = false
-    ) where T <: Real
-    abfInfo = readABFInfo(abf_path)    
+function readABF(::Type{T}, abf_data::Union{String,Vector{UInt8}};
+    sweeps = -1,
+    channels::Vector{String} = ["Vm_prime", "Vm_prime4"],
+    average_sweeps::Bool = false,
+    stimulus_name = "IN 7",  #One of the best places to store digital stimuli
+    stimulus_threshold::T = 2.5, #This is the normal voltage rating on digital stimuli
+    warn_bad_channel = false, #This will warn if a channel is improper
+    flatten_episodic::Bool = false, #If the stimulation is episodic and you want it to be continuous
+    time_unit = :s, #The time unit is s, change to ms
+    verbose::Bool = false
+) where {T<:Real}
+    abfInfo = readABFInfo(abf_data)
     #Pull out the requested channels
     if isa(channels, Vector{String}) #If chs is a vector of channel names extract it as such
         ch_idxs = findall(ch -> ch ∈ channels, abfInfo["adcNames"])
@@ -1413,21 +1445,21 @@ function readABF(::Type{T}, abf_path::String;
             $(abfInfo["adcNames"]) 
             or
             $(abfInfo["dacNames"])
-            "        
+            "
         end
         throw(DimensionMismatch)
     end
     if flatten_episodic
         n_size = size(data)
         println(n_size)
-        reshape_data = permutedims(data, (3,2,1))
+        reshape_data = permutedims(data, (3, 2, 1))
         reshape_data = reshape(reshape_data, 1, n_size[3], :)
-        data = permutedims(reshape_data, (1,3,2))
+        data = permutedims(reshape_data, (1, 3, 2))
     end
-    
+
 
     dt = abfInfo["dataSecPerPoint"]
-    t = collect(0:size(data,2)-1).*dt #Time is usually in seconds, but works better in ms
+    t = collect(0:size(data, 2)-1) .* dt #Time is usually in seconds, but works better in ms
     if time_unit == :ms
         dt *= 1000
         t .*= 1000
@@ -1435,25 +1467,25 @@ function readABF(::Type{T}, abf_path::String;
 
     stim_protocol_by_sweep = StimulusProtocol{Float64}[]
     if !isnothing(stimulus_name)
-        for swp in 1:size(data,1)
-            push!(stim_protocol_by_sweep, 
+        for swp = 1:size(data, 1)
+            push!(stim_protocol_by_sweep,
                 extract_stimulus(
-                        abfInfo, swp; 
-                        stimulus_name = stimulus_name, stimulus_threshold = stimulus_threshold
-                    )
+                    abfInfo, swp;
+                    stimulus_name = stimulus_name, stimulus_threshold = stimulus_threshold
                 )
+            )
         end
     end
     #This section we will rework to include getting analog and digital inputs
 
     if average_sweeps == true
-        data = sum(data, dims = 1)/size(data,1)
+        data = sum(data, dims = 1) / size(data, 1)
         stim_protocol_by_sweep = Vector{StimulusProtocol{Float64}}([stim_protocol_by_sweep[1]])
     end
     return Experiment(abfInfo, dt, t, data, ch_names, ch_units, stim_protocol_by_sweep)
 end
 
-readABF(abf_path::String; kwargs...) = readABF(Float64, abf_path ; kwargs...)
+readABF(abf_path::Union{String,Vector{UInt8}}; kwargs...) = readABF(Float64, abf_path; kwargs...)
 
 
 
@@ -1469,5 +1501,5 @@ function openABF(abf_path::String)
     end
 end
 
-openABF(abfDict::Dict{String, Any}) = openABF(abfDict["abfPath"])
-openABF(exp::Experiment{T}) where T<:Real = openABF(exp.infoDict)
+openABF(abfDict::Dict{String,Any}) = openABF(abfDict["abfPath"])
+openABF(exp::Experiment{T}) where {T<:Real} = openABF(exp.infoDict)
