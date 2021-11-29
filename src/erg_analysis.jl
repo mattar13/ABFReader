@@ -114,7 +114,7 @@ function recovery_tau(data::Experiment{T}, resp::T;
         τRec::T = 1.0
     ) where T <: Real
     #Make sure the sizes are the same
-    @assert size(resp) == (size(data, 1), size(data,3))
+    #@assert size(resp) == (size(data, 1), size(data,3))
 
     trec = zeros(T, size(data,1), size(data,3))
     gofs = zeros(T, size(data,1), size(data,3))
@@ -164,7 +164,7 @@ function amplification(data::Experiment{T}, resp::T; #This argument should be of
         ub::Vector{T} = [Inf, 0.040]
     ) where T <: Real
     
-    @assert size(resp) == (size(data, 1), size(data,3))
+    #@assert size(resp) == (size(data, 1), size(data,3))
 
     amp = zeros(2, size(data,1), size(data,3))
     gofs = zeros(T, size(data,1), size(data,3))
