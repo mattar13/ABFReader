@@ -10,19 +10,19 @@ The files in path array or super folder are concatenated into a single Experimen
         - If a majority of arrays are shorter, it will chop the longer ones
 """
 
-function concat(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, position = :post, kwargs...) where T
+function concat(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, position = :post, kwargs...) where {T}
     new_data = deepcopy(data)
-    if size(data,2) > size(data_add,2)
+    if size(data, 2) > size(data_add, 2)
         #println("Original data larger $(size(data,2)) > $(size(data_add,2))")
-        n_vals = abs(size(data,2) - size(data_add,2))
+        n_vals = abs(size(data, 2) - size(data_add, 2))
         if mode == :pad
             pad!(data_add, n_vals; position = position)
         elseif mode == :chop
             chop!(data, n_vals; position = position)
         end
-    elseif size(data,2) < size(data_add,2)
+    elseif size(data, 2) < size(data_add, 2)
         #println("Original data smaller $(size(data,2)) < $(size(data_add,2))")
-        n_vals = abs(size(data,2) - size(data_add,2))
+        n_vals = abs(size(data, 2) - size(data_add, 2))
         if mode == :pad
             pad!(data, n_vals; position = position)
         elseif mode == :chop
@@ -36,18 +36,18 @@ function concat(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, posit
     return new_data
 end
 
-function concat!(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, position = :post, kwargs...) where T
-    if size(data,2) > size(data_add,2)
+function concat!(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, position = :post, kwargs...) where {T}
+    if size(data, 2) > size(data_add, 2)
         #println("Original data larger $(size(data,2)) > $(size(data_add,2))")
-        n_vals = abs(size(data,2) - size(data_add,2))
+        n_vals = abs(size(data, 2) - size(data_add, 2))
         if mode == :pad
             pad!(data_add, n_vals; position = position)
         elseif mode == :chop
             chop!(data, n_vals; position = position)
         end
-    elseif size(data,2) < size(data_add,2)
+    elseif size(data, 2) < size(data_add, 2)
         #println("Original data smaller $(size(data,2)) < $(size(data_add,2))")
-        n_vals = abs(size(data,2) - size(data_add,2))
+        n_vals = abs(size(data, 2) - size(data_add, 2))
         if mode == :pad
             pad!(data, n_vals; position = position)
         elseif mode == :chop
@@ -55,8 +55,8 @@ function concat!(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, posi
         end
     end
 
-    if size(data,3) != size(data_add,3)
-        println(size(data,3))
+    if size(data, 3) != size(data_add, 3)
+        println(size(data, 3))
         println(size(data_add, 3))
         #We need to write a catch here to concatenate files with different numbers of channels
         println("Don't concatenate these files")
@@ -76,10 +76,10 @@ function concat(path_arr::Array{String,1}; kwargs...)
     return data
 end
 
-concat(superfolder::String; kwargs...) = concat(parse_abf(superfolder); kwargs ...)
+concat(superfolder::String; kwargs...) = concat(parse_abf(superfolder); kwargs...)
 
 #This function utilizes concat
-function readABF(abf_folder::AbstractArray{String}; average_sweeps = false, kwargs...) 
+function readABF(abf_folder::AbstractArray{String}; average_sweeps = false, kwargs...)
     data = concat(abf_folder; kwargs...) #In the inner loop we don't want to average the sweeps
     #Save the sweep averaging for here
     if average_sweeps
@@ -126,13 +126,13 @@ function readABF(df::DataFrame; extra_channels = nothing, kwargs...)
         if !isnothing(extra_channels)
             ch = (vcat(ch..., extra_channels...))
         end
-        data = readABF(paths, channels = ch, kwargs...) 
+        data = readABF(paths, channels = ch, kwargs...)
         return data
     else
         throw("There is no path key")
     end
 
-    
+
 end
 
 readABF(df_row::DataFrameRow; kwargs...) = readABF(df_row |> DataFrame; kwargs...)
@@ -150,39 +150,39 @@ import Statistics.std
 size(trace::Experiment) = size(trace.data_array)
 size(trace::Experiment, dim::Int64) = size(trace.data_array, dim)
 
-length(trace::Experiment) = size(trace,2)
+length(trace::Experiment) = size(trace, 2)
+
+#This is the basic functionality of getindex of experiments
+getindex(trace::Experiment, sweeps::Union{Int64,UnitRange{Int64}}, timepoints::Union{Int64,UnitRange{Int64}}, channels::Union{Int64,UnitRange{Int64}}) = trace.data_array[sweeps, timepoints, channels]
+#getindex(trace::Experiment, sweeps::StepRangeLen{Int64}, timepoints::StepRangeLen{Int64}, channels::StepRangeLen{Int64}) = trace[sweeps, timepoints, channels]
+
+#This function allows you to enter in a timestamp and get the data value relating to it
+function getindex(trace::Experiment, sweeps, timestamps::Union{Float64,StepRangeLen{Float64}}, channels)
+    @assert timestamps[end] .< trace.t[end] "Highest timestamp too high"
+    @assert timestamps[1] .>= trace.t[1] "Lowest timestamp too low"
+
+    if length(timestamps) == 3 #This case may have happened if a full range was not provided. 
+        timestamps = timestamps[1]:trace.dt:timestamps[end]
+    end
+    offset = -round(Int64, trace.t[1] / trace.dt)
+    timepoints = (timestamps ./ trace.dt) .+ 1
+    timepoints = (round.(Int64, timepoints))
+    timepoints .+= offset
+    trace[sweeps, timepoints, channels]
+end
+
+function getindex(trace::Experiment, sweeps, timestamps, channel::String)
+    ch_idx = findall(trace.chNames .== channel)
+    trace[sweeps, timestamps, ch_idx]
+end
+
+function getindex(trace::Experiment, sweeps, timestamps, channels::Vector{String})
+    ch_idxs = map(channel -> findall(trace.chNames .== channel)[1], channels)
+    trace[sweeps, timestamps, ch_idxs]
+end
 
 #Extending get index for Experiment
 getindex(trace::Experiment, I...) = trace.data_array[I...]
-
-#This function allows you to enter in a timestamp and get the data value relating to it
-function getindex(trace::Experiment, timestamp::Float64) 
-    if timestamp > trace.t[end]
-        trace[:, end, :]
-    else
-        return trace[:, round(Int, timestamp/trace.dt)+1, :]
-    end
-end
-
-function getindex(trace::Experiment, timestamp_rng::StepRangeLen{Float64}) 
-    println(timestamp_rng)
-    if timestamp_rng[1] == 0.0
-        start_idx = 1
-    else
-        start_idx = round(Int, timestamp_rng[1]/trace.dt) + 1
-    end
-    
-    println(trace.t[end])
-    if timestamp_rng[2] > trace.t[end]
-        end_idx = length(trace.t)
-    else
-        end_idx = round(Int, timestamp_rng[2]/trace.dt) + 1
-    end
-    println(start_idx)
-    println(end_idx)
-
-    return trace[:, start_idx:end_idx, :]
-end
 
 setindex!(trace::Experiment, v, I...) = trace.data_array[I...] = v
 
@@ -203,19 +203,19 @@ argmin(trace::Experiment; dims = 2) = argmin(trace.data_array, dims = dims)
 argmax(trace::Experiment; dims = 2) = argmax(trace.data_array, dims = dims)
 
 
-function push!(nt::Experiment{T}, item::AbstractArray{T}; new_name = "Unnamed") where T<:Real
-    
+function push!(nt::Experiment{T}, item::AbstractArray{T}; new_name = "Unnamed") where {T<:Real}
+
     #All of these options assume the new data point length matches the old one
-    if size(item, 2) == size(nt,2) && size(item,3) == size(nt,3)
+    if size(item, 2) == size(nt, 2) && size(item, 3) == size(nt, 3)
         #item = (new_sweep, datapoints, channels)
         nt.data_array = cat(nt.data_array, item, dims = 1)
 
-    elseif size(item, 1) == size(nt,2) && size(item, 2) == size(nt,3)
+    elseif size(item, 1) == size(nt, 2) && size(item, 2) == size(nt, 3)
         #item = (datapoints, channels) aka a single sweep
-        item = reshape(item, 1, size(item,1), size(item,2))
+        item = reshape(item, 1, size(item, 1), size(item, 2))
         nt.data_array = cat(nt.data_array, item, dims = 1)
 
-    elseif size(item, 1) == size(nt,1) && size(item, 2) == size(nt, 2)
+    elseif size(item, 1) == size(nt, 1) && size(item, 2) == size(nt, 2)
         #item = (sweeps, datapoints, new_channels) 
         nt.data_array = cat(nt.data_array, item, dims = 3)
         #Because we are adding in a new channel, add the channel name
@@ -226,7 +226,7 @@ function push!(nt::Experiment{T}, item::AbstractArray{T}; new_name = "Unnamed") 
     end
 end
 
-function push!(nt_push_to::Experiment, nt_added::Experiment) 
+function push!(nt_push_to::Experiment, nt_added::Experiment)
     #push!(nt_push_to.filename, nt_added.filename...)
     push!(nt_push_to, nt_added.data_array)
 end
@@ -234,18 +234,18 @@ end
 import Base: reverse, reverse!
 
 function reverse(trace::Experiment; kwargs...)
-    data = deepcopy(trace) 
+    data = deepcopy(trace)
     data.data_array = reverse(trace.data_array; kwargs...)
     return data
 end
 
-function reverse!(trace::Experiment; kwargs...) 
+function reverse!(trace::Experiment; kwargs...)
     trace.data_array = reverse(trace.data_array; kwargs...)
 end
 
 
-function pad(trace::Experiment{T}, n_add::Int64; position::Symbol = :post, dims::Int64 = 2, val::T = 0.0) where T
-    data = deepcopy(trace)    
+function pad(trace::Experiment{T}, n_add::Int64; position::Symbol = :post, dims::Int64 = 2, val::T = 0.0) where {T}
+    data = deepcopy(trace)
     addon_size = collect(size(trace))
     addon_size[dims] = n_add
     addon = zeros(addon_size...)
@@ -257,7 +257,7 @@ function pad(trace::Experiment{T}, n_add::Int64; position::Symbol = :post, dims:
     return data
 end
 
-function pad!(trace::Experiment{T}, n_add::Int64; position::Symbol = :post, dims::Int64 = 2, val::T = 0.0) where T
+function pad!(trace::Experiment{T}, n_add::Int64; position::Symbol = :post, dims::Int64 = 2, val::T = 0.0) where {T}
     addon_size = collect(size(trace))
     addon_size[dims] = n_add
     addon = fill(val, addon_size...)
@@ -268,26 +268,26 @@ function pad!(trace::Experiment{T}, n_add::Int64; position::Symbol = :post, dims
     end
 end
 
-function chop(trace::Experiment, n_chop::Int64; position::Symbol = :post, dims::Int64 = 2) 
+function chop(trace::Experiment, n_chop::Int64; position::Symbol = :post, dims::Int64 = 2)
     data = copy(trace)
     resize_size = collect(size(trace))
-    resize_size[dims] = (size(trace, dims)-n_chop)
+    resize_size[dims] = (size(trace, dims) - n_chop)
     resize_size = map(x -> 1:x, resize_size)
     data.data_array = data.data_array[resize_size...]
     return data
 end
 
-function chop!(trace::Experiment, n_chop::Int64; position::Symbol = :post, dims::Int64 = 2) 
+function chop!(trace::Experiment, n_chop::Int64; position::Symbol = :post, dims::Int64 = 2)
     resize_size = collect(size(trace))
-    resize_size[dims] = (size(trace, dims)-n_chop)
+    resize_size[dims] = (size(trace, dims) - n_chop)
     resize_size = map(x -> 1:x, resize_size)
     trace.data_array = trace.data_array[resize_size...]
 end
 
 function drop!(trace::Experiment; dim = 3, drop_idx = 1)
     n_dims = collect(1:length(size(trace)))
-    n_dims = [dim, n_dims[n_dims .!= dim]...]
-	perm_data = permutedims(trace.data_array, n_dims)
+    n_dims = [dim, n_dims[n_dims.!=dim]...]
+    perm_data = permutedims(trace.data_array, n_dims)
     perm_data = perm_data[drop_idx.∉(1:size(trace, dim)), :, :]
     perm_data = permutedims(perm_data, sortperm(n_dims))
     trace.data_array = perm_data
@@ -305,16 +305,16 @@ If two experiments are being compared, then this function drops the second chann
 """
 function match_channels(exp1::Experiment, exp2::Experiment)
     if size(exp1) != size(exp2)
-		#we want to drop the extra channel
-		match_ch = findall(exp1.chNames.==exp2.chNames)
-		if size(exp1,3) > size(exp2,3) 
-			exp1 = drop(exp1, drop_idx = match_ch[1])
-		else
-			exp2 = drop(exp2, drop_idx = match_ch[1])
-		end
+        #we want to drop the extra channel
+        match_ch = findall(exp1.chNames .== exp2.chNames)
+        if size(exp1, 3) > size(exp2, 3)
+            exp1 = drop(exp1, drop_idx = match_ch[1])
+        else
+            exp2 = drop(exp2, drop_idx = match_ch[1])
+        end
 
-	end	
-	return (exp1, exp2)
+    end
+    return (exp1, exp2)
 end
 
 """
@@ -339,20 +339,42 @@ end
 
 
 """
-This gets the channel based on either the name or the index of the channel
+This function is much like getindex, however this passes back the entire data instead of just the data array
 """
-getchannel(trace::Experiment, idx::Int64) = trace.data_array[:,:,idx] |> vec
-getchannel(trace::Experiment, idx_arr::Array{Int64}) = trace.data_array[:,:,idx_arr]
-getchannel(trace::Experiment, name::String) = getchannel(trace, findall(x -> x==name, trace.chNames)[1])
+function getdata(trace::Experiment, sweeps, timepoints, channels::Union{String,Vector{String}})
+    data = deepcopy(trace) #this copies the entire 
+    data.data_array = trace[sweeps, timepoints, channels]
+    data.chNames = channels
+    return data
+end
+
+function getdata(trace::Experiment, sweeps, timepoints, channels::Union{Int64, UnitRange{Int64}})
+    data = deepcopy(trace) #this copies the entire 
+    data.data_array = trace[sweeps, timepoints, channels]
+    data.chNames = trace.chNames[channels]
+    return data
+end
+
+function getdata(trace::Experiment, sweeps, timestamps::Union{Float64, StepRangeLen{Float64}}, channels)
+    data = deepcopy(trace) #this copies the entire 
+    data.data_array = trace[sweeps, timestamps, channels]
+    println(length(timestamps))
+    if length(timestamps) == 3 #This case may have happened if a full range was not provided. 
+        data.t = collect(timestamps[1]:trace.dt:timestamps[end])
+    else
+        data.t = collect(timestamps)
+    end
+    return data
+end
 
 """
-This iterates through all of the channels
+This iterates through all of the channels 
 """
-function eachchannel(trace::Experiment; include_stim = false) 
+function eachchannel(trace::Experiment; include_stim = false)
     if include_stim == true
-        return Iterators.map(idx -> getchannel(trace, idx), 1:size(trace,3))
+        return Iterators.map(idx -> getchannel(trace, idx), 1:size(trace, 3))
     else
-        idxs = findall(x -> x != trace.stim_ch, 1:size(trace,3))
+        idxs = findall(x -> x != trace.stim_ch, 1:size(trace, 3))
         return Iterators.map(idx -> getchannel(trace, idx), idxs)
     end
 end
@@ -360,13 +382,13 @@ end
 """
 This gets the sweep from the data based on the sweep index
 """
-getsweep(trace::Experiment, idx::Int64) = trace.data_array[idx, :, :] |> vec
-getsweep(trace::Experiment, idx_arr::Array{Int64}) = trace.data_array[idx_arr, :, :]
+getsweep(trace::Experiment, idx::Int64) = trace.data_array[idx, :, :]
+
 
 """
 This iterates through all sweeps
 """
-eachsweep(trace::Experiment) = Iterators.map(idx -> getsweep(trace, idx), 1:size(trace,1))
+eachsweep(trace::Experiment) = Iterators.map(idx -> getsweep(trace, idx), 1:size(trace, 1))
 
 """
 This function truncates the data based on the amount of time.
@@ -380,11 +402,11 @@ function truncate_data(trace::Experiment; t_pre = 1.0, t_post = 4.0, truncate_ba
     if isempty(trace.stim_protocol)
         #println("No explicit stimulus has been set")
         return data
-    elseif truncate_based_on == :time_range 
+    elseif truncate_based_on == :time_range
         #Use this if there is no stimulus, but rather you want to truncate according to time
         println("truncate new use")
     else
-        for swp in 1:size(trace, 1)
+        for swp = 1:size(trace, 1)
             stim_protocol = trace.stim_protocol[swp]
             #We are going to iterate through each sweep and truncate it
             if truncate_based_on == :stimulus_beginning
@@ -397,11 +419,11 @@ function truncate_data(trace::Experiment; t_pre = 1.0, t_post = 4.0, truncate_ba
                 truncate_loc = t_pre #Set the beginning to the 
                 t_pre = 0.0 #
             end
-            idxs_begin = Int(t_pre/dt); 
-            idxs_end = Int(t_post/dt)+1
-            
-            stim_begin_adjust = idxs_begin + (stim_protocol.index_range[1]-truncate_loc)
-            stim_end_adjust = idxs_end + (stim_protocol.index_range[2]-truncate_loc)
+            idxs_begin = Int(t_pre / dt)
+            idxs_end = Int(t_post / dt) + 1
+
+            stim_begin_adjust = idxs_begin + (stim_protocol.index_range[1] - truncate_loc)
+            stim_end_adjust = idxs_end + (stim_protocol.index_range[2] - truncate_loc)
             data.stim_protocol[swp].index_range = (stim_begin_adjust, stim_end_adjust)
 
             t_begin_adjust = stim_protocol.timestamps[1] - trace.t[truncate_loc+1]
@@ -412,7 +434,7 @@ function truncate_data(trace::Experiment; t_pre = 1.0, t_post = 4.0, truncate_ba
             t_start = t_start > 0 ? t_start : 1 #If the bounds are negative indexes then reset the bounds to index 1
 
             t_end = round(Int, truncate_loc + idxs_end) #Index of truncated end point
-            t_end = t_end < size(trace,2) ? t_end : size(trace,2) #If the indexes are greater than the number of datapoints then reset the indexes to n
+            t_end = t_end < size(trace, 2) ? t_end : size(trace, 2) #If the indexes are greater than the number of datapoints then reset the indexes to n
             if size_of_array == 0
                 size_of_array = t_end - t_start
                 data.data_array[swp, 1:t_end-t_start+1, :] .= trace.data_array[swp, t_start:t_end, :]
@@ -428,7 +450,7 @@ function truncate_data(trace::Experiment; t_pre = 1.0, t_post = 4.0, truncate_ba
         end
         data.data_array = trace.data_array[:, 1:size_of_array, :] #remake the array with only the truncated data
         data.t = range(-t_pre, t_post, length = size_of_array)
-        return data 
+        return data
     end
 end
 
@@ -436,10 +458,10 @@ function truncate_data!(trace::Experiment; t_pre = 1.0, t_post = 4.0, truncate_b
     dt = trace.dt
     size_of_array = 0
     overrun_time = 0 #This is for if t_pre is set too far before the stimulus
-    if truncate_based_on == :time_range 
+    if truncate_based_on == :time_range
         #Use this if there is no stimulus, but rather you want to truncate according to time
-        start_rng = round(Int64, t_pre/dt)
-        end_rng = round(Int64, t_post/dt)
+        start_rng = round(Int64, t_pre / dt)
+        end_rng = round(Int64, t_post / dt)
         #println(start_rng)
         #println(end_rng)
         trace.data_array = trace.data_array[:, start_rng:end_rng, :]
@@ -450,7 +472,7 @@ function truncate_data!(trace::Experiment; t_pre = 1.0, t_post = 4.0, truncate_b
         trace.data_array = trace.data_array[:, 1:size_of_array, :] #remake the array with only the truncated data
         trace.t = range(0.0, t_post, length = size_of_array)
     else
-        for swp in 1:size(trace, 1)
+        for swp = 1:size(trace, 1)
             stim_protocol = trace.stim_protocol[swp]
             #We are going to iterate through each sweep and truncate it
             #println(trace.stim_protocol[swp].index_range)
@@ -468,13 +490,13 @@ function truncate_data!(trace::Experiment; t_pre = 1.0, t_post = 4.0, truncate_b
             trace.stim_protocol[swp].timestamps = (t_begin_adjust, t_end_adjust)
 
             #First lets calculate how many indexes we need before the stimulus
-            needed_before = round(Int, t_pre/dt)
-            needed_after = round(Int, t_post/dt)
+            needed_before = round(Int, t_pre / dt)
+            needed_after = round(Int, t_post / dt)
             #println("We need $needed_before and $needed_after indexes before and after")
             have_before = truncate_loc
-            have_after = size(trace,2) - truncate_loc
+            have_after = size(trace, 2) - truncate_loc
             #println("We have $have_before and $have_after indexes before and after")
-            
+
             if needed_before > have_before
                 #println("Not enough indexes preceed the stimulus point")
                 extra_indexes = needed_before - have_before
@@ -484,34 +506,34 @@ function truncate_data!(trace::Experiment; t_pre = 1.0, t_post = 4.0, truncate_b
                 stim_begin_adjust = stim_protocol.index_range[1]
             else
                 #println("Enough indexes preceed the stimulus point")
-                idxs_begin = truncate_loc - round(Int, t_pre/dt); 
-                stim_begin_adjust = round(Int, t_pre/dt)+1
+                idxs_begin = truncate_loc - round(Int, t_pre / dt)
+                stim_begin_adjust = round(Int, t_pre / dt) + 1
             end
 
             if needed_after > have_after
                 #println("Not enough indexes proceed the stimulus point")
-                idxs_end = size(trace,2)
+                idxs_end = size(trace, 2)
             else
                 #println("Enough indexes proceed the stimulus point")
-                idxs_end = truncate_loc + round(Int, t_post/dt)+1
+                idxs_end = truncate_loc + round(Int, t_post / dt) + 1
             end
 
-            stim_end_adjust = stim_begin_adjust + (stim_protocol.index_range[2]-stim_protocol.index_range[1])
-            idxs_end = idxs_end < size(trace,2) ? idxs_end : size(trace,2)
+            stim_end_adjust = stim_begin_adjust + (stim_protocol.index_range[2] - stim_protocol.index_range[1])
+            idxs_end = idxs_end < size(trace, 2) ? idxs_end : size(trace, 2)
             trace.stim_protocol[swp].index_range = (stim_begin_adjust, stim_end_adjust)
             #println(trace.stim_protocol[swp])
-            
+
             if size_of_array == 0
                 size_of_array = idxs_end - idxs_begin
             end
             trace.data_array[swp, 1:idxs_end-idxs_begin+1, :] .= trace.data_array[swp, idxs_begin:idxs_end, :]
-        
+
             #println(size_of_array)
         end
         #while testing, don't change anything
         #println(size_of_array)
         trace.data_array = trace.data_array[:, 1:size_of_array, :] #remake the array with only the truncated data
-        trace.t = range(-t_pre+overrun_time, t_post, length = size_of_array)
+        trace.t = range(-t_pre + overrun_time, t_post, length = size_of_array)
     end
 end
 
@@ -524,16 +546,16 @@ This function splits the data
 function split_data(exp::Experiment; split_by = :channel)
     if split_by == :channel
         split_exp = Array{Experiment}([])
-        for ch in 1:size(exp, 3)
+        for ch = 1:size(exp, 3)
             new_data = deepcopy(exp)
-            split_trace = reshape(exp[:,:,ch], (size(exp,1), size(exp,2), 1))
+            split_trace = reshape(exp[:, :, ch], (size(exp, 1), size(exp, 2), 1))
             println(size(split_trace))
             new_data.data_array = split_trace
             new_data.chNames = [exp.chNames[ch]]
             new_data.chUnits = [exp.chUnits[ch]]
             push!(split_exp, new_data)
         end
-        split_exp  
+        split_exp
     end
 end
 
@@ -544,18 +566,18 @@ exclude(A, exclusions) = A[filter(x -> !(x ∈ exclusions), eachindex(A))]
 
 Uses the calibration file or datasheet to look up the photon density. The Photon datasheet should be either 
 """
-function photon_lookup(wavelength::Real, nd::Real, percent::Real, stim_time::Real, 
-        calibration_file::String, 
-        sheet_name::String = "Sheet1"
-    )
+function photon_lookup(wavelength::Real, nd::Real, percent::Real, stim_time::Real,
+    calibration_file::String,
+    sheet_name::String = "Sheet1"
+)
     df = DataFrame(XLSX.readtable(calibration_file, sheet_name)...)
-    Qi = df |> 
-        @filter(_.Wavelength == wavelength) |>
-        @filter(_.ND == nd) |>
-        @filter(_.Intensity== percent) |>
-        @filter(_.stim_time == stim_time) |>
-        @map(_.Photons) |>
-        DataFrame
+    Qi = df |>
+         @filter(_.Wavelength == wavelength) |>
+         @filter(_.ND == nd) |>
+         @filter(_.Intensity == percent) |>
+         @filter(_.stim_time == stim_time) |>
+         @map(_.Photons) |>
+         DataFrame
     #%%
     if size(Qi, 1) != 0
         #Only return f an entry exists

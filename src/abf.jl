@@ -630,10 +630,7 @@ function readStruct(f::IO, byteType::String, seekTo::Int64; repeat = 1)
     end
 end
 
-function readHeaderSection(f::IO;
-    bytemap = header_bytemap,
-    check_bit_pos = false
-)
+function readHeaderSection(f::IO; bytemap = header_bytemap, check_bit_pos = false)
     #check the version
     headerSection = Dict{String,Any}()
     sFileSignature = readStruct(f, "4s")
@@ -1061,9 +1058,7 @@ function readHeaderSection(f::IO;
     end
 end
 
-function readStringSection(f::IO, blockStart, entrySize, entryCount;
-    FileInfoSize = 512
-)
+function readStringSection(f::IO, blockStart, entrySize, entryCount; FileInfoSize = 512)
 
     byteStart = blockStart * FileInfoSize #Look at the 
     stringsRaw = fill(UInt8[], entryCount) #The raw string data
@@ -1087,10 +1082,10 @@ function readStringSection(f::IO, blockStart, entrySize, entryCount;
 end
 
 function readProtocolSection(f::IO, blockStart, entrySize, entryCount;
-    check_bitSection = false,
-    protocolBytemap = protocol_bytemap,
-    FileInfoSize = 512
-)
+        check_bitSection = false,
+        protocolBytemap = protocol_bytemap,
+        FileInfoSize = 512
+    )
     byteStart = blockStart * FileInfoSize
     protocolSection = Dict{String,Any}(
         "byteStart" => byteStart, "entrySize" => entrySize, "entryCount" => entryCount
@@ -1110,9 +1105,9 @@ function readProtocolSection(f::IO, blockStart, entrySize, entryCount;
 end
 
 function readADCSection(f::IO, blockStart, entrySize, entryCount;
-    adcBytemap = adc_bytemap, check_bit_pos = false,
-    FileInfoSize = 512
-)
+        adcBytemap = adc_bytemap, check_bit_pos = false,
+        FileInfoSize = 512
+    )
     byteStart = blockStart * FileInfoSize
     ADCSection = Dict{String,Any}(
         "byteStart" => byteStart, "entrySize" => entrySize, "entryCount" => entryCount
@@ -1139,9 +1134,7 @@ function readADCSection(f::IO, blockStart, entrySize, entryCount;
     return ADCSection
 end
 
-function readTagSection(f::IO, blockStart, entrySize, entryCount;
-    FileInfoSize = 512
-)
+function readTagSection(f::IO, blockStart, entrySize, entryCount; FileInfoSize = 512)
     byteStart = blockStart * FileInfoSize
     if entrySize == 0
         return nothing
@@ -1168,9 +1161,9 @@ function readTagSection(f::IO, blockStart, entrySize, entryCount;
 end
 
 function readDACSection(f::IO, blockStart, entrySize, entryCount;
-    dacBytemap = dac_bytemap, check_bit_pos = false,
-    FileInfoSize = 512
-)
+        dacBytemap = dac_bytemap, check_bit_pos = false,
+        FileInfoSize = 512
+    )
     byteStart = blockStart * FileInfoSize
     DACSection = Dict{String,Any}(
         "byteStart" => byteStart, "entrySize" => entrySize, "entryCount" => entryCount
@@ -1197,9 +1190,7 @@ function readDACSection(f::IO, blockStart, entrySize, entryCount;
     return DACSection
 end
 
-function readSyncArraySection(f::IO, blockStart, entrySize, entryCount;
-    FileInfoSize = 512
-)
+function readSyncArraySection(f::IO, blockStart, entrySize, entryCount; FileInfoSize = 512)
     byteStart = blockStart * FileInfoSize
     SyncArraySection = Dict{String,Any}(
         "byteStart" => byteStart, "entrySize" => entrySize, "entryCount" => entryCount,
@@ -1214,9 +1205,9 @@ function readSyncArraySection(f::IO, blockStart, entrySize, entryCount;
 end
 
 function readEpochPerDACSection(f::IO, blockStart, entrySize, entryCount;
-    EpochPerDACBytemap = EpochPerDAC_bytemap, check_bit_pos = false,
-    FileInfoSize = 512
-)
+        EpochPerDACBytemap = EpochPerDAC_bytemap, check_bit_pos = false,
+        FileInfoSize = 512
+    )
     byteStart = blockStart * FileInfoSize
     EpochPerDACSection = Dict{String,Any}(
         "byteStart" => byteStart, "entrySize" => entrySize, "entryCount" => entryCount
@@ -1240,9 +1231,7 @@ function readEpochPerDACSection(f::IO, blockStart, entrySize, entryCount;
     return EpochPerDACSection
 end
 
-function readEpochSection(f::IO, blockStart, entrySize, entryCount;
-    FileInfoSize = 512
-)
+function readEpochSection(f::IO, blockStart, entrySize, entryCount; FileInfoSize = 512)
     byteStart = blockStart * FileInfoSize
     EpochSection = Dict{String,Any}(
         "byteStart" => byteStart, "entrySize" => entrySize, "entryCount" => entryCount,
@@ -1259,7 +1248,9 @@ end
 """
 It may become useful (in the case of Pluto.jl) to read the data directly from Binary Data
 """
-function readABFInfo(::Type{T}, binary_file::Vector{UInt8}; loadData = true, data_format = [3, 2, 1]) where {T<:Real}
+function readABFInfo(::Type{T}, binary_file::Vector{UInt8}; 
+        loadData = true, data_format = [3, 2, 1]
+    ) where {T<:Real}
     #the first 4 bytes contain the version 
     #convert the binary_file into a IOBuffer
     f = IOBuffer(binary_file)
@@ -1503,3 +1494,11 @@ end
 
 openABF(abfDict::Dict{String,Any}) = openABF(abfDict["abfPath"])
 openABF(exp::Experiment{T}) where {T<:Real} = openABF(exp.infoDict)
+
+"""
+We should try to make a saveABF function
+"""
+function saveABF(data::Experiment)
+
+
+end
