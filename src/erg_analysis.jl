@@ -110,7 +110,9 @@ end
 """
 The dominant time constant is calculated by fitting the normalized Rdim with the response recovery equation
 """
-function recovery_tau(data::Experiment{T}; τRec::T = 1.0) where T <: Real
+function recovery_tau(data::Experiment{T}, resp::T; 
+        τRec::T = 1.0
+    ) where T <: Real
     #Make sure the sizes are the same
     @assert size(resp) == (size(data, 1), size(data,3))
 
@@ -123,8 +125,8 @@ function recovery_tau(data::Experiment{T}; τRec::T = 1.0) where T <: Real
         xdata = data.t
         ydata = data[swp, :, ch] 
         #Test both scenarios to ensure that
-        ydata ./= minimum(ydata) #Normalize the Rdim to the minimum value
-        #ydata ./= resp[swp, ch] #Normalize the Rdim to the saturated response
+        #ydata ./= minimum(ydata) #Normalize the Rdim to the minimum value
+        ydata ./= resp #Normalize the Rdim to the saturated response
 
         #cutoff all points below -0.5 and above -1.0
         begin_rng = findall(ydata .>= 1.0)[end]
@@ -155,7 +157,7 @@ function recovery_tau(data::Experiment{T}; τRec::T = 1.0) where T <: Real
 end
 
 
-function amplification(data::Experiment{T}, resp::Array{T,2}; 
+function amplification(data::Experiment{T}, resp::T; #This argument should be offloaded to a single value 
         time_cutoff = 0.1,
         lb::Vector{T} = [0.0, 0.001], 
         p0::Vector{T} = [200.0, 0.002], 
@@ -168,7 +170,7 @@ function amplification(data::Experiment{T}, resp::Array{T,2};
     gofs = zeros(T, size(data,1), size(data,3))
 
     for swp in 1:size(data,1), ch in 1:size(data,3)
-        model(x, p) = map(t -> AMP(t, p[1], p[2], resp[swp, ch]), x)
+        model(x, p) = map(t -> AMP(t, p[1], p[2], resp), x)
         idx_end = findall(data.t .>= time_cutoff)[1]
         xdata = data.t[1:idx_end]
         ydata = data[swp, 1:idx_end, ch]
