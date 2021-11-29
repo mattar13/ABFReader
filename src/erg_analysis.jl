@@ -110,7 +110,7 @@ end
 """
 The dominant time constant is calculated by fitting the normalized Rdim with the response recovery equation
 """
-function recovery_tau(data::Experiment{T}, resp::Array{T, 2}; τRec::T = 1.0) where T <: Real
+function recovery_tau(data::Experiment{T}; τRec::T = 1.0) where T <: Real
     #Make sure the sizes are the same
     @assert size(resp) == (size(data, 1), size(data,3))
 
