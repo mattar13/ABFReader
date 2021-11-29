@@ -341,6 +341,16 @@ end
 """
 This function is much like getindex, however this passes back the entire data instead of just the data array
 """
+function getdata(trace::Experiment, sweeps, timepoints, channels)
+    data = deepcopy(trace) #this copies the entire 
+    println(timepoints)
+    println(trace |> typeof)
+    data.data_array = trace[sweeps, timepoints, channels]
+    println(data |> typeof)
+    println(data.chNames)
+    return data
+end
+
 function getdata(trace::Experiment, sweeps, timepoints, channels::Union{String,Vector{String}})
     data = deepcopy(trace) #this copies the entire 
     data.data_array = trace[sweeps, timepoints, channels]
@@ -348,7 +358,14 @@ function getdata(trace::Experiment, sweeps, timepoints, channels::Union{String,V
     return data
 end
 
-function getdata(trace::Experiment, sweeps, timepoints, channels::Union{Int64, UnitRange{Int64}})
+function getdata(trace::Experiment, sweeps, timepoints, channel::Int64) #I don't have an idea as to why this works differently
+    data = deepcopy(trace)
+    data.data_array = trace[sweeps, timepoints, [channel]]
+    data.chNames = [trace.chNames[channel]]
+    return data
+end
+
+function getdata(trace::Experiment, sweeps, timepoints, channels::UnitRange{Int64})
     data = deepcopy(trace) #this copies the entire 
     data.data_array = trace[sweeps, timepoints, channels]
     data.chNames = trace.chNames[channels]
@@ -367,28 +384,18 @@ function getdata(trace::Experiment, sweeps, timestamps::Union{Float64, StepRange
     return data
 end
 
+getchannel(trace::Experiment, ch_idx::Int64) = getdata(trace, :, :, ch_idx)
+
 """
 This iterates through all of the channels 
 """
-function eachchannel(trace::Experiment; include_stim = false)
-    if include_stim == true
-        return Iterators.map(idx -> getchannel(trace, idx), 1:size(trace, 3))
-    else
-        idxs = findall(x -> x != trace.stim_ch, 1:size(trace, 3))
-        return Iterators.map(idx -> getchannel(trace, idx), idxs)
-    end
-end
-
-"""
-This gets the sweep from the data based on the sweep index
-"""
-getsweep(trace::Experiment, idx::Int64) = trace.data_array[idx, :, :]
+eachchannel(trace::Experiment) = Iterators.map(idx -> getdata(trace, :, :, idx), 1:size(trace, 3))
 
 
 """
 This iterates through all sweeps
 """
-eachsweep(trace::Experiment) = Iterators.map(idx -> getsweep(trace, idx), 1:size(trace, 1))
+eachsweep(trace::Experiment) = Iterators.map(idx -> getdata(trace, idx, :, :), 1:size(trace, 1))
 
 """
 This function truncates the data based on the amount of time.
