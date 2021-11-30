@@ -522,7 +522,7 @@ function run_A_wave_analysis(all_files::DataFrame; t_peak_cutoff = 2.0, verbose 
 end
 
 #We can update this with our updated channel analysis
-function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true)
+function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, verbose = false)
      trace_A = all_files |> @filter(_.Condition == "BaCl_LAP4" || _.Condition == "LAP4_BaCl") |> DataFrame
      trace_AB = all_files |> @filter(_.Condition == "BaCl") |> DataFrame
 
