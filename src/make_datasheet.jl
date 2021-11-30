@@ -244,9 +244,9 @@ function channel_analysis(data::Experiment; mode = :A, polarity = 1, verbose = t
           analysis[!, :Minima] = -minimum(data, dims = 2)[:, 1, :] |> vec
           #Extract the response 
           if use_saturated_response
-               resp = abs.(minimum(data, dims = 2)[:, 1, :])
-          else
                resp = abs.(saturated_response(data))
+          else
+               resp = abs.(minimum(data, dims = 2)[:, 1, :])
           end
      
           analysis[!, :Response] = resp |> vec
@@ -298,11 +298,69 @@ function channel_analysis(filename::String; t_post = 1.0, kwargs...)
      return channel_analysis(data; kwargs...)
 end
 
+function file_ticker(N, msg; verbose = true)
+     N += 1
+     if verbose
+          println("File $N: $msg")
+     end
+     N
+end
+
+function NEW_run_A_wave_analysis(all_files; verbose = false)
+     a_files = all_files |> @filter(_.Condition == "BaCl_LAP4") |> DataFrame
+     a_files[!, :Path] = string.(a_files[!, :Path])
+     indicator_n = 0
+     indicator2_n = 0
+     #an
+     trace_A = a_files |>
+          @groupby(_.Path) |> #Create a grouping by path
+          @map({
+               Path = key(_), #The path should get packed into the new dataframe
+               indicator = indicator_n = file_ticker(indicator_n, key(_); verbose = verbose), #This acts as a debugger and will get discarded later
+               data_iter = eachchannel(
+                              filter_data(readABF(key(_)), t_post = _.Age[1] > 11 ? 1.0 : 0.4)
+                              ), #This is the channel iterator
+               rows = _,
+          }) |> #Make a channel iterator. 
+          @mapmany(_.data_iter, {_.Path, DataFile = __, Channel = __.chNames[1], _...}) |> #Map each channel to its own datafile
+          @map({
+               _..., #Unpack all other options
+               indicator = indicator2_n = file_ticker(indicator2_n, _.Path; verbose = verbose), #This acts as a debugger and will get discarded later
+               Response = _.rows.Age[1] > 11 ? abs(saturated_response(_.DataFile)[1]) : abs(minimum(_.DataFile, dims = 2)[1, 1, 1]), #Measure the saturated_response
+               Peak_Time = time_to_peak(_.DataFile)[1],
+               Integrated_Time = integral(_.DataFile)[1],
+          }) |>
+          @map({
+               _..., #Unpack all other options
+               TR_info = recovery_tau(_.DataFile, _.Response), #Measure the recovery time constant
+               AMP_info = amplification(_.DataFile, -_.Response), #Measure the amplification
+          }) |>
+          @map({
+               _...,
+               Tau_Rec = _.TR_info[1][1],
+               Tau_GOF = _.TR_info[2][1],
+               Amp = _.AMP_info[1][1],
+               Effective_Time = _.AMP_info[1][2],
+               Amp_GOF = _.AMP_info[2][1]
+          }) |> @mapmany(_.rows,
+               {
+                    _.Path, _.Channel, _.DataFile,
+                    _.Response, _.Peak_Time, _.Integrated_Time, _.Tau_Rec, _.Tau_GOF, _.Amp, _.Effective_Time, _.Amp_GOF,
+                    __...,
+               }
+          ) |> #This line finally pulls out all of the other info
+          DataFrame
+
+
+
+
+     return trace_A
+end
 
 """
 Saving and running A-wave analysis
 """
-function run_A_wave_analysis(all_files::DataFrame; t_peak_cutoff = 2.0)
+function run_A_wave_analysis(all_files::DataFrame; t_peak_cutoff = 2.0, verbose = false)
      #Record all a waves
      #Filter out all A-wave files
      trace_A = all_files |>
@@ -320,8 +378,10 @@ function run_A_wave_analysis(all_files::DataFrame; t_peak_cutoff = 2.0)
 
      #Step through each A-wave trace and break it apart by channel
      for (idx, exp) in enumerate(eachrow(trace_A))
-          println("Extracting A-wave for experiment $idx of $n_files.")
-          println("Total traces: $(size(trace_A, 1))")
+          if verbose
+               println("Extracting A-wave for experiment $idx of $n_files.")
+               println("Total traces: $(size(trace_A, 1))")
+          end
           if exp.Age <= 11
                #I have found that in the cases of P9, P10, and P11 a-waves, the peak can be measures in less than a second after the flash. 
                #Because the response is so small, drift will often get picked up for a response
@@ -332,7 +392,6 @@ function run_A_wave_analysis(all_files::DataFrame; t_peak_cutoff = 2.0)
                #data = filter_data(readABF(exp.Path, average_sweeps = true), t_post = t_peak_cutoff)
                added = channel_analysis(exp.Path, t_post = t_peak_cutoff)
           end
-          println(size(added))
           if size(added, 1) > 1
                added_row = deepcopy(trace_A[idx, :])
                for col_name in DataFrames.names(added)
@@ -386,11 +445,11 @@ function run_A_wave_analysis(all_files::DataFrame; t_peak_cutoff = 2.0)
                     unsaturated = findall(q_data.Response .== q_data.Minima)
                     over_rdim = findall(q_data.Response .> maximum(rdims))
                     valid_amps = unsaturated[map(x -> x ∈ over_rdim, unsaturated)]
-                    println(valid_amps)
+                    #println(valid_amps)
                     #if the response is higher than the rdim, than it is 
                     experiments_A[idx, :alpha] =
                          sum(q_data.Amp[valid_amps]) / length(valid_amps)
-                    println(experiments_A[idx, :alpha])
+                    #println(experiments_A[idx, :alpha])
                     experiments_A[idx, :effective_time] =
                          sum(q_data.Effective_Time[valid_amps]) / length(valid_amps)
                end
