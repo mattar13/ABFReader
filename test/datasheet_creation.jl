@@ -14,7 +14,7 @@ data_file = "F:\\Projects\\2021_Retinoschisis\\data_analysis.xlsx"
 all_files = update_datasheet(all_paths, calibration_file, data_file, verbose = true)
 run_analysis(all_files, data_file)
 
-#%% This analysis is for the Gnat data analysis
+#%% This analysis is for the JGP data analysis
 calibration_file = "E:\\Data\\Calibrations\\photon_lookup.xlsx"
 wt_root = "E:\\Data\\ERG\\Paul\\" #This comes from my portable hardrive
 gnat_root = "E:\\Data\\ERG\\Gnat\\"
