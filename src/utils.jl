@@ -341,16 +341,6 @@ end
 """
 This function is much like getindex, however this passes back the entire data instead of just the data array
 """
-function getdata(trace::Experiment, sweeps, timepoints, channels)
-    data = deepcopy(trace) #this copies the entire 
-    println(timepoints)
-    println(trace |> typeof)
-    data.data_array = trace[sweeps, timepoints, channels]
-    println(data |> typeof)
-    println(data.chNames)
-    return data
-end
-
 function getdata(trace::Experiment, sweeps, timepoints, channels::Union{String,Vector{String}})
     data = deepcopy(trace) #this copies the entire 
     data.data_array = trace[sweeps, timepoints, channels]
@@ -358,24 +348,29 @@ function getdata(trace::Experiment, sweeps, timepoints, channels::Union{String,V
     return data
 end
 
-function getdata(trace::Experiment, sweeps, timepoints, channel::Int64) #I don't have an idea as to why this works differently
+function getdata(trace::Experiment, sweeps, timepoints, channel::Int64; verbose = false) #I don't have an idea as to why this works differently
+    if verbose
+        println("$trace.here")
+    end
     data = deepcopy(trace)
     data.data_array = trace[sweeps, timepoints, [channel]]
     data.chNames = [trace.chNames[channel]]
     return data
 end
 
-function getdata(trace::Experiment, sweeps, timepoints, channels::UnitRange{Int64})
+function getdata(trace::Experiment, sweeps, timepoints, channels::UnitRange{Int64}; verbose = false)
+    if verbose
+        println("here")
+    end
     data = deepcopy(trace) #this copies the entire 
     data.data_array = trace[sweeps, timepoints, channels]
     data.chNames = trace.chNames[channels]
     return data
 end
 
-function getdata(trace::Experiment, sweeps, timestamps::Union{Float64, StepRangeLen{Float64}}, channels)
+function getdata(trace::Experiment, sweeps, timestamps::Union{Float64, StepRangeLen{Float64}}, channels;  verbose = false)
     data = deepcopy(trace) #this copies the entire 
     data.data_array = trace[sweeps, timestamps, channels]
-    println(length(timestamps))
     if length(timestamps) == 3 #This case may have happened if a full range was not provided. 
         data.t = collect(timestamps[1]:trace.dt:timestamps[end])
     else
@@ -384,12 +379,12 @@ function getdata(trace::Experiment, sweeps, timestamps::Union{Float64, StepRange
     return data
 end
 
-getchannel(trace::Experiment, ch_idx::Int64) = getdata(trace, :, :, ch_idx)
+getchannel(trace::Experiment, ch_idx::Int64; verbose = false) = getdata(trace, :, :, ch_idx; verbose = verbose)
 
 """
 This iterates through all of the channels 
 """
-eachchannel(trace::Experiment) = Iterators.map(idx -> getdata(trace, :, :, idx), 1:size(trace, 3))
+eachchannel(trace::Experiment) = Iterators.map(idx -> getchannel(trace, idx), 1:size(trace, 3))
 
 
 """
