@@ -867,11 +867,11 @@ end
 """
 Working on this function to replace making individual trace extractions. 
 """
-function run_analysis(all_files::DataFrame, data_file::String; analyze_subtraction = true)
+function run_analysis(all_files::DataFrame, data_file::String; analyze_subtraction = true, verbose = false)
      #lets see if the files currently exist already
-     
+
      #make the A-wave files
-     trace_A, experiments_A, conditions_A = run_A_wave_analysis(all_files)
+     trace_A, experiments_A, conditions_A = run_A_wave_analysis(all_files, verbose = verbose)
      #BotNotify("{ERG GNAT}: Completed extraction of A-wave")
      XLSX.openxlsx(data_file, mode = "rw") do xf
           sheet = xf["trace_A"]
@@ -896,7 +896,7 @@ function run_analysis(all_files::DataFrame, data_file::String; analyze_subtracti
      end
 
      #make the B-wave files
-     trace_B, experiments_B, conditions_B = run_B_wave_analysis(all_files, analyze_subtraction = analyze_subtraction)
+     trace_B, experiments_B, conditions_B = run_B_wave_analysis(all_files, analyze_subtraction = analyze_subtraction, verbose = verbose)
      # BotNotify("{ERG GNAT}: Completed extraction of B-wave")
      XLSX.openxlsx(data_file, mode = "rw") do xf
           sheet = xf["trace_B"]
@@ -919,7 +919,7 @@ function run_analysis(all_files::DataFrame, data_file::String; analyze_subtracti
                DataFrames.names(conditions_B))
      end
      #make the G-wave files
-     trace_G, experiments_G, conditions_G = run_G_wave_analysis(all_files, analyze_subtraction = analyze_subtraction)
+     trace_G, experiments_G, conditions_G = run_G_wave_analysis(all_files, analyze_subtraction = analyze_subtraction, verbose = verbose)
      #BotNotify("{ERG GNAT}: Completed extraction of G-component")
      XLSX.openxlsx(data_file, mode = "rw") do xf
           sheet = xf["trace_G"]
