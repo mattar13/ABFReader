@@ -323,6 +323,7 @@ function filter_data!(data::Experiment;
         dwt_pick = false, dwt_periods = 9,
         cwt_pick = false, cwt_periods = 1:10
     ) 
+    #println(t_post)
     truncate_data!(data, t_pre = t_pre, t_post = t_post);
 	baseline_cancel!(data, mode = :slope); 
 
