@@ -110,7 +110,7 @@ end
 """
 The dominant time constant is calculated by fitting the normalized Rdim with the response recovery equation
 """
-function recovery_tau(data::Experiment{T}, resp::T; 
+function recovery_tau(data::Experiment{T}, resp::Union{T, Matrix{T}}; 
         τRec::T = 1.0
     ) where T <: Real
     #Make sure the sizes are the same
@@ -125,8 +125,8 @@ function recovery_tau(data::Experiment{T}, resp::T;
         xdata = data.t
         ydata = data[swp, :, ch] 
         #Test both scenarios to ensure that
-        #ydata ./= minimum(ydata) #Normalize the Rdim to the minimum value
-        ydata ./= resp #Normalize the Rdim to the saturated response
+        ydata ./= minimum(ydata) #Normalize the Rdim to the minimum value
+        #ydata ./= resp #Normalize the Rdim to the saturated response
 
         #cutoff all points below -0.5 and above -1.0
         begin_rng = findall(ydata .>= 1.0)[end]
@@ -157,30 +157,35 @@ function recovery_tau(data::Experiment{T}, resp::T;
 end
 
 
-function amplification(data::Experiment{T}, resp::T; #This argument should be offloaded to a single value 
-        time_cutoff = 0.1,
-        lb::Vector{T} = [0.0, 0.001], 
-        p0::Vector{T} = [200.0, 0.002], 
-        ub::Vector{T} = [Inf, 0.040]
-    ) where T <: Real
-    
+function amplification(data::Experiment{T}, resp::Union{T,Matrix{T}}; #This argument should be offloaded to a single value 
+    time_cutoff = 0.1,
+    lb::Vector{T} = [0.0, 0.001],
+    p0::Vector{T} = [200.0, 0.002],
+    ub::Vector{T} = [Inf, 0.040]
+) where {T<:Real}
+
     #@assert size(resp) == (size(data, 1), size(data,3))
 
-    amp = zeros(2, size(data,1), size(data,3))
-    gofs = zeros(T, size(data,1), size(data,3))
+    amp = zeros(2, size(data, 1), size(data, 3))
+    gofs = zeros(T, size(data, 1), size(data, 3))
 
-    for swp in 1:size(data,1), ch in 1:size(data,3)
-        model(x, p) = map(t -> AMP(t, p[1], p[2], resp), x)
+    for swp = 1:size(data, 1), ch = 1:size(data, 3)
+        if isa(resp, Matrix{T})
+            resp_0 = resp[swp, ch]
+        else
+            resp_0 = resp
+        end
+        model(x, p) = map(t -> AMP(t, p[1], p[2], resp_0), x)
         idx_end = findall(data.t .>= time_cutoff)[1]
         xdata = data.t[1:idx_end]
         ydata = data[swp, 1:idx_end, ch]
-             
+
         fit = curve_fit(model, xdata, ydata, p0, lower = lb, upper = ub)
         #Check Goodness of fit
-        SSE = sum(fit.resid.^2)
-        ȳ = sum(model(xdata, fit.param))/length(xdata)
-        SST = sum((ydata .- ȳ).^2)
-        GOF = 1 - SSE/SST
+        SSE = sum(fit.resid .^ 2)
+        ȳ = sum(model(xdata, fit.param)) / length(xdata)
+        SST = sum((ydata .- ȳ) .^ 2)
+        GOF = 1 - SSE / SST
         amp[1, swp, ch] = fit.param[1] #Alpha amp value
         amp[2, swp, ch] = fit.param[2] #Effective time value
         gofs[swp, ch] = GOF
