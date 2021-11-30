@@ -110,12 +110,7 @@ function make_sheet(all_paths::Array{String}, calibration_file::String; verbose 
 end
 
 
-function update_datasheet(
-     all_paths::Array{String},
-     calibration_file::String,
-     data_file::String;
-     verbose = false
-)
+function update_datasheet(all_paths::Array{String}, calibration_file::String, data_file::String; verbose = false)
      #try
           #First we check if the root file exists
           if !isfile(data_file) #If the root file does not exist we need to make it
@@ -233,10 +228,9 @@ end
 update_datasheet(root::String, calibration_file; kwargs...) = update_RS_datasheet(root |> parse_abf, calibration_file; kwargs...)
 
 
-function channel_analysis(data::Experiment; mode = :A, polarity = 1, verbose = true, use_saturated_response = true)
+function channel_analysis(data::Experiment; mode = :A, polarity = 1, verbose = true, use_saturated_response = true, run_amp = false)
      analysis = DataFrame()
      #Extract the channel names
-
      if mode == :A
           analysis[:, :Path] = fill(data.infoDict["abfPath"], (size(data, 3)))
           analysis[!, :Channel] = data.chNames
@@ -259,11 +253,18 @@ function channel_analysis(data::Experiment; mode = :A, polarity = 1, verbose = t
           analysis[!, :Tau_Rec] = rec_res[1] |> vec
           analysis[!, :Tau_GOF] = rec_res[2] |> vec
           #println("Analyzed time constant")
-          amp_res = amplification(data, -resp)
-          analysis[!, :Amp] = amp_res[1][1, :, :] |> vec
-          analysis[!, :Effective_Time] = amp_res[1][2, :, :] |> vec
-          analysis[!, :Amp_GOF] = amp_res[2] |> vec
-          #println("Analyzed amplification")
+          if run_amp #this section takes really long to run. Holding off may be better
+               #println("Analyzed amplification")
+               amp_res = amplification(data, -resp)
+               analysis[!, :Amp] = amp_res[1][1, :, :] |> vec
+               analysis[!, :Effective_Time] = amp_res[1][2, :, :] |> vec
+               analysis[!, :Amp_GOF] = amp_res[2] |> vec
+          else
+               analysis[!, :Amp] = fill(0.0, size(data, 3)) |> vec
+               analysis[!, :Effective_Time] = fill(0.0, size(data, 3)) |> vec
+               analysis[!, :Amp_GOF] = fill(0.0, size(data, 3)) |> vec
+          end
+          
      elseif mode == :B
           if polarity == -1 #Because Developmental data doesn't always fit the mode of a depolarization
                resp = abs.(minimum(data, dims = 2))[1, :, :]
@@ -318,7 +319,10 @@ function NEW_run_A_wave_analysis(all_files; verbose = false)
                Path = key(_), #The path should get packed into the new dataframe
                indicator = indicator_n = file_ticker(indicator_n, key(_); verbose = verbose), #This acts as a debugger and will get discarded later
                data_iter = eachchannel(
-                              filter_data(readABF(key(_)), t_post = _.Age[1] > 11 ? 1.0 : 0.4)
+                              filter_data(
+                                        readABF(key(_)); 
+                                        t_post = _.Age[1] > 11 ? 1.0 : 0.4
+                                   )
                               ), #This is the channel iterator
                rows = _,
           }) |> #Make a channel iterator. 
@@ -333,15 +337,15 @@ function NEW_run_A_wave_analysis(all_files; verbose = false)
           @map({
                _..., #Unpack all other options
                TR_info = recovery_tau(_.DataFile, _.Response), #Measure the recovery time constant
-               AMP_info = amplification(_.DataFile, -_.Response), #Measure the amplification
+               #AMP_info = amplification(_.DataFile, -_.Response), #Measure the amplification
           }) |>
           @map({
                _...,
                Tau_Rec = _.TR_info[1][1],
                Tau_GOF = _.TR_info[2][1],
-               Amp = _.AMP_info[1][1],
-               Effective_Time = _.AMP_info[1][2],
-               Amp_GOF = _.AMP_info[2][1]
+               Amp = 0.0, #_.AMP_info[1][1],
+               Effective_Time = 0.0, #_.AMP_info[1][2],
+               Amp_GOF = 0.0 #_.AMP_info[2][1]
           }) |> @mapmany(_.rows,
                {
                     _.Path, _.Channel, _.DataFile,
