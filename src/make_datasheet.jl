@@ -554,8 +554,10 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true)
      n_files = size(trace_B, 1)
      for (idx, exp) in enumerate(eachrow(trace_B))
           #we want to extract the response for each trace here
-          println("Extracting B-wave for experiment $idx of $n_files.")
-          println("Total traces: $(size(trace_B, 1))")
+          if verbose
+               println("Extracting B-wave for experiment $idx of $n_files.")
+               println("Total traces: $(size(trace_B, 1))")
+          end
           #we may need something different for cone responses
           if exp.Photoreceptor == "Rods"
                A_data = readABF(exp.A_Path, average_sweeps = true) |> filter_data
@@ -703,7 +705,7 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true)
      return trace_B, experiments_B, conditions_B
 end
 
-function run_G_wave_analysis(all_files::DataFrame; analyze_subtraction = true)
+function run_G_wave_analysis(all_files::DataFrame; analyze_subtraction = true, verbose = true)
      trace_AB = all_files |> @filter(_.Condition == "BaCl") |> DataFrame
      trace_ABG = all_files |> @filter(_.Condition == "NoDrugs") |> DataFrame
      trace_G = trace_AB |> @join(trace_ABG,
@@ -723,10 +725,12 @@ function run_G_wave_analysis(all_files::DataFrame; analyze_subtraction = true)
      # Directly add the Glial component response
      n_files = size(trace_G, 1)
      for (idx, exp) in enumerate(eachrow(trace_G))
-          println("Extracting Glial component for experiment $idx of $n_files.")
-          println(exp.ABG_Path)
-          println(exp.AB_Path)
-          println("Total traces: $(size(trace_G, 1))")
+          if verbose
+               println("Extracting Glial component for experiment $idx of $n_files.")
+               println(exp.ABG_Path)
+               println(exp.AB_Path)
+               println("Total traces: $(size(trace_G, 1))")
+          end
           #we want to extract the response for each trace here
           if exp.Photoreceptor == "Rods"
                AB_data = readABF(exp.AB_Path, average_sweeps = true) |> filter_data
