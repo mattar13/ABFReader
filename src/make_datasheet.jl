@@ -228,7 +228,7 @@ end
 update_datasheet(root::String, calibration_file; kwargs...) = update_RS_datasheet(root |> parse_abf, calibration_file; kwargs...)
 
 
-function channel_analysis(data::Experiment; mode = :A, polarity = 1, verbose = true, use_saturated_response = true, run_amp = false)
+function channel_analysis(data::Experiment; mode = :A, polarity = 1, use_saturated_response = true, run_amp = false)
      analysis = DataFrame()
      #Extract the channel names
      if mode == :A
@@ -239,6 +239,7 @@ function channel_analysis(data::Experiment; mode = :A, polarity = 1, verbose = t
           #Extract the response 
           if use_saturated_response
                resp = abs.(saturated_response(data))
+               #println("Here")
           else
                resp = abs.(minimum(data, dims = 2)[:, 1, :])
           end
@@ -300,72 +301,143 @@ function channel_analysis(filename::String; t_post = 1.0, kwargs...)
      return channel_analysis(data; kwargs...)
 end
 
-function file_ticker(N, msg; verbose = true)
-     N += 1
-     if verbose
-          println("File $N: $msg")
-     end
-     N
-end
+"""
+A huge issue will be determineing between sweeps as files, and sweeps as replicates. 
 
-function NEW_run_A_wave_analysis(all_files; verbose = false)
+Paul uses sweeps as files, I use sweeps as replicates. I think my readABF file already handles this 
+"""
+function run_A_wave_analysis(all_files; run_amp = false, verbose = false)
      a_files = all_files |> @filter(_.Condition == "BaCl_LAP4") |> DataFrame
      a_files[!, :Path] = string.(a_files[!, :Path])
-     indicator_n = 0
-     indicator2_n = 0
-     #an
-     trace_A = a_files |>
-          @groupby(_.Path) |> #Create a grouping by path
-          @map({
-               Path = key(_), #The path should get packed into the new dataframe
-               indicator = indicator_n = file_ticker(indicator_n, key(_); verbose = verbose), #This acts as a debugger and will get discarded later
-               data_iter = eachchannel(
-                              filter_data(
-                                        readABF(key(_)); 
-                                        t_post = _.Age[1] > 11 ? 1.0 : 0.4
-                                   )
-                              ), #This is the channel iterator
-               rows = _,
-          }) |> #Make a channel iterator. 
-          @mapmany(_.data_iter, {_.Path, DataFile = __, Channel = __.chNames[1], _...}) |> #Map each channel to its own datafile
-          @map({
-               _..., #Unpack all other options
-               indicator = indicator2_n = file_ticker(indicator2_n, _.Path; verbose = verbose), #This acts as a debugger and will get discarded later
-               Response = _.rows.Age[1] > 11 ? abs(saturated_response(_.DataFile)[1]) : abs(minimum(_.DataFile, dims = 2)[1, 1, 1]), #Measure the saturated_response
-               Peak_Time = time_to_peak(_.DataFile)[1],
-               Integrated_Time = integral(_.DataFile)[1],
-          }) |>
-          @map({
-               _..., #Unpack all other options
-               TR_info = recovery_tau(_.DataFile, _.Response), #Measure the recovery time constant
-               #AMP_info = amplification(_.DataFile, -_.Response), #Measure the amplification
-          }) |>
-          @map({
-               _...,
-               Tau_Rec = _.TR_info[1][1],
-               Tau_GOF = _.TR_info[2][1],
-               Amp = 0.0, #_.AMP_info[1][1],
-               Effective_Time = 0.0, #_.AMP_info[1][2],
-               Amp_GOF = 0.0 #_.AMP_info[2][1]
-          }) |> @mapmany(_.rows,
-               {
-                    _.Path, _.Channel, _.DataFile,
-                    _.Response, _.Peak_Time, _.Integrated_Time, _.Tau_Rec, _.Tau_GOF, _.Amp, _.Effective_Time, _.Amp_GOF,
-                    __...,
-               }
-          ) |> #This line finally pulls out all of the other info
-          DataFrame
+     uniqueData = a_files |> @unique({_.Year, _.Month, _.Date, _.Animal, _.Wavelength, _.Photoreceptor}) |> DataFrame
+     if verbose
+          println("Completed data query")
+     end
 
+     qTrace = DataFrame()
+     qExperiment = DataFrame()
+     for (idx, i) in enumerate(eachrow(uniqueData)) #We can walk through each experiment and extract the experiments based on that
+          qData = a_files |> @filter(
+                       (_.Year, _.Month, _.Date, _.Animal, _.Wavelength, _.Photoreceptor) ==
+                       (i.Year, i.Month, i.Date, i.Animal, i.Wavelength, i.Photoreceptor)
+                  ) |>
+                  DataFrame
+          dataFile = readABF(qData.Path)
 
+          if verbose
+               println("Completeing the analysis for $idx out of $(size(uniqueData,1))")
+          end
+          for data in eachchannel(dataFile) #walk through each row of the data iterator
+               age = qData.Age[1] #Extract the age
+               ch = data.chNames[1] #Extract channel information
+               #Calculate the response based on the age
 
+               #======================DATA ANALYSIS========================#
+               if age <= 11
+                    filt_data = filter_data(data, t_post = 0.5)
+                    Resps = abs.(minimum(data, dims = 2)[:, 1, :])
 
-     return trace_A
+               else
+                    filt_data = filter_data(data, t_post = 1.0)
+                    Resps = abs.(saturated_response(filt_data))
+               end
+               Peak_Times = time_to_peak(filt_data)
+               Integrated_Time = integral(filt_data)
+               rec_res = recovery_tau(filt_data, Resps)
+               Recovery_Tau = rec_res[1] |> vec
+               Tau_GOF = rec_res[2] |> vec
+
+               #We need to program the amplification as well. But that may be longer
+
+               #======================GLUING TOGETHER THE QUERY========================#
+               #now we can walk through each one of the responses and add it to the qTrace 
+               for swp = 1:size(data, 1) #Walk through all sweep info, since sweeps will represent individual datafiles most of the time
+                    #inside_row = qData[idx, :Path] #We can break down each individual subsection by the inside row
+                    push!(qTrace, (
+                         Path = qData[swp, :Path],
+                         Year = qData[swp, :Year], Month = qData[swp, :Month], Date = qData[swp, :Date],
+                         Age = qData[swp, :Age], Animal = qData[swp, :Animal], Genotype = qData[swp, :Genotype],
+                         Photoreceptor = qData[swp, :Photoreceptor], Wavelength = qData[swp, :Wavelength],
+                         Photons = qData[swp, :Photons],
+                         Channel = ch,
+                         Resp = Resps[swp], Peak_Time = Peak_Times[swp]
+                    ))
+               end
+
+               #Each data entry will be added to the qExperiment frame
+               push!(qExperiment, (
+                    Year = qData[1, :Year], Month = qData[1, :Month], Date = qData[1, :Date],
+                    Age = qData[1, :Age], Animal = qData[1, :Animal], Genotype = qData[1, :Genotype],
+                    Photoreceptor = qData[1, :Photoreceptor], Wavelength = qData[1, :Wavelength],
+                    Photons = qData[1, :Photons],
+                    Rmax = maximum(Resps)
+               ))
+
+          end
+     end
+     
+     conditions_A = qExperiment |>
+                    @unique({_.Age, _.Genotype, _.Photoreceptor, _.Wavelength}) |>
+                    @map({
+                         _.Age, _.Genotype, _.Photoreceptor, _.Wavelength,
+                         n = 0,
+                         Rmax = 0.0, Rmax_SEM = 0.0,
+                         Rdim = 0.0, Rdim_SEM = 0.0,
+                         Time_To_Peak = 0.0, Time_To_Peak_SEM = 0.0,
+                         Integration_Time = 0.0, Integration_Time_SEM = 0.0,
+                         Recovery_Tau = 0.0, Recovery_Tau_SEM = 0.0,
+                         Alpha = 0.0, Alpha_SEM = 0.0,
+                         Effective_Time = 0.0, Effective_Time_SEM = 0.0
+                    }) |>
+                    DataFrame
+
+     #Summarize conditions for A-waves
+     for (idx, cond) in enumerate(eachrow(conditions_A))
+          q_data = experiments_A |>
+                   @filter(_.Age == cond.Age && _.Genotype == cond.Genotype) |>
+                   @filter(_.Photoreceptor == cond.Photoreceptor) |>
+                   @filter(_.Wavelength == cond.Wavelength) |>
+                   DataFrame
+          conditions_A[idx, :n] = size(q_data, 1)
+
+          conditions_A[idx, :Rmax] = sum(q_data.rmax) / length(q_data.rmax)
+          conditions_A[idx, :Rmax_SEM] = std(q_data.rmax) / sqrt(length(q_data.rmax))
+
+          conditions_A[idx, :Rdim] = sum(q_data.rdim) / length(q_data.rdim)
+          conditions_A[idx, :Rdim_SEM] = std(q_data.rdim) / sqrt(length(q_data.rdim))
+
+          conditions_A[idx, :Time_To_Peak] =
+               sum(q_data.time_to_peak) / length(q_data.time_to_peak)
+          conditions_A[idx, :Time_To_Peak_SEM] =
+               std(q_data.time_to_peak) / sqrt(length(q_data.time_to_peak))
+
+          conditions_A[idx, :Integration_Time] =
+               sum(q_data.integration_time) / length(q_data.integration_time)
+          conditions_A[idx, :Integration_Time_SEM] =
+               std(q_data.integration_time) / sqrt(length(q_data.integration_time))
+
+          conditions_A[idx, :Recovery_Tau] =
+               sum(q_data.recovery_tau) / length(q_data.recovery_tau)
+          conditions_A[idx, :Recovery_Tau_SEM] =
+               std(q_data.recovery_tau) / sqrt(length(q_data.recovery_tau))
+
+          conditions_A[idx, :Alpha] =
+               sum(q_data.alpha) / length(q_data.alpha)
+          conditions_A[idx, :Alpha_SEM] =
+               std(q_data.alpha) / sqrt(length(q_data.alpha))
+
+          conditions_A[idx, :Effective_Time] =
+               sum(q_data.effective_time) / length(q_data.effective_time)
+          conditions_A[idx, :Effective_Time_SEM] =
+               std(q_data.effective_time) / sqrt(length(q_data.effective_time))
+     end
+     return qTrace, qExperiment
 end
 
 """
 Saving and running A-wave analysis
 """
-function run_A_wave_analysis(all_files::DataFrame; t_peak_cutoff = 2.0, verbose = false)
+function OLD_run_A_wave_analysis(all_files::DataFrame; t_peak_cutoff = 2.0, verbose = false)
      #Record all a waves
      #Filter out all A-wave files
      trace_A = all_files |>
@@ -962,7 +1034,7 @@ This function selects a specific entry in the excel file and changes it
      However the functionality of this will not be in adding your data into the cell, 
      but rather rerunning the data analysis on specific entries after they have been updated
 """
-function update_entry!(df::DataFrame, entry_idx::Int64; mode::Symbol = :A, t_post = 0.4, kwargs...)
+function update_entry!(df::DataFrame, entry_idx::Union{Vector{Int64}, Int64}; mode::Symbol = :A, t_post = 0.4, kwargs...)
      #first we pull out the data from the dataframe
      println("Adjusting index $entry_idx")
      target_df = df[entry_idx, :]
@@ -979,27 +1051,12 @@ function update_entry!(df::DataFrame, entry_idx::Int64; mode::Symbol = :A, t_pos
      df[entry_idx, :] = target_df
 end
 
-function update_entry!(df::DataFrame, entry_name::String; column_name::Symbol = :A_Path, kwargs...)
-     println(kwargs)
+function update_entry!(df::DataFrame, entry_name::Union{Vector{String}, String}; column_name::Symbol = :A_Path, kwargs...)
      #@assert entry_name ∈ df[:, column_name]
-     entry_idx = findall(df[:, column_name] .== entry_name)
+     entry_idx = map(path -> findall(df[:, column_name] .== path), entry_name)
      update_entry!(df, entry_idx; kwargs...)
 end
 
-function update_entry!(df::DataFrame, entry_idxs::Vector{Int64}; kwargs...) 
-     for entry in entry_idxs
-          update_entry!(df, entry; kwargs...)
-     end
-end
-
-update_entry!(df::DataFrame, entry_rng::UnitRange{Int64}; kwargs...) = map(entry_idx -> update_entry!(df, entry_idx; kwargs...), collect(entry_rng))
-
-#For now this will be sufficient
-function update_entry!(df::DataFrame, entry_names::Vector{String}; kwargs...)
-     for entry in entry_names
-          update_entry!(df, entry; kwargs...)
-     end
-end
 
 function update_entry(df::DataFrame, entry_idx; kwargs...)
      new_df = deepcopy(df)
