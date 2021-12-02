@@ -31,6 +31,9 @@ function saturated_response(data::Experiment{T}; precision::Int64 = 100) where {
     minima = minimum(data, dims = 2)[:, 1, :]
 
     for swp = 1:size(data, 1), ch = 1:size(data, 3)
+        #Lets try to quickly zero any positive results
+        #y_data = data[swp, :, ch]
+        #y_data *= y_data[swp, y_data .==]
         y_data = data[swp, :, ch] ./ norm_factor
         hfit = Distributions.fit(Histogram, y_data, LinRange(0.15, 1.0, precision))
         weights = hfit.weights / maximum(hfit.weights)
@@ -38,8 +41,12 @@ function saturated_response(data::Experiment{T}; precision::Int64 = 100) where {
         resp = edges[argmax(weights)]
         #println(minimum(edges))
         if resp == minimum(edges)
+            #println("No Nose")
+            #println(minima[swp, ch])
             rmaxes[swp, ch] = minima[swp, ch]
         else
+            #println("Nose")
+            #println(resp)
             rmaxes[swp, ch] = resp * norm_factor
         end
     end
