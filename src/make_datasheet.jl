@@ -375,7 +375,7 @@ function run_A_wave_analysis(all_files; run_amp = false, verbose = false)
 
           end
      end
-     
+
      conditions_A = qExperiment |>
                     @unique({_.Age, _.Genotype, _.Photoreceptor, _.Wavelength}) |>
                     @map({
@@ -431,7 +431,7 @@ function run_A_wave_analysis(all_files; run_amp = false, verbose = false)
           conditions_A[idx, :Effective_Time_SEM] =
                std(q_data.effective_time) / sqrt(length(q_data.effective_time))
      end
-     return qTrace, qExperiment
+     return qTrace, qExperiment, conditions_A
 end
 
 """
