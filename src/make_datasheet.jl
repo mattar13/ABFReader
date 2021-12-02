@@ -242,7 +242,7 @@ function channel_analysis(data::Experiment; mode = :A, polarity = 1, verbose = t
           else
                resp = abs.(minimum(data, dims = 2)[:, 1, :])
           end
-     
+          #println(resp)
           analysis[!, :Response] = resp |> vec
           #Extract the latency to response
           analysis[!, :Peak_Time] = time_to_peak(data) |> vec
@@ -295,6 +295,7 @@ end
 function channel_analysis(filename::String; t_post = 1.0, kwargs...)
      #I have found that in the cases of P9 a-waves, the peak can be measures in less than a second after the flash. 
      #Because the response is so small, drift will often get picked up for a response
+     println("Here")
      data = filter_data(readABF(filename, average_sweeps = true), t_post = t_post)
      return channel_analysis(data; kwargs...)
 end
@@ -961,13 +962,15 @@ This function selects a specific entry in the excel file and changes it
      However the functionality of this will not be in adding your data into the cell, 
      but rather rerunning the data analysis on specific entries after they have been updated
 """
-function update_entry!(df::DataFrame, entry_idx::Int64; mode::Symbol = :B, t_post = 0.5, kwargs...)
+function update_entry!(df::DataFrame, entry_idx::Int64; mode::Symbol = :A, t_post = 0.4, kwargs...)
      #first we pull out the data from the dataframe
      println("Adjusting index $entry_idx")
      target_df = df[entry_idx, :]
      data = readABF(target_df) #reread the file
      data = filter_data(data, t_post = t_post) #refilter the data
+     #println(minimum(data, dims = 2)[:, 1, :])
      analysis = channel_analysis(data; mode = mode, kwargs...) #re analyze the channel
+     #println(analysis[1, :Response])
      for col in Symbol.(DataFrames.names(analysis))
           #println(col)
           target_df[col] = analysis[1, col]
@@ -977,9 +980,8 @@ function update_entry!(df::DataFrame, entry_idx::Int64; mode::Symbol = :B, t_pos
 end
 
 function update_entry!(df::DataFrame, entry_name::String; column_name::Symbol = :A_Path, kwargs...)
-     #@assert entry_name ∈ df[:, column_name]
-     println(column_name)
      println(kwargs)
+     #@assert entry_name ∈ df[:, column_name]
      entry_idx = findall(df[:, column_name] .== entry_name)
      update_entry!(df, entry_idx; kwargs...)
 end
