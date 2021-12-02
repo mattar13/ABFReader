@@ -384,7 +384,7 @@ getchannel(trace::Experiment, ch_idx::Int64; verbose = false) = getdata(trace, :
 """
 This iterates through all of the channels 
 """
-eachchannel(trace::Experiment) = Iterators.map(idx -> getchannel(trace, idx), 1:size(trace, 3))
+eachchannel(trace::Experiment; verbose = false) = Iterators.map(idx -> getchannel(trace, idx; verbose = verbose), 1:size(trace, 3))
 
 
 """
