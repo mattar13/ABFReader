@@ -301,6 +301,22 @@ function channel_analysis(filename::String; t_post = 1.0, kwargs...)
      return channel_analysis(data; kwargs...)
 end
 
+function MEAN(x)
+     n = length(x)
+     sum(x) / n
+end
+
+"""
+This function calculates the standard error of the Mean and is safe for querying
+"""
+function SEM(x) 
+	n = length(x)
+	mean = sum(x)/n
+	var = map(xi -> xi - mean, x).^2
+	std = sqrt(sum(var))
+	std/sqrt(n)
+end
+
 """
 A huge issue will be determineing between sweeps as files, and sweeps as replicates. 
 
@@ -342,10 +358,10 @@ function run_A_wave_analysis(all_files; run_amp = false, verbose = false)
                     Resps = abs.(saturated_response(filt_data))
                end
                Peak_Times = time_to_peak(filt_data)
-               Integrated_Time = integral(filt_data)
+               Integrated_Times = integral(filt_data)
                rec_res = recovery_tau(filt_data, Resps)
-               Recovery_Tau = rec_res[1] |> vec
-               Tau_GOF = rec_res[2] |> vec
+               Recovery_Taus = rec_res[1] |> vec
+               Tau_GOFs = rec_res[2] |> vec
 
                #We need to program the amplification as well. But that may be longer
 
@@ -360,11 +376,14 @@ function run_A_wave_analysis(all_files; run_amp = false, verbose = false)
                          Photoreceptor = qData[swp, :Photoreceptor], Wavelength = qData[swp, :Wavelength],
                          Photons = qData[swp, :Photons],
                          Channel = ch,
-                         Resp = Resps[swp], Peak_Time = Peak_Times[swp]
+                         Response = Resps[swp], Peak_Time = Peak_Times[swp], Integrated_Time = Integrated_Times[swp], 
+                         Recovery_Tau = Recovery_Taus[swp], Tau_GOF = Tau_GOFs[swp]
+
                     ))
                end
 
                #Each data entry will be added to the qExperiment frame
+               #This section we need to extract Rdim responses. 
                push!(qExperiment, (
                     Year = qData[1, :Year], Month = qData[1, :Month], Date = qData[1, :Date],
                     Age = qData[1, :Age], Animal = qData[1, :Animal], Genotype = qData[1, :Genotype],
@@ -376,62 +395,16 @@ function run_A_wave_analysis(all_files; run_amp = false, verbose = false)
           end
      end
 
-     conditions_A = qExperiment |>
-                    @unique({_.Age, _.Genotype, _.Photoreceptor, _.Wavelength}) |>
-                    @map({
-                         _.Age, _.Genotype, _.Photoreceptor, _.Wavelength,
-                         n = 0,
-                         Rmax = 0.0, Rmax_SEM = 0.0,
-                         Rdim = 0.0, Rdim_SEM = 0.0,
-                         Time_To_Peak = 0.0, Time_To_Peak_SEM = 0.0,
-                         Integration_Time = 0.0, Integration_Time_SEM = 0.0,
-                         Recovery_Tau = 0.0, Recovery_Tau_SEM = 0.0,
-                         Alpha = 0.0, Alpha_SEM = 0.0,
-                         Effective_Time = 0.0, Effective_Time_SEM = 0.0
-                    }) |>
-                    DataFrame
-
-     #Summarize conditions for A-waves
-     for (idx, cond) in enumerate(eachrow(conditions_A))
-          q_data = experiments_A |>
-                   @filter(_.Age == cond.Age && _.Genotype == cond.Genotype) |>
-                   @filter(_.Photoreceptor == cond.Photoreceptor) |>
-                   @filter(_.Wavelength == cond.Wavelength) |>
-                   DataFrame
-          conditions_A[idx, :n] = size(q_data, 1)
-
-          conditions_A[idx, :Rmax] = sum(q_data.rmax) / length(q_data.rmax)
-          conditions_A[idx, :Rmax_SEM] = std(q_data.rmax) / sqrt(length(q_data.rmax))
-
-          conditions_A[idx, :Rdim] = sum(q_data.rdim) / length(q_data.rdim)
-          conditions_A[idx, :Rdim_SEM] = std(q_data.rdim) / sqrt(length(q_data.rdim))
-
-          conditions_A[idx, :Time_To_Peak] =
-               sum(q_data.time_to_peak) / length(q_data.time_to_peak)
-          conditions_A[idx, :Time_To_Peak_SEM] =
-               std(q_data.time_to_peak) / sqrt(length(q_data.time_to_peak))
-
-          conditions_A[idx, :Integration_Time] =
-               sum(q_data.integration_time) / length(q_data.integration_time)
-          conditions_A[idx, :Integration_Time_SEM] =
-               std(q_data.integration_time) / sqrt(length(q_data.integration_time))
-
-          conditions_A[idx, :Recovery_Tau] =
-               sum(q_data.recovery_tau) / length(q_data.recovery_tau)
-          conditions_A[idx, :Recovery_Tau_SEM] =
-               std(q_data.recovery_tau) / sqrt(length(q_data.recovery_tau))
-
-          conditions_A[idx, :Alpha] =
-               sum(q_data.alpha) / length(q_data.alpha)
-          conditions_A[idx, :Alpha_SEM] =
-               std(q_data.alpha) / sqrt(length(q_data.alpha))
-
-          conditions_A[idx, :Effective_Time] =
-               sum(q_data.effective_time) / length(q_data.effective_time)
-          conditions_A[idx, :Effective_Time_SEM] =
-               std(q_data.effective_time) / sqrt(length(q_data.effective_time))
-     end
-     return qTrace, qExperiment, conditions_A
+     qConditions = qExperiment |>
+          @groupby({_.Age, _.Genotype, _.Photoreceptor, _.Wavelength}) |>
+          @map({
+               Age = _.Age[1], Genotype = _.Genotype[1], Photoreceptor = _.Photoreceptor[1], Wavelength = _.Wavelength[1],
+               N = length(_),
+               Rmax = MEAN(_.Rmax), Rmax_SEM = SEM(_.Rmax)
+          }) |>
+     DataFrame
+     
+     return qTrace, qExperiment, qConditions
 end
 
 """
