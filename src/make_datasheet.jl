@@ -235,7 +235,8 @@ function channel_analysis(data::Experiment; mode = :A, polarity = 1, use_saturat
           analysis[:, :Path] = fill(data.infoDict["abfPath"], (size(data, 3)))
           analysis[!, :Channel] = data.chNames
           #Extract the minimum value
-          analysis[!, :Minima] = -minimum(data, dims = 2)[:, 1, :] |> vec
+          analysis[!, :Minima] = abs.(minimum(data, dims = 2)[:, 1, :]) |> vec
+          analysis[!, :Maximum] = abs.(maximum(data, dims = 2)[:, 1, :]) |> vec
           #Extract the response 
           if use_saturated_response
                resp = abs.(saturated_response(data))
@@ -265,7 +266,7 @@ function channel_analysis(data::Experiment; mode = :A, polarity = 1, use_saturat
                analysis[!, :Effective_Time] = fill(0.0, size(data, 3)) |> vec
                analysis[!, :Amp_GOF] = fill(0.0, size(data, 3)) |> vec
           end
-          
+     
      elseif mode == :B
           if polarity == -1 #Because Developmental data doesn't always fit the mode of a depolarization
                resp = abs.(minimum(data, dims = 2))[1, :, :]
@@ -351,11 +352,12 @@ function run_A_wave_analysis(all_files; run_amp = false, verbose = false)
                #======================DATA ANALYSIS========================#
                if age <= 11
                     filt_data = filter_data(data, t_post = 0.5)
-                    Resps = abs.(minimum(data, dims = 2)[:, 1, :])
-
+                    Resps = abs.(minimum(filt_data, dims = 2)[:, 1, :])
+                    Minimas = Resps
                else
                     filt_data = filter_data(data, t_post = 1.0)
                     Resps = abs.(saturated_response(filt_data))
+                    Minimas = abs.(minimum(filt_data, dims = 2)[:, 1, :])
                end
                Peak_Times = time_to_peak(filt_data)
                Integrated_Times = integral(filt_data)
@@ -376,7 +378,7 @@ function run_A_wave_analysis(all_files; run_amp = false, verbose = false)
                          Photoreceptor = qData[swp, :Photoreceptor], Wavelength = qData[swp, :Wavelength],
                          Photons = qData[swp, :Photons],
                          Channel = ch,
-                         Response = Resps[swp], Peak_Time = Peak_Times[swp], Integrated_Time = Integrated_Times[swp], 
+                         Response = Resps[swp], Minima = Minimas[swp], Peak_Time = Peak_Times[swp], Integrated_Time = Integrated_Times[swp], 
                          Recovery_Tau = Recovery_Taus[swp], Tau_GOF = Tau_GOFs[swp]
 
                     ))
