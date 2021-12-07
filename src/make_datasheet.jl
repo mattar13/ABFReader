@@ -353,13 +353,13 @@ function run_A_wave_analysis(all_files; run_amp = false, verbose = false)
                if age <= 11
                     filt_data = filter_data(data, t_post = 0.5)
                     Resps = abs.(minimum(filt_data, dims = 2)[:, 1, :])
-                    minimas = minimum(filt_data, dims = 2)[1, :, :]
-                    maximas = maximum(filt_data, dims = 2)[1, :, :]
+                    minimas = minimum(filt_data, dims = 2)[:, 1, :]
+                    maximas = maximum(filt_data, dims = 2)[:, 1, :]
                else
                     filt_data = filter_data(data, t_post = 1.0)
                     Resps = abs.(saturated_response(filt_data))
-                    minimas = minimum(filt_data, dims = 2)[1, :, :]
-                    maximas = maximum(filt_data, dims = 2)[1, :, :]
+                    minimas = minimum(filt_data, dims = 2)[:, 1, :]
+                    maximas = maximum(filt_data, dims = 2)[:, 1, :]
                end
                Peak_Times = time_to_peak(filt_data)
                Integrated_Times = integral(filt_data)
@@ -461,8 +461,8 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = false, 
                     Resps = abs.(maximum(filt_data, dims = 2)[:, 1, :])
                else
                     if age > 11 #There is no b-wave below P11, so we just need to take the minimum
-                         minimas = minimum(filt_data, dims = 2)[1, :, :]
-                         maximas = maximum(filt_data, dims = 2)[1, :, :]
+                         minimas = minimum(filt_data, dims = 2)[:, 1, :]
+                         maximas = maximum(filt_data, dims = 2)[:, 1, :]
                          Resps = abs.(minima_to_peak(filt_data))
                     else
                          Resps = abs.(minima_to_peak(filt_data))
