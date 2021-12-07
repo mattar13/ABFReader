@@ -58,7 +58,7 @@ export normalize, normalize!
 include("erg_analysis.jl")
 export RSQ
 export calculate_basic_stats
-export saturated_response, dim_response, time_to_peak
+export saturated_response, dim_response, minima_to_peak, time_to_peak
 export get_response
 export pepperburg_analysis
 export integral
