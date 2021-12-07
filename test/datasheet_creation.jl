@@ -4,9 +4,10 @@ using NeuroPhys
 import NeuroPhys: format_bank, file_format, number_seperator
 using DataFrames, Query
 param_file = "F:\\Projects\\2021_Retinoschisis\\parameters.xlsx"
+calibration_file = "C:\\Users\\mtarc\\OneDrive - The University of Akron\\Data\\photon_lookup.xlsx"
+
 
 #%%  Lets make a dataframe that does not alter the other dataframe categories
-calibration_file = "F:\\Data\\Calibrations\\photon_lookup.xlsx"
 rs_root = "F:\\Data\\ERG\\Retinoschisis\\"
 rs_paths = rs_root |> parse_abf
 all_paths = rs_paths
@@ -15,7 +16,6 @@ all_files = update_datasheet(all_paths, calibration_file, data_file, verbose = t
 run_analysis(all_files, data_file)
 
 #%% This analysis is for the JGP data analysis
-calibration_file = "E:\\Data\\Calibrations\\photon_lookup.xlsx"
 wt_root = "E:\\Data\\ERG\\Paul\\" #This comes from my portable hardrive
 gnat_root = "E:\\Data\\ERG\\Gnat\\"
 wt_paths = wt_root |> parse_abf
