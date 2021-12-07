@@ -459,9 +459,10 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, v
                     if age > 11 #There is no b-wave below P11, so we just need to take the minimum
                          minima = minimum(filt_data, dims = 2)[1, :, :]
                          maxima = maximum(filt_data, dims = 2)[1, :, :]
-                         Resps = abs.(minima .- maxima)
+                         Resps = minima_to_peak(filt_data)
                     else
-                         Resps = abs.(minimum(filt_data, dims = 2)[1, :, :])
+                         Resps = minima_to_peak(filt_data)
+                         #Resps = abs.(minimum(filt_data, dims = 2)[1, :, :])
                     end
                end
                Peak_Times = time_to_peak(filt_data)
