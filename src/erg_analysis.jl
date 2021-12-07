@@ -53,6 +53,22 @@ function saturated_response(data::Experiment{T}; precision::Int64 = 100) where {
     rmaxes
 end
 
+function minima_to_peak(data::Experiment)
+    #We need to exclude the area 
+    resp = zeros(size(data, 1), size(data, 3))
+    for swp = 1:size(data, 1), ch = 1:size(data, 3)
+        data_section = data[swp, :, ch]
+        min_val = minimum(data_section)
+        start_idx = argmin(data_section)
+        data_segment = data_section[start_idx:end]
+        max_val = maximum(data_segment)
+        #println("Minimum: $min_val")
+        #println("Maximum: $max_val")
+        #println(min_val - max_val)
+        resp[swp, ch] = min_val - max_val
+    end
+end
+
 """
 This function calculates the time to peak using the dim response properties of the concatenated file
 """
