@@ -67,6 +67,7 @@ function minima_to_peak(data::Experiment)
         #println(min_val - max_val)
         resp[swp, ch] = min_val - max_val
     end
+    resp
 end
 
 """
