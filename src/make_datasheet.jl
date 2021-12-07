@@ -408,7 +408,7 @@ function run_A_wave_analysis(all_files; run_amp = false, verbose = false)
 end
 
 #We can update this with our updated channel analysis
-function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, verbose = false)
+function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = false, verbose = false)
      if analyze_subtraction
           trace_A = all_files |> @filter(_.Condition == "BaCl_LAP4" || _.Condition == "LAP4_BaCl") |> DataFrame
           trace_AB = all_files |> @filter(_.Condition == "BaCl") |> DataFrame
@@ -439,7 +439,8 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, v
                   ) |>
                   DataFrame
           if analyze_subtraction
-
+               #don't have this yet
+               dataFile = readABF(qData.Path)
           else
                dataFile = readABF(qData.Path)
           end
