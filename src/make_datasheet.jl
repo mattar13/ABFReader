@@ -408,7 +408,7 @@ function run_A_wave_analysis(all_files; run_amp = false, verbose = false)
 end
 
 #We can update this with our updated channel analysis
-function NEW_run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, verbose = false)
+function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, verbose = false)
      if analyze_subtraction
           trace_A = all_files |> @filter(_.Condition == "BaCl_LAP4" || _.Condition == "LAP4_BaCl") |> DataFrame
           trace_AB = all_files |> @filter(_.Condition == "BaCl") |> DataFrame
@@ -416,7 +416,7 @@ function NEW_run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = tru
                          {_.Year, _.Month, _.Date, _.Animal, _.Photons, _.Photoreceptor, _.Wavelength},
                          {_.Year, _.Month, _.Date, _.Animal, _.Photons, _.Photoreceptor, _.Wavelength},
                          {
-                              A_Path = _.Path, AB_Path = __.Path,
+                              Path = __.Path, A_Path = _.Path,
                               A_condition = _.Condition, AB_condition = __.Condition,
                               __.Year, __.Month, __.Date, __.Animal, __.Photoreceptor, __.Wavelength,
                               __.Age, __.Genotype, __.Condition, __.Photons,
@@ -428,7 +428,8 @@ function NEW_run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = tru
      else
           b_files = all_files |> @filter(_.Condition == "BaCl") |> DataFrame
      end
-     uniqueData = a_files |> @unique({_.Year, _.Month, _.Date, _.Animal, _.Wavelength, _.Photoreceptor}) |> DataFrame
+     b_files[!, :Path] = string.(b_files[!, :Path]) #XLSX.jl converts things into Vector{Any}
+     uniqueData = b_files |> @unique({_.Year, _.Month, _.Date, _.Animal, _.Wavelength, _.Photoreceptor}) |> DataFrame
      qTrace = DataFrame()
      qExperiment = DataFrame()
      for (idx, i) in enumerate(eachrow(uniqueData)) #We ca
@@ -437,7 +438,11 @@ function NEW_run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = tru
                        (i.Year, i.Month, i.Date, i.Animal, i.Wavelength, i.Photoreceptor)
                   ) |>
                   DataFrame
-          dataFile = readABF(qData.Path)
+          if analyze_subtraction
+
+          else
+               dataFile = readABF(qData.Path)
+          end
           if verbose
                println("Completeing the analysis for $idx out of $(size(uniqueData,1))")
           end
@@ -451,7 +456,7 @@ function NEW_run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = tru
                if analyze_subtraction
                     Resps = abs.(maximum(filt_data, dims = 2)[:, 1, :])
                else
-                    if Age > 11 #There is no b-wave below P11, so we just need to take the minimum
+                    if age > 11 #There is no b-wave below P11, so we just need to take the minimum
                          minima = minimum(filt_data, dims = 2)[1, :, :]
                          maxima = maximum(filt_data, dims = 2)[1, :, :]
                          Resps = abs.(minima .- maxima)
@@ -503,7 +508,7 @@ function NEW_run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = tru
 end
 
 #We can update this with our updated channel analysis
-function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, verbose = false)
+function OLD_run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, verbose = false)
      if analyze_subtraction
           trace_A = all_files |> @filter(_.Condition == "BaCl_LAP4" || _.Condition == "LAP4_BaCl") |> DataFrame
           trace_AB = all_files |> @filter(_.Condition == "BaCl") |> DataFrame
