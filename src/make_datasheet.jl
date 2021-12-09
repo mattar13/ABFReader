@@ -228,11 +228,13 @@ end
 update_datasheet(root::String, calibration_file; kwargs...) = update_RS_datasheet(root |> parse_abf, calibration_file; kwargs...)
 
 
-function channel_analysis(data::Experiment; mode = :A, polarity = 1, use_saturated_response = true, run_amp = false)
+function channel_analysis(data::Experiment; mode = :A, polarity = 1, use_saturated_response = true, run_amp = false, with_path = true)
      analysis = DataFrame()
      #Extract the channel names
      if mode == :A
-          analysis[:, :Path] = fill(data.infoDict["abfPath"], (size(data, 3)))
+          if with_path
+               analysis[:, :Path] = fill(data.infoDict["abfPath"], (size(data, 3)))
+          end
           analysis[!, :Channel] = data.chNames
           #Extract the minimum value
           analysis[!, :Minima] = abs.(minimum(data, dims = 2)[:, 1, :]) |> vec
