@@ -1,7 +1,7 @@
 # This file can be used to build the datasheets
 using Revise
 using NeuroPhys
-import NeuroPhys: format_bank, file_format, number_seperator
+import NeuroPhys: format_bank, file_format, number_seperator, make_IR_datasheet
 using DataFrames, Query
 param_file = "F:\\Projects\\2021_Retinoschisis\\parameters.xlsx"
 calibration_file = "C:\\Users\\mtarc\\OneDrive - The University of Akron\\Data\\photon_lookup.xlsx"
@@ -25,8 +25,11 @@ data_file = "E:\\Projects\\2020_JGP_Gnat\\data_analysis.xlsx"
 all_files = update_datasheet(all_paths, calibration_file, data_file, verbose = true)
 run_analysis(all_files, data_file, analyze_subtraction = false, verbose = true)
 
+trace_A = DataFrame(XLSX.readtable(data_file, "trace_A")...)
+trace_B = DataFrame(XLSX.readtable(data_file, "trace_B")...)
+trace_G = DataFrame(XLSX.readtable(data_file, "trace_G")...)
 #run the IR analysis for A-waves and B-waves
-import NeuroPhys.make_IR_datasheet
+
 aIR_name = "E:\\Projects\\2020_JGP_Gnat\\aIR_analysis.xlsx"
 make_IR_datasheet(aIR_name, trace_A)
 bIR_name = "E:\\Projects\\2020_JGP_Gnat\\bIR_analysis.xlsx"
