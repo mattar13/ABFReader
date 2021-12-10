@@ -1022,7 +1022,7 @@ function make_IR_datasheet(fn::String, df::DataFrame)
                #now lets group each condition by photon
                photon_q = condition_q |>
                           @groupby(_.Photons) |>
-                          @map({Mean = 0.0, SEM = 0.0, N = length(_), Photon = key(_), Responses = map(r -> r.value, _.Response)}) |>#, Response) |>
+                          @map({Photon = key(_), Mean = "=AVERAGE(D2:L2)", SEM = "=STDEV.P(E2:L2)/SQRT(\$D2)", N = length(_), Responses = map(r -> r.value, _.Response)}) |>#, Response) |>
                           DataFrame
                #println(photon_q)
                #photon_q[!, :Response] = 

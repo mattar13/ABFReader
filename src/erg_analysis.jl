@@ -62,10 +62,10 @@ function minima_to_peak(data::Experiment)
         start_idx = argmin(data_section)
         data_segment = data_section[start_idx:end]
         max_val = maximum(data_segment)
-        #println("Minimum: $min_val")
-        #println("Maximum: $max_val")
-        #println(min_val - max_val)
-        resp[swp, ch] = min_val - max_val
+        println("Minimum: $min_val")
+        println("Maximum: $max_val")
+        println(max_val - min_val)
+        resp[swp, ch] = max_val - min_val
     end
     resp
 end
