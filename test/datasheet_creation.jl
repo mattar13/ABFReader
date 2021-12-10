@@ -24,7 +24,14 @@ all_paths = vcat(wt_paths, gnat_paths)
 data_file = "E:\\Projects\\2020_JGP_Gnat\\data_analysis.xlsx"
 all_files = update_datasheet(all_paths, calibration_file, data_file, verbose = true)
 run_analysis(all_files, data_file, analyze_subtraction = false, verbose = true)
-#NeuroPhys.run_B_wave_analysis(all_files, verbose = true)
+
+#run the IR analysis for A-waves and B-waves
+import NeuroPhys.make_IR_datasheet
+aIR_name = "E:\\Projects\\2020_JGP_Gnat\\aIR_analysis.xlsx"
+make_IR_datasheet(aIR_name, trace_A)
+bIR_name = "E:\\Projects\\2020_JGP_Gnat\\bIR_analysis.xlsx"
+make_IR_datasheet(bIR_name, trace_B)
+
 #%%
 test_root = "E:\\Data\\ERG\\Paul\\NotDetermined\\2019_03_19_WT_P9_m1\\" #This comes from my portable hardrive
 test_paths = test_root |> parse_abf
