@@ -998,3 +998,40 @@ function update_analysis(filename::String, sheet_name::String)
      end
      #for each file set we want to check to see if the analysis exists
 end
+
+function make_IR_datasheet(fn::String, df::DataFrame)
+     info_q = df |>
+              @unique({_.Genotype, _.Age, _.Wavelength, _.Photoreceptor}) |>
+              @map({_.Genotype, _.Age, _.Wavelength, _.Photoreceptor}) |>
+              DataFrame
+     #make one datasheet to save all of the files to
+
+     XLSX.openxlsx(fn, mode = "w") do xf
+          for info in eachrow(info_q)
+               GEN = info.Genotype #Pull out the Genotype
+               AGE = info.Age #Pull out the age
+               WAVE = info.Wavelength #Pull out the wavelength
+               PHOTO = info.Photoreceptor #Pull out the Photoreceptor
+               sn = "$(GEN)_$(AGE)_$(WAVE)_$(PHOTO)"
+               println("Making sheet $sn")
+               #we will save each 
+               condition_q = df |>
+                             @filter({_.Genotype, _.Age, _.Wavelength, _.Photoreceptor} == info) |>
+                             @orderby(_.Photons) |>
+                             DataFrame
+               #now lets group each condition by photon
+               photon_q = condition_q |>
+                          @groupby(_.Photons) |>
+                          @map({Mean = 0.0, SEM = 0.0, N = length(_), Photon = key(_), Responses = map(r -> r.value, _.Response)}) |>#, Response) |>
+                          DataFrame
+               #println(photon_q)
+               #photon_q[!, :Response] = 
+          
+               XLSX.addsheet!(xf, "$(GEN)_$(AGE)_$(WAVE)_$(PHOTO)")
+               XLSX.writetable!(xf[sn],
+                    collect(DataFrames.eachcol(photon_q)),
+                    DataFrames.names(photon_q)
+               )
+          end
+     end
+end
