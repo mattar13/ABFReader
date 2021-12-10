@@ -57,14 +57,19 @@ function minima_to_peak(data::Experiment)
     #We need to exclude the area 
     resp = zeros(size(data, 1), size(data, 3))
     for swp = 1:size(data, 1), ch = 1:size(data, 3)
-        data_section = data[swp, :, ch]
+        past_stim = findall(data.t .> 0.0)
+    
+        data_section = data[swp, past_stim, ch] #Isolate all the items past the stim
+        # cutoff the analysis at the maximum (A-wave is before the B-wave)
+        cutoff_idx = argmax(data_section)
+        max_val = maximum(data_section)
+        data_section = data_section[1:cutoff_idx]
+        #Measure the minimum betweent the first value and the maximum
         min_val = minimum(data_section)
-        start_idx = argmin(data_section)
-        data_segment = data_section[start_idx:end]
-        max_val = maximum(data_segment)
         println("Minimum: $min_val")
         println("Maximum: $max_val")
         println(max_val - min_val)
+
         resp[swp, ch] = max_val - min_val
     end
     resp
