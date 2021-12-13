@@ -1003,7 +1003,7 @@ function make_IR_datasheet(fn::String, df::DataFrame)
      info_q = df |>
           @unique({_.Genotype, _.Age, _.Wavelength, _.Photoreceptor}) |>
           @map({_.Genotype, _.Age, _.Wavelength, _.Photoreceptor}) |>
-          @orderby(_.Genotype) |> @thenby(_.Age) |> @thenby(_.Wavelength) |> @thenby(_.Photoreceptor) |>
+          @orderby_descending(_.Genotype) |> @thenby(_.Age) |> @thenby(_.Wavelength) |> @thenby(_.Photoreceptor) |>
      DataFrame
      #make one datasheet to save all of the files to
 
