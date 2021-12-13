@@ -2,7 +2,7 @@
 using Revise
 using NeuroPhys
 import NeuroPhys: format_bank, file_format, number_seperator, make_IR_datasheet
-using DataFrames, Query
+using DataFrames, Query, XLSX
 param_file = "F:\\Projects\\2021_Retinoschisis\\parameters.xlsx"
 calibration_file = "C:\\Users\\mtarc\\OneDrive - The University of Akron\\Data\\photon_lookup.xlsx"
 
