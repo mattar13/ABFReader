@@ -1359,10 +1359,11 @@ end
 mutable struct Experiment{T}
     infoDict::Dict{String,Any}
     dt::T
-    t::Array{T,1}
+    t::Vector{T}
     data_array::Array{T,3}
-    chNames::Array{String,1}
-    chUnits::Array{String,1}
+    chNames::Vector{String}
+    chUnits::Vector{String}
+    chTelegraph::Vector{T}
     stim_protocol::Vector{StimulusProtocol{T}}
     #labels::Array{String, 1}
 end
@@ -1416,7 +1417,7 @@ function readABF(::Type{T}, abf_data::Union{String,Vector{UInt8}};
     #Extract info for the adc names and units
     ch_names = Vector{String}(abfInfo["adcNames"][ch_idxs])
     ch_units = Vector{String}(abfInfo["adcUnits"][ch_idxs])
-
+    ch_telegraph = Vector{T}(abfInfo["ADCSection"]["fTelegraphAdditGain"][ch_idxs])
     #we can extract the data using getWaveform from above
     if sweeps == -1 && channels == -1
         data = abfInfo["data"]
@@ -1473,7 +1474,7 @@ function readABF(::Type{T}, abf_data::Union{String,Vector{UInt8}};
         data = sum(data, dims = 1) / size(data, 1)
         stim_protocol_by_sweep = Vector{StimulusProtocol{Float64}}([stim_protocol_by_sweep[1]])
     end
-    return Experiment(abfInfo, dt, t, data, ch_names, ch_units, stim_protocol_by_sweep)
+    return Experiment(abfInfo, dt, t, data, ch_names, ch_units, ch_telegraph, stim_protocol_by_sweep)
 end
 
 readABF(abf_path::Union{String,Vector{UInt8}}; kwargs...) = readABF(Float64, abf_path; kwargs...)
