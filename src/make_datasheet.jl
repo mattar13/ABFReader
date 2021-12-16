@@ -349,6 +349,7 @@ function run_A_wave_analysis(all_files; run_amp = false, verbose = false)
           for data in eachchannel(dataFile) #walk through each row of the data iterator
                age = qData.Age[1] #Extract the age
                ch = data.chNames[1] #Extract channel information
+               gain = data.chTelegraph[1]
                #Calculate the response based on the age
 
                #======================DATA ANALYSIS========================#
@@ -381,7 +382,7 @@ function run_A_wave_analysis(all_files; run_amp = false, verbose = false)
                          Age = qData[swp, :Age], Animal = qData[swp, :Animal], Genotype = qData[swp, :Genotype],
                          Photoreceptor = qData[swp, :Photoreceptor], Wavelength = qData[swp, :Wavelength],
                          Photons = qData[swp, :Photons],
-                         Channel = ch,
+                         Channel = ch, Gain = gain, 
                          Response = Resps[swp], Minima = minimas[swp], Maxima = maximas[swp],
                          Peak_Time = Peak_Times[swp], Integrated_Time = Integrated_Times[swp],
                          Recovery_Tau = Recovery_Taus[swp], Tau_GOF = Tau_GOFs[swp]))
@@ -455,6 +456,7 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = false, 
           for data in eachchannel(dataFile) #walk through each row of the data iterator
                age = qData.Age[1] #Extract the age
                ch = data.chNames[1] #Extract channel information
+               gain = data.chTelegraph[1]
                #Calculate the response based on the age
 
                #======================DATA ANALYSIS========================#
@@ -484,7 +486,7 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = false, 
                          Age = qData[swp, :Age], Animal = qData[swp, :Animal], Genotype = qData[swp, :Genotype],
                          Photoreceptor = qData[swp, :Photoreceptor], Wavelength = qData[swp, :Wavelength],
                          Photons = qData[swp, :Photons],
-                         Channel = ch,
+                         Channel = ch, Gain = gain, 
                          Response = Resps[swp], Minima = minimas[swp], Maxima = maximas[swp],
                          Peak_Time = Peak_Times[swp], Integrated_Time = Integrated_Times[swp],
                          Recovery_Tau = Recovery_Taus[swp], Tau_GOF = Tau_GOFs[swp]))
