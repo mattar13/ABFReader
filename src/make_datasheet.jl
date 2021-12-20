@@ -1021,17 +1021,17 @@ function make_IR_datasheet(fn::String, df::DataFrame)
                condition_q = df |>
                              @filter({_.Genotype, _.Age, _.Wavelength, _.Photoreceptor} == info) |>
                              @orderby(_.Photons) |>
-                             DataFrame
+                         DataFrame
                #now lets group each condition by photon
                photon_q = condition_q |>
-                         @groupby(_.Photons) |>
-                         @map({Photons = key(_), 
+                          @groupby(_.Photons) |>
+                          @map({Photons = key(_),
                               Response = "=AVERAGE(E2:S2)",  #These are formulas that need to be activated in Excel
-                              SEM = "=STDEV.P(E2:S2)/SQRT(COUNT(E2:S2))", 
-                              N = "=COUNT(E2:S2)", 
+                              SEM = "=STDEV.P(E2:S2)/SQRT(COUNT(E2:S2))",
+                              N = "=COUNT(E2:S2)",
                               Responses = map(r -> r.value, _.Response)
                          }) |>
-               DataFrame
+                    DataFrame
                #println(photon_q)
                #photon_q[!, :Response] = 
           
@@ -1040,6 +1040,7 @@ function make_IR_datasheet(fn::String, df::DataFrame)
                     collect(DataFrames.eachcol(photon_q)),
                     DataFrames.names(photon_q)
                )
+               return photon_q
           end
      end
 end
