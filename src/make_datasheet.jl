@@ -177,8 +177,8 @@ function update_datasheet(all_paths::Array{String}, calibration_file::String, da
                #This new function will just reupdate entries by merging dataframes
                new_df = make_sheet(added_files, calibration_file, verbose = verbose)
                println(new_df)
-
-
+               all_files = [all_files; new_df] #Concatenate all_files with new files
+          
                if verbose
                     println("$(length(added_files)) Files have been added ")
                end
@@ -192,8 +192,8 @@ function update_datasheet(all_paths::Array{String}, calibration_file::String, da
                end
           end
 
-          all_files = [all_files; new_df] #Concatenate all_files with new files
           if !isempty(added_files) || !isempty(removed_files) #If the file hierarchy is changed, we need to adjust the all files
+
                if verbose
                     println("Data Analysis has been modified")
                     println("File rewritten")
