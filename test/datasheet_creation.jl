@@ -2,7 +2,7 @@
 using Revise
 using NeuroPhys
 import NeuroPhys: format_bank, file_format, number_seperator, make_IR_datasheet
-using DataFrames, Query, XLSX
+using DataFrames, Query, XLSX, DelimitedFiles
 param_file = "F:\\Projects\\2021_Retinoschisis\\parameters.xlsx"
 calibration_file = "C:\\Users\\mtarc\\OneDrive - The University of Akron\\Data\\photon_lookup.xlsx"
 
@@ -14,6 +14,26 @@ all_paths = rs_paths
 data_file = "F:\\Projects\\2021_Retinoschisis\\data_analysis.xlsx"
 all_files = update_datasheet(all_paths, calibration_file, data_file, verbose = true)
 run_analysis(all_files, data_file)
+
+test_path =
+     AB_dataFile = readABF(qData.Path)
+println(size(AB_dataFile))
+println(size(AB_dataFile.t))
+A_datafile = readABF(qData.A_Path)
+println(size(A_datafile))
+datafile = AB_dataFile - A_datafile
+filt_data = NeuroPhys.filter_data(datafile, t_post = 0.5)
+Resps = abs.(maximum(filt_data, dims = 2)[:, 1, :])
+rec_res = recovery_tau(filt_data, Resps)
+
+data_file = "F:\\Data\\ERG\\Retinoschisis\\2021_08_06_ERG_RS\\Mouse3_P11_R141C\\BaCl\\Cones\\Green\\nd1_100p_0000.abf"
+data = readABF(data_file)
+
+plot(data)
+
+plot(filt_data)
+
+NeuroPhys.run_G_wave_analysis(all_files)
 
 #%% This analysis is for the JGP data analysis
 wt_root = "E:\\Data\\ERG\\Paul\\" #This comes from my portable hardrive
@@ -34,6 +54,22 @@ aIR_name = "E:\\Projects\\2020_JGP_Gnat\\aIR_analysis.xlsx"
 make_IR_datasheet(aIR_name, trace_A)
 bIR_name = "E:\\Projects\\2020_JGP_Gnat\\bIR_analysis.xlsx"
 make_IR_datasheet(bIR_name, trace_B)
+
+#%% Create and modify the photon sheet here
+photon_root = raw"F:\Data\Calibrations\2021_12_21_Calibrations\UV\nd0" |> parse_abf
+photon_data = readABF(photon_root, channels = ["Opt"], time_unit = :ms)
+integrated_photons = (photon_data|>integral)[:, 1, 1]
+#Print the output and copy and paste it into excel
+writedlm("output.csv", integrated_photons, ',')
+plot(integrated_photons)
+
+
+
+for (idx, i) in enumerate(integrated_photons)
+     #println("$idx: photons = $i")
+     println(i)
+end
+
 
 #%%
 test_root = "E:\\Data\\ERG\\Paul\\NotDetermined\\2019_03_19_WT_P9_m1\\" #This comes from my portable hardrive
