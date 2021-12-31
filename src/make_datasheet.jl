@@ -430,6 +430,7 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, v
      else
           b_files = all_files |> @filter(_.Condition == "BaCl") |> DataFrame
           b_files[!, :Path] = string.(b_files[!, :Path]) #XLSX.jl converts things into Vector{Any}
+          b_files[!, :A_Path] = nothing #XLSX.jl converts things into Vector{Any}    
      end
      uniqueData = b_files |> @unique({_.Year, _.Month, _.Date, _.Animal, _.Wavelength, _.Photoreceptor}) |> DataFrame
      qTrace = DataFrame()
@@ -483,7 +484,7 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, v
                for swp = 1:size(data_ch, 1) #Walk through all sweep info, since sweeps will represent individual datafiles most of the time
                     #inside_row = qData[idx, :Path] #We can break down each individual subsection by the inside row
                     push!(qTrace, (
-                         Path = qData[swp, :Path],
+                         Path = qData[swp, :Path], A_Path = qData[swp, :A_Path],
                          Year = qData[swp, :Year], Month = qData[swp, :Month], Date = qData[swp, :Date],
                          Age = qData[swp, :Age], Animal = qData[swp, :Animal], Genotype = qData[swp, :Genotype],
                          Photoreceptor = qData[swp, :Photoreceptor], Wavelength = qData[swp, :Wavelength],
@@ -512,183 +513,6 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, v
                    }) |>
                    DataFrame
      return qTrace, qExperiment, qConditions
-end
-
-#We can update this with our updated channel analysis
-function OLD_run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, verbose = false)
-     if analyze_subtraction
-          trace_A = all_files |> @filter(_.Condition == "BaCl_LAP4" || _.Condition == "LAP4_BaCl") |> DataFrame
-          trace_AB = all_files |> @filter(_.Condition == "BaCl") |> DataFrame
-          trace_B = trace_A |> @join(trace_AB,
-                         {_.Year, _.Month, _.Date, _.Animal, _.Photons, _.Photoreceptor, _.Wavelength},
-                         {_.Year, _.Month, _.Date, _.Animal, _.Photons, _.Photoreceptor, _.Wavelength},
-                         {
-                              A_Path = _.Path, AB_Path = __.Path,
-                              A_condition = _.Condition, AB_condition = __.Condition,
-                              __.Year, __.Month, __.Date, __.Animal, __.Photoreceptor, __.Wavelength,
-                              __.Age, __.Genotype, __.Condition, __.Photons,
-                              Channel = "Vm_prime",
-                              Response = 0.0, Peak_Time = 0.0, Int_Time = 0.0,
-                              Tau_Rec = 0.0, Tau_GOF = 0.0
-                         }
-                    ) |> DataFrame
-     else
-          trace_B = all_files |> @filter(_.Condition == "BaCl") |> DataFrame
-     end
-
-     #Directly add B-wave responses
-     n_files = size(trace_B, 1)
-     for (idx, exp) in enumerate(eachrow(trace_B))
-          #we want to extract the response for each trace here
-          if verbose
-               println("Extracting B-wave for experiment $idx of $n_files.")
-               println("Total traces: $(size(trace_B, 1))")
-          end
-          #we may need something different for cone responses
-          if exp.Photoreceptor == "Rods"
-               A_data = readABF(exp.A_Path, average_sweeps = true) |> filter_data
-               AB_data = readABF(exp.AB_Path, average_sweeps = true) |> filter_data
-          else
-               println("Cone Data")
-               A_data = readABF(exp.A_Path, average_sweeps = true) |> cone_filter
-               AB_data = readABF(exp.AB_Path, average_sweeps = true) |> cone_filter
-          end
-
-          if analyze_subtraction
-               B_data = AB_data - A_data
-          else
-               B_data = AB_data #This does not utilize the subtraction
-               #println("Here")
-          end
-
-          #Extract the response 
-          if analyze_subtraction
-               resp = abs.(maximum(B_data, dims = 2))[1, :, :]
-          else
-               if exp.Age > 11 #There is no b-wave below P11, so we just need to take the minimum
-                    minima = minimum(B_data, dims = 2)[1, :, :]
-                    maxima = maximum(B_data, dims = 2)[1, :, :]
-                    resp = abs.(minima .- maxima)
-               else
-                    resp = abs.(minimum(B_data, dims = 2)[1, :, :])
-               end
-          end
-          peak_time = time_to_peak(B_data)
-          #Extract the integrated time
-          tInt = NeuroPhys.integral(B_data)
-          #Extract the recovery time constant
-          #println(resp)
-          tRec, tau_gofs = recovery_tau(B_data, resp)
-          #println(tRec)
-          if size(B_data, 3) > 1
-               trace_B[idx, :Response] = resp[1]
-               trace_B[idx, :Peak_Time] = peak_time[1]
-               trace_B[idx, :Int_Time] = tInt[1]
-               trace_B[idx, :Tau_Rec] = tRec[1] * 1000
-               trace_B[idx, :Tau_GOF] = tau_gofs[1]
-               trace_B[idx, :Channel] = B_data.chNames[1]
-               for add_i = 2:size(B_data, 3)
-                    added_row = deepcopy(trace_B[idx, :])
-                    added_row.Response = resp[add_i]
-                    added_row.Peak_Time = peak_time[add_i]
-                    added_row.Int_Time = tInt[add_i]
-                    added_row.Tau_Rec = tRec[add_i] * 1000
-                    added_row.Tau_GOF = tau_gofs[add_i]
-                    added_row.Channel = B_data.chNames[add_i]
-                    push!(trace_B, added_row)
-               end
-          else
-               trace_B[idx, :Response] = resp[1]
-               trace_B[idx, :Peak_Time] = peak_time[1]
-               trace_B[idx, :Int_Time] = tInt[1]
-               trace_B[idx, :Tau_Rec] = tRec[1] * 1000
-               trace_B[idx, :Tau_GOF] = tau_gofs[1]
-               trace_B[idx, :Channel] = B_data.chNames[1]
-          end
-     end
-
-     experiments_B = trace_B |>
-                     @unique({_.Year, _.Month, _.Date, _.Age, _.Animal, _.Photoreceptor, _.Wavelength, _.Channel}) |>
-                     @orderby(_.Genotype) |> @thenby(_.Age) |>
-                     @thenby(_.Photoreceptor) |> @thenby(_.Wavelength) |>
-                     @map({_.Year, _.Month, _.Date, _.Animal, _.Channel,
-                          _.Genotype, _.Age, _.Wavelength, _.Photoreceptor,
-                          rmax = 0.0, rdim = 0.0, time_to_peak = 0.0,
-                          integration_time = 0.0,
-                          recovery_tau = 0.0,
-                     }) |>
-                     DataFrame
-
-     #Extract experiments in B-waves
-     for (idx, exp) in enumerate(eachrow(experiments_B))
-          q_data = trace_B |>
-                   @filter(_.Year == exp.Year && _.Month == exp.Month && _.Date == exp.Date && _.Animal == exp.Animal) |>
-                   @filter(_.Photoreceptor == exp.Photoreceptor && _.Wavelength == exp.Wavelength) |>
-                   @filter(_.Channel == exp.Channel && _.Age == exp.Age) |>
-                   DataFrame
-          if !isempty(q_data)
-               #Rmax
-               experiments_B[idx, :rmax] = maximum(q_data.Response)
-               #Rdim
-               rdim_rng = [0.10, 0.40] .* maximum(q_data.Response)
-               in_range = findall(rdim_rng[1] .< q_data.Response .< rdim_rng[2])
-               rdims = q_data.Response[in_range]
-               if !isempty(rdims)
-                    rdim_idx = in_range[argmax(rdims)]
-                    experiments_B[idx, :rdim] = maximum(rdims)
-                    experiments_B[idx, :time_to_peak] = q_data[rdim_idx, :Peak_Time]
-                    experiments_B[idx, :integration_time] = q_data[rdim_idx, :Int_Time]
-                    experiments_B[idx, :recovery_tau] = q_data[rdim_idx, :Tau_Rec]
-               end
-               #If we wanted to plot individual traces, here is where we would do that	
-          end
-     end
-
-     #Extract information about B-wave data
-     conditions_B = experiments_B |>
-                    @unique({_.Age, _.Genotype, _.Photoreceptor, _.Wavelength}) |>
-                    @map({
-                         _.Age, _.Genotype, _.Photoreceptor, _.Wavelength,
-                         n = 0,
-                         Rmax = 0.0, Rmax_SEM = 0.0,
-                         Rdim = 0.0, Rdim_SEM = 0.0,
-                         Time_To_Peak = 0.0, Time_To_Peak_SEM = 0.0,
-                         Integration_Time = 0.0, Integration_Time_SEM = 0.0,
-                         Recovery_Tau = 0.0, Recovery_Tau_SEM = 0.0,
-                    }) |>
-                    DataFrame
-
-     #Conditions in B
-     for (idx, cond) in enumerate(eachrow(conditions_B))
-          q_data = experiments_B |>
-                   @filter(_.Age == cond.Age && _.Genotype == cond.Genotype) |>
-                   @filter(_.Photoreceptor == cond.Photoreceptor) |>
-                   @filter(_.Wavelength == cond.Wavelength) |>
-                   DataFrame
-          conditions_B[idx, :n] = size(q_data, 1)
-
-          conditions_B[idx, :Rmax] = sum(q_data.rmax) / length(q_data.rmax)
-          conditions_B[idx, :Rmax_SEM] = std(q_data.rmax) / sqrt(length(q_data.rmax))
-
-          conditions_B[idx, :Rdim] = sum(q_data.rdim) / length(q_data.rdim)
-          conditions_B[idx, :Rdim_SEM] = std(q_data.rdim) / sqrt(length(q_data.rdim))
-
-          conditions_B[idx, :Time_To_Peak] =
-               sum(q_data.time_to_peak) / length(q_data.time_to_peak)
-          conditions_B[idx, :Time_To_Peak_SEM] =
-               std(q_data.time_to_peak) / sqrt(length(q_data.time_to_peak))
-
-          conditions_B[idx, :Integration_Time] =
-               sum(q_data.integration_time) / length(q_data.integration_time)
-          conditions_B[idx, :Integration_Time_SEM] =
-               std(q_data.integration_time) / sqrt(length(q_data.integration_time))
-
-          conditions_B[idx, :Recovery_Tau] =
-               sum(q_data.recovery_tau) / length(q_data.recovery_tau)
-          conditions_B[idx, :Recovery_Tau_SEM] =
-               std(q_data.recovery_tau) / sqrt(length(q_data.recovery_tau))
-     end
-     return trace_B, experiments_B, conditions_B
 end
 
 """
@@ -752,7 +576,7 @@ function run_G_wave_analysis(all_files::DataFrame; verbose = true)
                for swp = 1:size(data_ch, 1) #Walk through all sweep info, since sweeps will represent individual datafiles most of the time
                     #inside_row = qData[idx, :Path] #We can break down each individual subsection by the inside row
                     push!(qTrace, (
-                         Path = qData[swp, :Path],
+                         Path = qData[swp, :Path], AB_Path = qData[swp, :AB_Path],
                          Year = qData[swp, :Year], Month = qData[swp, :Month], Date = qData[swp, :Date],
                          Age = qData[swp, :Age], Animal = qData[swp, :Animal], Genotype = qData[swp, :Genotype],
                          Photoreceptor = qData[swp, :Photoreceptor], Wavelength = qData[swp, :Wavelength],
@@ -838,7 +662,7 @@ function run_analysis(all_files::DataFrame, data_file::String; analyze_subtracti
                DataFrames.names(conditions_B))
      end
      #make the G-wave files
-     trace_G, experiments_G, conditions_G = run_G_wave_analysis(all_files, analyze_subtraction = analyze_subtraction, verbose = verbose)
+     trace_G, experiments_G, conditions_G = run_G_wave_analysis(all_files, verbose = verbose)
      #BotNotify("{ERG GNAT}: Completed extraction of G-component")
      XLSX.openxlsx(data_file, mode = "rw") do xf
           sheet = xf["trace_G"]

@@ -13,27 +13,7 @@ rs_paths = rs_root |> parse_abf
 all_paths = rs_paths
 data_file = "F:\\Projects\\2021_Retinoschisis\\data_analysis.xlsx"
 all_files = update_datasheet(all_paths, calibration_file, data_file, verbose = true)
-run_analysis(all_files, data_file)
-
-test_path =
-     AB_dataFile = readABF(qData.Path)
-println(size(AB_dataFile))
-println(size(AB_dataFile.t))
-A_datafile = readABF(qData.A_Path)
-println(size(A_datafile))
-datafile = AB_dataFile - A_datafile
-filt_data = NeuroPhys.filter_data(datafile, t_post = 0.5)
-Resps = abs.(maximum(filt_data, dims = 2)[:, 1, :])
-rec_res = recovery_tau(filt_data, Resps)
-
-data_file = "F:\\Data\\ERG\\Retinoschisis\\2021_08_06_ERG_RS\\Mouse3_P11_R141C\\BaCl\\Cones\\Green\\nd1_100p_0000.abf"
-data = readABF(data_file)
-
-plot(data)
-
-plot(filt_data)
-
-NeuroPhys.run_G_wave_analysis(all_files)
+run_analysis(all_files, data_file, verbose = true)
 
 #%% This analysis is for the JGP data analysis
 wt_root = "E:\\Data\\ERG\\Paul\\" #This comes from my portable hardrive
@@ -56,12 +36,16 @@ bIR_name = "E:\\Projects\\2020_JGP_Gnat\\bIR_analysis.xlsx"
 make_IR_datasheet(bIR_name, trace_B)
 
 #%% Create and modify the photon sheet here
-photon_root = raw"F:\Data\Calibrations\2021_12_21_Calibrations\UV\nd0" |> parse_abf
-photon_data = readABF(photon_root, channels = ["Opt"], time_unit = :ms)
-integrated_photons = (photon_data|>integral)[:, 1, 1]
+photon_root = raw"F:\Data\Calibrations\2021_12_30_Calibrations\Green\nd4" |> parse_abf
+#openABF(photon_root[1])
+photon_data = readABF(photon_root, channels = ["Opt", "Opt_365", "Opt_520"], time_unit = :ms)
+truncate_data!(photon_data, t_pre = -20.0, t_post = 40.0)
+plot(photon_data)
+photon_reading = photon_data[:, size(photon_data, 2), 1]
+#photon_reading = maximum(photon_data, dims = 2)[:, 1, 1]
+plot(photon_reading)
 #Print the output and copy and paste it into excel
-writedlm("output.csv", integrated_photons, ',')
-plot(integrated_photons)
+writedlm("output.csv", photon_reading, ',')
 
 
 
