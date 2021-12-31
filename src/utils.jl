@@ -56,8 +56,9 @@ function concat!(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, posi
     end
 
     if size(data, 3) != size(data_add, 3)
-        println(size(data, 3))
-        println(size(data_add, 3))
+        println(size(data))
+        println(size(data_add))
+        println(data_add.infoDict["abfPath"])
         #We need to write a catch here to concatenate files with different numbers of channels
         println("Don't concatenate these files")
     else
