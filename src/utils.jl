@@ -94,15 +94,15 @@ end
 This code is actually somewhat specific for my own needs, will be some way of making this more general later
 
 """
-function readABF(df::DataFrame; extra_channels = nothing, kwargs...)
+function readABF(df::DataFrame; extra_channels = nothing, a_name = "A_Path", ab_name = "AB_Path", kwargs...)
     df_names = names(df)
     #Check to make sure path is in the dataframe
     #Check to make sure the dataframe contains channel info
     @assert "Channel" ∈ df_names
-    if ("A_Path" ∈ df_names) && ("AB_Path" ∈ df_names) #This is a B subtraction
+    if (a_name ∈ df_names) #&& ("AB_Path" ∈ df_names) #This is a B subtraction
         println("B wave subtraction")
         A_paths = string.(df.A_Path)
-        AB_paths = string.(df.AB_Path)
+        AB_paths = string.(df.Path)
         ch = (df.Channel |> unique) .|> String
         if !isnothing(extra_channels)
             ch = (vcat(ch..., extra_channels...))
@@ -110,10 +110,10 @@ function readABF(df::DataFrame; extra_channels = nothing, kwargs...)
         A_data = readABF(A_paths; channels = ch, kwargs...)
         AB_data = readABF(AB_paths; channels = ch, kwargs...)
         return A_data, AB_data
-    elseif ("AB_Path" ∈ df_names) && ("ABG_Path" ∈ df_names) #This is the G-wave subtraction
+    elseif (ab_name ∈ df_names) #&& ("ABG_Path" ∈ df_names) #This is the G-wave subtraction
         println("G wave subtraction")
         AB_paths = string.(df.AB_Path)
-        ABG_paths = string.(df.ABG_Path)
+        ABG_paths = string.(df.Path)
         ch = (df.Channel |> unique) .|> String
         if !isnothing(extra_channels)
             ch = (vcat(ch..., extra_channels...))
