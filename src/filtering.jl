@@ -340,13 +340,13 @@ function filter_data!(data::Experiment;
         lowpass_filter!(data, freq = lowpass) #cutout all high frequency noise
     end
 
-    if cwt_periods
+    if cwt_periods != false
         data = cwt_filter!(filtered_data;
             period_window = cwt_periods
         )
     end
 
-    if dwt_periods
+    if dwt_periods != false
         data = dwt_filter!(filtered_data;
             period_window = dwt_periods
         )
