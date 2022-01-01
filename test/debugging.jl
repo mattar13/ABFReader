@@ -1,12 +1,29 @@
 using Revise #, OhMyREPL, DoctorDocstrings
 using NeuroPhys
-using Plots
 #if we want to plot we will have to import plotting manually
+using Plots
 using Query, DataFrames, XLSX, StatsPlots
-import NeuroPhys.filter_data
-using DSP
+import NeuroPhys: SEM, MEAN, filter_data
+using Dates
 
-#%% We want to be able to access and alter the XLSX datasheet easily rather than rerunning the entire exp
+
+files_abg = ["F:\\Data\\ERG\\Retinoschisis\\2021_05_28_ERG_RS\\Mouse3_P13_WT\\NoDrugs\\Rods\\nd3_1p_0003.abf", "F:\\Data\\ERG\\Retinoschisis\\2021_05_28_ERG_RS\\Mouse3_P13_WT\\NoDrugs\\Rods\\nd3_1p_0004.abf", "F:\\Data\\ERG\\Retinoschisis\\2021_05_28_ERG_RS\\Mouse3_P13_WT\\NoDrugs\\Rods\\nd3_1p_0005.abf", "F:\\Data\\ERG\\Retinoschisis\\2021_05_28_ERG_RS\\Mouse3_P13_WT\\NoDrugs\\Rods\\nd2_1p_0003.abf", "F:\\Data\\ERG\\Retinoschisis\\2021_05_28_ERG_RS\\Mouse3_P13_WT\\NoDrugs\\Rods\\nd2_1p_0004.abf", "F:\\Data\\ERG\\Retinoschisis\\2021_05_28_ERG_RS\\Mouse3_P13_WT\\NoDrugs\\Rods\\nd2_1p_0005.abf", "F:\\Data\\ERG\\Retinoschisis\\2021_05_28_ERG_RS\\Mouse3_P13_WT\\NoDrugs\\Rods\\nd1_1p_0003.abf", "F:\\Data\\ERG\\Retinoschisis\\2021_05_28_ERG_RS\\Mouse3_P13_WT\\NoDrugs\\Rods\\nd1_1p_0004.abf", "F:\\Data\\ERG\\Retinoschisis\\2021_05_28_ERG_RS\\Mouse3_P13_WT\\NoDrugs\\Rods\\nd1_1p_0005.abf"]
+files_ab = ["F:\\Data\\ERG\\Retinoschisis\\2021_05_28_ERG_RS\\Mouse3_P13_WT\\BaCl\\Rods\\nd3_1p_0000.abf", "F:\\Data\\ERG\\Retinoschisis\\2021_05_28_ERG_RS\\Mouse3_P13_WT\\BaCl\\Rods\\nd3_1p_0001.abf", "F:\\Data\\ERG\\Retinoschisis\\2021_05_28_ERG_RS\\Mouse3_P13_WT\\BaCl\\Rods\\nd3_1p_0002.abf", "F:\\Data\\ERG\\Retinoschisis\\2021_05_28_ERG_RS\\Mouse3_P13_WT\\BaCl\\Rods\\nd2_1p_0003.abf", "F:\\Data\\ERG\\Retinoschisis\\2021_05_28_ERG_RS\\Mouse3_P13_WT\\BaCl\\Rods\\nd2_1p_0004.abf", "F:\\Data\\ERG\\Retinoschisis\\2021_05_28_ERG_RS\\Mouse3_P13_WT\\BaCl\\Rods\\nd2_1p_0005.abf", "F:\\Data\\ERG\\Retinoschisis\\2021_05_28_ERG_RS\\Mouse3_P13_WT\\BaCl\\Rods\\nd1_1p_0003.abf", "F:\\Data\\ERG\\Retinoschisis\\2021_05_28_ERG_RS\\Mouse3_P13_WT\\BaCl\\Rods\\nd1_1p_0004.abf", "F:\\Data\\ERG\\Retinoschisis\\2021_05_28_ERG_RS\\Mouse3_P13_WT\\BaCl\\Rods\\nd1_1p_0005.abf"]
+
+data_abg = readABF(files_abg)
+data_abg |> size
+data_ab = readABF(files_ab)
+data_ab |> size
+
+#%% We have changed the analysis significantly since we were setting up RS stuff
+rs_root = "F:\\Data\\ERG\\Retinoschisis\\"
+rs_paths = rs_root |> parse_abf
+all_paths = rs_paths
+data_file = "F:\\Projects\\2021_Retinoschisis\\data_analysis.xlsx"
+all_files = update_datasheet(all_paths, calibration_file, data_file, verbose = true)
+
+
+#Lets try to make a dataframe containing all of the IR data
 data_file = "E:\\Projects\\2020_JGP_Gnat\\data_analysis.xlsx"
 all_files = DataFrame(XLSX.readtable(data_file, "All_Files")...)
 trace_A = DataFrame(XLSX.readtable(data_file, "trace_A")...)
@@ -19,24 +36,26 @@ conditions_A = DataFrame(XLSX.readtable(data_file, "conditions_A")...)
 conditions_B = DataFrame(XLSX.readtable(data_file, "conditions_B")...)
 conditions_G = DataFrame(XLSX.readtable(data_file, "conditions_G")...)
 
-
-#write something that iteratively checks whether or not the entries match and then only analyzes the mismatches
-all_files |> @filter(_.Condition == "BaCl_LAP4" || _.Condition == "LAP4_BaCl") |> DataFrame
-
-
-
-#%%
-updated_traceA = update_entry(data_file, "trace_A", entry_name; column_name = :Path)
-
-updated_traceA[1, :]
-updated_traceA[2, :]
-a_waves[1, :]
-
-#%%
-file = "test\\to_analyze.abf"
-data = readABF(file) |> filter_data
-plot(data)
-#%%
+#%% Necessary fitting function
+model(x, p) = map(I -> IR(I, p[1], p[2]) * p[3], x)
+modelMM(x, p) = map(I -> IR(I, p[1], 1.0) * p[3], x)
+function fit_IR_dataframe(df;
+     p0 = [100.0, 1.0, 1.0], lb = [0.1, 0.0, 0.0],
+     hill = true
+)
+     if hill
+          fit = curve_fit(model, df[:, :Photons], df[:, :Response], p0,
+               lower = lb
+          )
+          return fit
+     else
+          fit = curve_fit(modelMM, df[:, :Photons], df[:, :Response], p0,
+               lower = lb
+          )
+          return fit
+     end
+end
+#=  =#
 function extract_date_data(dataframe, date; pc = "Rods")
      #println(length(date))
      if length(date) > 5
@@ -55,29 +74,96 @@ function extract_date_data(dataframe, date; pc = "Rods")
      df
 end
 
+function extract_IR_data(df, info)
+     #info is (Genotype, Age, Wavelength, Photoreceptor)
+     df |>
+     @filter((_.Genotype, _.Age, _.Wavelength, _.Photoreceptor) == info) |>
+     @groupby(_.Photons) |>
+     @map({
+          Photons = key(_),
+          N = length(_),
+          Response = MEAN(_.Response).value, Resp_SEM = SEM(_.Response).value,
+          Minima = MEAN(_.Minima).value, Minima_SEM = SEM(_.Minima).value
+     }) |>
+     @orderby(_.Photons) |>
+     DataFrame
+end
 #%%
+pTEST = ("WT", 30, 365, "Rods")
+df = trace_B
+pTESTir = extract_IR_data(df, pTEST) |> DataFrame
+IR_test = df |> @filter((_.Genotype, _.Age, _.Wavelength, _.Photoreceptor) == pTEST) |> DataFrame
+fit_test = fit_IR_dataframe(IR_test; p0 = [10.0, 1.0, 50.0], hill = false)
+#add the residuals to the IR plot
+IR_test[!, :Residuals] = (fit_test.resid)
+#filter IR_test by residuals
+IR_test = IR_test |> @orderby_descending(_.Residuals) |> DataFrame
+
+i_e = IR_test[1, :]
+issue_date = (i_e.Year, i_e.Month, i_e.Date, i_e.Animal, i_e.Wavelength, i_e.Channel)
+issue_df = extract_date_data(IR_test, issue_date) |>
+           @orderby(_.Photons) |> @filter(_.Photoreceptor == "Rods") |>
+           DataFrame
+issue_data = readABF(issue_df)
+issue_data = filter_data(issue_data, t_post = 2.0)
+issue_df
+#%% Plot the info 
+fig_issueA = @df IR_test plot(:Photons, :Response,
+     st = :scatter, xaxis = :log, c = :jet, marker_z = fit_test.resid
+);
+@df issue_df plot!(:Photons, :Response,
+     st = :scatter, xaxis = :log, c = :red, marker = :star);
+@df pTESTir plot!(:Photons, :Response,
+     st = :scatter, xaxis = :log, c = :green, marker = :square);
+plot!(fig_issueA,
+     x -> model(x, fit_test.param), 10 .^ range(-1, stop = 4, length = 10000)
+);
+
+#The file with issues is this one
+idx = 1
+fig_issueB = plot(issue_data, c = :jet, to_plot = (:channels, idx),
+     line_z = log10.(issue_df.Photons)', legend = :right,
+     xlims = (0.0, 1.0)
+);
+#hline!(fig_issueB, [issue_df.Response...]',
+#     line_z = log10.(issue_df.Photons)', c = :jet
+#)
+minima
+resps = minima_to_peak(issue_data)[idx, :]
+hline!(fig_issueB, (resps)', line_z = log10.(issue_df.Photons)', c = :jet)
+plot(fig_issueA, fig_issueB, layout = grid(2, 1))
+
+
+
+#%% lets say that we found an error and want to update the analysis
+NeuroPhys.update_entry(data_file, "trace_B",
+     String.(issue_df.Path),
+     column_name = :Path,
+     t_post = 2.0,
+     use_saturated_response = true
+)
+
+
+#%% 2) we have to figure out how to do experiments better as far as saturated response
 data_file = "E:\\Projects\\2020_JGP_Gnat\\data_analysis.xlsx"
-trace_B = DataFrame(XLSX.readtable(data_file, "trace_B")...)
+all_files = DataFrame(XLSX.readtable(data_file, "All_Files")...)
+qTrace, qExperiment, qConditons = NeuroPhys.run_A_wave_analysis(all_files, verbose = true)
 
-p9WT_date = (2019, 7, 4, 1, 525, "Vm_prime4")
-p9WTB_df = extract_date_data(trace_B, p9WT_date)
+qTrace
+#remake the conditions section
 
-p9WTB_data = readABF(p9WTB_df)[1]
-size(p9WTB_data)
+qTrace
 
 
-#%% 1) I want to append new data to the end of the .abf file containing photon and ID info
+
+#%% 3) I want to append new data to the end of the .abf file containing photon and ID info
 file = "test\\to_filter.abf"
-data = readABF(file)
-categories = keys(data.infoDict)
+dataFile = readABF(file) |> NeuroPhys.filter_data #it is not much more expensive to extract the datafile than the abfInfo #indexing using the sweep number, time value, and the channel number
+dataFile.chTelegraph
+filter_data = data |> filter_data
+plot(data)
 
-
-#%% 2) Reading the Comments 
-
-
-#%% 3) Edit the ABF file
-
-#%% Just found out there was Regex in Julia that may prove useful
+#%% 4) Improve file extraction
 format = r"(?P<Inside>\S*?)_|\Z"
 file = "nd0_100p_1ms_0000.abf"
 m = match(format, file)

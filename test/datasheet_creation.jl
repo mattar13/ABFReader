@@ -16,7 +16,7 @@ all_files = update_datasheet(all_paths, calibration_file, data_file, verbose = t
 run_analysis(all_files, data_file, verbose = true)
 
 #%% This analysis is for the JGP data analysis
-wt_root = "E:\\Data\\ERG\\Paul\\" #This comes from my portable hardrive
+ wt_root = "E:\\Data\\ERG\\Paul\\" #This comes from my portable hardrive
 gnat_root = "E:\\Data\\ERG\\Gnat\\"
 wt_paths = wt_root |> parse_abf
 gnat_paths = gnat_root |> parse_abf
