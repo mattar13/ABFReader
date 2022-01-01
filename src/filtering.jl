@@ -341,13 +341,13 @@ function filter_data!(data::Experiment;
     end
 
     if cwt_periods != false
-        data = cwt_filter(filtered_data;
+        data = cwt_filter(data;
             period_window = cwt_periods
         )
     end
 
     if dwt_periods != false
-        data = dwt_filter(filtered_data;
+        data = dwt_filter(data;
             period_window = dwt_periods
         )
     end
