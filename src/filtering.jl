@@ -317,31 +317,43 @@ function fft_spectrum(data::Experiment)
 end
 
 #%% a common filter function for simplification. Remember that this is an inplace version
-function filter_data!(data::Experiment; 
-        t_pre = 1.0, t_post = 4.0, 
-        highpass = false, EI_bandpass = 100.0, lowpass = 300.0, 
-        dwt_pick = false, dwt_periods = 9,
-        cwt_pick = false, cwt_periods = 1:10
-    ) 
+function filter_data!(data::Experiment;
+        t_pre = 1.0, t_post = 4.0,
+        highpass = false, EI_bandpass = 100.0, lowpass = 300.0,
+        dwt_periods = false, #dwt_periods = (1,9),
+        cwt_periods = false, #cwt_periods = (1,9)
+    )
     #println(t_post)
-    truncate_data!(data, t_pre = t_pre, t_post = t_post);
-	baseline_cancel!(data, mode = :slope); 
+    truncate_data!(data, t_pre = t_pre, t_post = t_post)
+    baseline_cancel!(data, mode = :slope)
 
     #We will apply several filters consecutively
-	if highpass != false
+    if highpass != false
         highpass_filter!(data, freq = highpass) #Highpass 0.5hz
     end
 
     if EI_bandpass != false
-	    EI_filter!(data, bandpass = EI_bandpass) #adaptive line interference according to Clampfit
+        EI_filter!(data, bandpass = EI_bandpass) #adaptive line interference according to Clampfit
     end
 
     if lowpass != false
-	    lowpass_filter!(data, freq = lowpass) #cutout all high frequency noise
+        lowpass_filter!(data, freq = lowpass) #cutout all high frequency noise
+    end
+
+    if cwt_periods
+        data = cwt_filter!(filtered_data;
+            period_window = cwt_periods
+        )
+    end
+
+    if dwt_periods
+        data = dwt_filter!(filtered_data;
+            period_window = dwt_periods
+        )
     end
 
     data * 1000
-	return data
+    return data
 end
 
 function filter_data(data::Experiment; kwargs...) 
