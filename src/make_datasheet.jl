@@ -312,11 +312,12 @@ end
 """
 This function calculates the standard error of the Mean and is safe for querying
 """
-function SEM(x)
+function SEM(x; ddof = 2)
      n = length(x)
-     mean = sum(x) / n
-     var = map(xi -> xi - mean, x) .^ 2
-     std = sqrt(sum(var))
+     mean = MEAN(x)
+     deviations = map(xi -> (xi - mean)^2, x)
+     variance = sum(deviations) / (n-ddof)
+     std = sqrt(variance)
      std / sqrt(n)
 end
 
@@ -447,15 +448,17 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, v
                println("Completeing the analysis for $idx out of $(size(uniqueData,1))")
           end
           for (ch_idx, data_ch) in enumerate(eachchannel(sub_data)) #walk through each row of the data iterator
+          
+               unsubtracted_data_ch = getchannel(filt_data_AB, ch_idx)
                age = qData.Age[1] #Extract the age
                ch = data_ch.chNames[1] #Extract channel information
                gain = data_ch.chTelegraph[1]
                #Calculate the response based on the age
-
+          
                #======================DATA ANALYSIS========================#
-
+          
                Resps = abs.(maximum(data_ch, dims = 2)[:, 1, :])
-               Unsubtracted_Resp = abs.(minima_to_peak(data_ch[:, :, ch_idx])) #This is the unsubtracted Response
+               Unsubtracted_Resp = abs.(minima_to_peak(unsubtracted_data_ch)) #This is the unsubtracted Response
                minimas = minimum(data_ch, dims = 2)[:, 1, :]
                maximas = maximum(data_ch, dims = 2)[:, 1, :]
                Peak_Times = time_to_peak(data_ch)
@@ -463,9 +466,9 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, v
                rec_res = recovery_tau(data_ch, Resps)
                Recovery_Taus = rec_res[1] |> vec
                Tau_GOFs = rec_res[2] |> vec
-
+          
                #We need to program the amplification as well. But that may be longer
-
+          
                #======================GLUING TOGETHER THE QUERY========================#
                #now we can walk through each one of the responses and add it to the qTrace 
                for swp = 1:size(data_ch, 1) #Walk through all sweep info, since sweeps will represent individual datafiles most of the time
@@ -482,7 +485,7 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, v
                          Peak_Time = Peak_Times[swp], Integrated_Time = Integrated_Times[swp],
                          Recovery_Tau = Recovery_Taus[swp], Tau_GOF = Tau_GOFs[swp]))
                end
-
+          
                push!(qExperiment, (
                     Year = qData[1, :Year], Month = qData[1, :Month], Date = qData[1, :Date],
                     Age = qData[1, :Age], Animal = qData[1, :Animal], Genotype = qData[1, :Genotype],
@@ -537,7 +540,8 @@ function run_G_wave_analysis(all_files::DataFrame; verbose = true)
           #println(qData.Path)
           #println(qData.AB_Path)
           filt_data = filt_data_ABG - filt_data_AB
-
+          
+     
           if verbose
                println("Completeing the analysis for $idx out of $(size(uniqueData,1))")
           end
@@ -546,11 +550,11 @@ function run_G_wave_analysis(all_files::DataFrame; verbose = true)
                ch = data_ch.chNames[1] #Extract channel information
                gain = data_ch.chTelegraph[1]
                #Calculate the response based on the age
-          
+               unsubtracted_data_ch = getchannel(filt_data_ABG, ch_idx)
                #======================DATA ANALYSIS========================#
           
                Resps = abs.(minimum(data_ch, dims = 2)[:, 1, :])
-               Unsubtracted_Resp = minimum(filt_data_ABG[:, :, ch_idx])
+               Unsubtracted_Resp = abs.(minimum(unsubtracted_data_ch)) #This is the unsubtracted Response
                minimas = minimum(data_ch, dims = 2)[:, 1, :]
                maximas = maximum(data_ch, dims = 2)[:, 1, :]
                Peak_Times = time_to_peak(data_ch)
@@ -786,9 +790,9 @@ function make_IR_datasheet(fn::String, df::DataFrame)
           @orderby_descending(_.Genotype) |> @thenby(_.Age) |> @thenby(_.Wavelength) |> @thenby(_.Photoreceptor) |>
      DataFrame
      #make one datasheet to save all of the files to
-
      XLSX.openxlsx(fn, mode = "w") do xf
           for info in eachrow(info_q)
+               println(info)
                GEN = info.Genotype #Pull out the Genotype
                AGE = info.Age #Pull out the age
                WAVE = info.Wavelength #Pull out the wavelength
@@ -799,26 +803,26 @@ function make_IR_datasheet(fn::String, df::DataFrame)
                condition_q = df |>
                              @filter({_.Genotype, _.Age, _.Wavelength, _.Photoreceptor} == info) |>
                              @orderby(_.Photons) |>
-                         DataFrame
+                             DataFrame
                #now lets group each condition by photon
                photon_q = condition_q |>
                           @groupby(_.Photons) |>
                           @map({Photons = key(_),
-                              Response = "=AVERAGE(E2:S2)",  #These are formulas that need to be activated in Excel
-                              SEM = "=STDEV.P(E2:S2)/SQRT(COUNT(E2:S2))",
-                              N = "=COUNT(E2:S2)",
-                              Responses = map(r -> r.value, _.Response)
-                         }) |>
-                    DataFrame
-               #println(photon_q)
+                               Response = "=AVERAGE(E2:S2)",  #These are formulas that need to be activated in Excel
+                               SEM = "=STDEV.P(E2:S2)/SQRT(COUNT(E2:S2))",
+                               N = "=COUNT(E2:S2)",
+                               Responses = map(r -> r.value, _.Response)
+                          }) |>
+                          DataFrame
+               println(photon_q)
                #photon_q[!, :Response] = 
-          
+
                XLSX.addsheet!(xf, "$(GEN)_$(AGE)_$(WAVE)_$(PHOTO)")
                XLSX.writetable!(xf[sn],
                     collect(DataFrames.eachcol(photon_q)),
                     DataFrames.names(photon_q)
                )
-               return photon_q
+               #return photon_q
           end
      end
 end
