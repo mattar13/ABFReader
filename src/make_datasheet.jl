@@ -415,23 +415,18 @@ end
 
 #We can update this with our updated channel analysis
 function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, verbose = false)
-     if analyze_subtraction
-          trace_A = all_files |> @filter(_.Condition == "BaCl_LAP4" || _.Condition == "LAP4_BaCl") |> DataFrame
-          trace_AB = all_files |> @filter(_.Condition == "BaCl") |> DataFrame
-          b_files = trace_A |> @join(trace_AB,
-                         {_.Year, _.Month, _.Date, _.Animal, _.Photons, _.Photoreceptor, _.Wavelength},
-                         {_.Year, _.Month, _.Date, _.Animal, _.Photons, _.Photoreceptor, _.Wavelength},
-                         {__...,
-                              A_condition = _.Condition,
-                              A_Path = _.Path,
-                         }) |> DataFrame
-          b_files[!, :Path] = string.(b_files[!, :Path]) #XLSX.jl converts things into Vector{Any}      
-          b_files[!, :A_Path] = string.(b_files[!, :A_Path]) #XLSX.jl converts things into Vector{Any}            
-     else
-          b_files = all_files |> @filter(_.Condition == "BaCl") |> DataFrame
-          b_files[!, :Path] = string.(b_files[!, :Path]) #XLSX.jl converts things into Vector{Any}
-          b_files[!, :A_Path] = nothing #XLSX.jl converts things into Vector{Any}    
-     end
+     trace_A = all_files |> @filter(_.Condition == "BaCl_LAP4" || _.Condition == "LAP4_BaCl") |> DataFrame
+     trace_AB = all_files |> @filter(_.Condition == "BaCl") |> DataFrame
+     b_files = trace_A |> @join(trace_AB,
+                    {_.Year, _.Month, _.Date, _.Animal, _.Photons, _.Photoreceptor, _.Wavelength},
+                    {_.Year, _.Month, _.Date, _.Animal, _.Photons, _.Photoreceptor, _.Wavelength},
+                    {__...,
+                         A_condition = _.Condition,
+                         A_Path = _.Path,
+                    }) |> DataFrame
+     b_files[!, :Path] = string.(b_files[!, :Path]) #XLSX.jl converts things into Vector{Any}      
+     b_files[!, :A_Path] = string.(b_files[!, :A_Path]) #XLSX.jl converts things into Vector{Any}            
+    
      uniqueData = b_files |> @unique({_.Year, _.Month, _.Date, _.Animal, _.Wavelength, _.Photoreceptor}) |> DataFrame
      qTrace = DataFrame()
      qExperiment = DataFrame()
@@ -441,34 +436,28 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, v
                        (i.Year, i.Month, i.Date, i.Animal, i.Wavelength, i.Photoreceptor)
                   ) |>
                   DataFrame
-          if analyze_subtraction
                #don't have this yet
-               data_AB = readABF(qData.Path)
-               filt_data_AB = filter_data(data_AB, t_post = 0.5)
-               data_A = readABF(qData.A_Path)
-               filt_data_A = filter_data(data_A, t_post = 0.5)
-               #if we want to subtract we need to filter first
-               filt_data = filt_data_AB - filt_data_A
-          else
-               unfilt_data = readABF(qData.Path)
-               filt_data = filter_data(unfilt_data, t_post = 0.5)
-          end
+          data_AB = readABF(qData.Path)
+          filt_data_AB = filter_data(data_AB, t_post = 0.5)
+          data_A = readABF(qData.A_Path)
+          filt_data_A = filter_data(data_A, t_post = 0.5)
+          #if we want to subtract we need to filter first
+          sub_data = filt_data_AB - filt_data_A
           if verbose
                println("Completeing the analysis for $idx out of $(size(uniqueData,1))")
           end
-          for data_ch in eachchannel(filt_data) #walk through each row of the data iterator
+          Minima_To_Maxima = abs.(minima_to_peak(data_ch))
+          for (ch_idx, data_ch) in enumerate(eachchannel(sub_data)) #walk through each row of the data iterator
                age = qData.Age[1] #Extract the age
                ch = data_ch.chNames[1] #Extract channel information
                gain = data_ch.chTelegraph[1]
                #Calculate the response based on the age
-          
+
                #======================DATA ANALYSIS========================#
-          
-               if analyze_subtraction
-                    Resps = abs.(maximum(data_ch, dims = 2)[:, 1, :])
-               else
-                    Resps = abs.(minima_to_peak(data_ch))
-               end
+
+               Resps = abs.(maximum(data_ch, dims = 2)[:, 1, :])
+
+
                minimas = minimum(data_ch, dims = 2)[:, 1, :]
                maximas = maximum(data_ch, dims = 2)[:, 1, :]
                Peak_Times = time_to_peak(data_ch)
@@ -476,9 +465,9 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, v
                rec_res = recovery_tau(data_ch, Resps)
                Recovery_Taus = rec_res[1] |> vec
                Tau_GOFs = rec_res[2] |> vec
-          
+
                #We need to program the amplification as well. But that may be longer
-          
+
                #======================GLUING TOGETHER THE QUERY========================#
                #now we can walk through each one of the responses and add it to the qTrace 
                for swp = 1:size(data_ch, 1) #Walk through all sweep info, since sweeps will represent individual datafiles most of the time
@@ -490,17 +479,17 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, v
                          Photoreceptor = qData[swp, :Photoreceptor], Wavelength = qData[swp, :Wavelength],
                          Photons = qData[swp, :Photons],
                          Channel = ch, Gain = gain,
-                         Response = Resps[swp], Minima = minimas[swp], Maxima = maximas[swp],
+                         Response = Resps[swp], Minima_To_Maxima = Minima_To_Maxima[swp], Minima = minimas[swp], Maxima = maximas[swp],
                          Peak_Time = Peak_Times[swp], Integrated_Time = Integrated_Times[swp],
                          Recovery_Tau = Recovery_Taus[swp], Tau_GOF = Tau_GOFs[swp]))
                end
-          
+     
                push!(qExperiment, (
                     Year = qData[1, :Year], Month = qData[1, :Month], Date = qData[1, :Date],
                     Age = qData[1, :Age], Animal = qData[1, :Animal], Genotype = qData[1, :Genotype],
                     Photoreceptor = qData[1, :Photoreceptor], Wavelength = qData[1, :Wavelength],
                     Photons = qData[1, :Photons],
-                    Rmax = maximum(Resps)
+                    Rmax = maximum(Resps), Minima_To_Maxima = maximum(Minima_To_Maxima[ch_idx, :])
                ))
           end
      end
@@ -609,6 +598,8 @@ end
 
 """
 Working on this function to replace making individual trace extractions. 
+
+     Currently we have two seperate ways of analyzing the B-waves so we can report both in seperate sheets
 """
 function run_analysis(all_files::DataFrame, data_file::String; analyze_subtraction = true, verbose = false)
      #lets see if the files currently exist already
@@ -638,9 +629,15 @@ function run_analysis(all_files::DataFrame, data_file::String; analyze_subtracti
                DataFrames.names(conditions_A))
      end
 
-     #make the B-wave files
-     trace_B, experiments_B, conditions_B = run_B_wave_analysis(all_files, analyze_subtraction = analyze_subtraction, verbose = verbose)
+     #WE CAN PUT THE SUBTRACTED AND UNSUBTRACTCED NUMBERS IN THE SAME DATAFRAME
+     #make the B-wave files using the subtraction method
+     #subt_trace_B, subt_experiments_B, subt_conditions_B = run_B_wave_analysis(all_files, analyze_subtraction = true, verbose = verbose)
+     
+     #make the B-wave files without the subtraction
+     trace_B, experiments_B, conditions_B = run_B_wave_analysis(all_files, analyze_subtraction = false, verbose = verbose)
+
      # BotNotify("{ERG GNAT}: Completed extraction of B-wave")
+     #save normal experiments
      XLSX.openxlsx(data_file, mode = "rw") do xf
           sheet = xf["trace_B"]
           XLSX.writetable!(sheet,
@@ -661,6 +658,29 @@ function run_analysis(all_files::DataFrame, data_file::String; analyze_subtracti
                collect(DataFrames.eachcol(conditions_B)),
                DataFrames.names(conditions_B))
      end
+
+     #=Save the subtractions as well
+     XLSX.openxlsx(data_file, mode = "rw") do xf
+          sheet = xf["sub_trace_B"]
+          XLSX.writetable!(sheet,
+               collect(DataFrames.eachcol(subt_trace_B)),
+               DataFrames.names(subt_trace_B))
+     end
+
+     XLSX.openxlsx(data_file, mode = "rw") do xf
+          sheet = xf["sub_experiments_B"]
+          XLSX.writetable!(sheet,
+               collect(DataFrames.eachcol(subt_experiments_B)),
+               DataFrames.names(subt_experiments_B))
+     end
+
+     XLSX.openxlsx(data_file, mode = "rw") do xf
+          sheet = xf["sub_conditions_B"]
+          XLSX.writetable!(sheet,
+               collect(DataFrames.eachcol(subt_conditions_B)),
+               DataFrames.names(subt_conditions_B))
+     end
+     =#
      #make the G-wave files
      trace_G, experiments_G, conditions_G = run_G_wave_analysis(all_files, verbose = verbose)
      #BotNotify("{ERG GNAT}: Completed extraction of G-component")
