@@ -15,8 +15,18 @@ data_file = "F:\\Projects\\2021_Retinoschisis\\data_analysis.xlsx"
 all_files = update_datasheet(all_paths, calibration_file, data_file, verbose = true)
 run_analysis(all_files, data_file, verbose = true)
 
+trace_A = DataFrame(XLSX.readtable(data_file, "trace_A")...)
+trace_B = DataFrame(XLSX.readtable(data_file, "trace_B")...)
+trace_G = DataFrame(XLSX.readtable(data_file, "trace_G")...)
+#run the IR analysis for A-waves and B-waves
+
+aIR_name = raw"F:\Projects\2021_Retinoschisis\aIR_analysis.xlsx"
+make_IR_datasheet(aIR_name, trace_A)
+bIR_name = raw"F:\Projects\2021_Retinoschisis\bIR_analysis.xlsx"
+make_IR_datasheet(bIR_name, trace_B)
+
 #%% This analysis is for the JGP data analysis
- wt_root = "E:\\Data\\ERG\\Paul\\" #This comes from my portable hardrive
+wt_root = "E:\\Data\\ERG\\Paul\\" #This comes from my portable hardrive
 gnat_root = "E:\\Data\\ERG\\Gnat\\"
 wt_paths = wt_root |> parse_abf
 gnat_paths = gnat_root |> parse_abf
