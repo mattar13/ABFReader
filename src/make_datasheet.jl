@@ -426,7 +426,7 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, v
                     }) |> DataFrame
      b_files[!, :Path] = string.(b_files[!, :Path]) #XLSX.jl converts things into Vector{Any}      
      b_files[!, :A_Path] = string.(b_files[!, :A_Path]) #XLSX.jl converts things into Vector{Any}            
-    
+
      uniqueData = b_files |> @unique({_.Year, _.Month, _.Date, _.Animal, _.Wavelength, _.Photoreceptor}) |> DataFrame
      qTrace = DataFrame()
      qExperiment = DataFrame()
@@ -436,7 +436,7 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, v
                        (i.Year, i.Month, i.Date, i.Animal, i.Wavelength, i.Photoreceptor)
                   ) |>
                   DataFrame
-               #don't have this yet
+          #don't have this yet
           data_AB = readABF(qData.Path)
           filt_data_AB = filter_data(data_AB, t_post = 0.5)
           data_A = readABF(qData.A_Path)
@@ -451,9 +451,9 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, v
                ch = data_ch.chNames[1] #Extract channel information
                gain = data_ch.chTelegraph[1]
                #Calculate the response based on the age
-          
+
                #======================DATA ANALYSIS========================#
-          
+
                Resps = abs.(maximum(data_ch, dims = 2)[:, 1, :])
                Unsubtracted_Resp = abs.(minima_to_peak(data_ch[:, :, ch_idx])) #This is the unsubtracted Response
                minimas = minimum(data_ch, dims = 2)[:, 1, :]
@@ -463,9 +463,9 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, v
                rec_res = recovery_tau(data_ch, Resps)
                Recovery_Taus = rec_res[1] |> vec
                Tau_GOFs = rec_res[2] |> vec
-          
+
                #We need to program the amplification as well. But that may be longer
-          
+
                #======================GLUING TOGETHER THE QUERY========================#
                #now we can walk through each one of the responses and add it to the qTrace 
                for swp = 1:size(data_ch, 1) #Walk through all sweep info, since sweeps will represent individual datafiles most of the time
@@ -482,13 +482,13 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, v
                          Peak_Time = Peak_Times[swp], Integrated_Time = Integrated_Times[swp],
                          Recovery_Tau = Recovery_Taus[swp], Tau_GOF = Tau_GOFs[swp]))
                end
-          
+
                push!(qExperiment, (
                     Year = qData[1, :Year], Month = qData[1, :Month], Date = qData[1, :Date],
                     Age = qData[1, :Age], Animal = qData[1, :Animal], Genotype = qData[1, :Genotype],
                     Photoreceptor = qData[1, :Photoreceptor], Wavelength = qData[1, :Wavelength],
                     Photons = qData[1, :Photons],
-                    Rmax = maximum(Resps), Minima_To_Maxima = maximum(Unsubtracted_Resp)
+                    Rmax = maximum(Resps), Unsubtracted_Rmax = maximum(Unsubtracted_Resp)
                ))
           end
      end
@@ -497,7 +497,8 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, v
                    @map({
                         Age = _.Age[1], Genotype = _.Genotype[1], Photoreceptor = _.Photoreceptor[1], Wavelength = _.Wavelength[1],
                         N = length(_),
-                        Rmax = MEAN(_.Rmax), Rmax_SEM = SEM(_.Rmax)
+                        Rmax = MEAN(_.Rmax), Rmax_SEM = SEM(_.Rmax),
+                        Unsubtracted_Rmax = MEAN(_.Unsubtracted_Rmax), Unsubtracted_Rmax_SEM = SEM(_.Unsubtracted_Rmax),
                    }) |>
                    DataFrame
      return qTrace, qExperiment, qConditions
@@ -536,7 +537,7 @@ function run_G_wave_analysis(all_files::DataFrame; verbose = true)
           #println(qData.Path)
           #println(qData.AB_Path)
           filt_data = filt_data_ABG - filt_data_AB
-     
+
           if verbose
                println("Completeing the analysis for $idx out of $(size(uniqueData,1))")
           end
@@ -545,9 +546,9 @@ function run_G_wave_analysis(all_files::DataFrame; verbose = true)
                ch = data_ch.chNames[1] #Extract channel information
                gain = data_ch.chTelegraph[1]
                #Calculate the response based on the age
-     
+          
                #======================DATA ANALYSIS========================#
-     
+          
                Resps = abs.(minimum(data_ch, dims = 2)[:, 1, :])
                Unsubtracted_Resp = minimum(filt_data_ABG[:, :, ch_idx])
                minimas = minimum(data_ch, dims = 2)[:, 1, :]
@@ -557,9 +558,9 @@ function run_G_wave_analysis(all_files::DataFrame; verbose = true)
                rec_res = recovery_tau(data_ch, Resps)
                Recovery_Taus = rec_res[1] |> vec
                Tau_GOFs = rec_res[2] |> vec
-     
+          
                #We need to program the amplification as well. But that may be longer
-     
+          
                #======================GLUING TOGETHER THE QUERY========================#
                #now we can walk through each one of the responses and add it to the qTrace 
                for swp = 1:size(data_ch, 1) #Walk through all sweep info, since sweeps will represent individual datafiles most of the time
@@ -576,13 +577,13 @@ function run_G_wave_analysis(all_files::DataFrame; verbose = true)
                          Peak_Time = Peak_Times[swp], Integrated_Time = Integrated_Times[swp],
                          Recovery_Tau = Recovery_Taus[swp], Tau_GOF = Tau_GOFs[swp]))
                end
-     
+          
                push!(qExperiment, (
                     Year = qData[1, :Year], Month = qData[1, :Month], Date = qData[1, :Date],
                     Age = qData[1, :Age], Animal = qData[1, :Animal], Genotype = qData[1, :Genotype],
                     Photoreceptor = qData[1, :Photoreceptor], Wavelength = qData[1, :Wavelength],
                     Photons = qData[1, :Photons],
-                    Rmax = maximum(Resps)
+                    Rmax = maximum(Resps), Unsubtracted_Rmax = maximum(Unsubtracted_Resp)
                ))
           end
      end
@@ -591,7 +592,8 @@ function run_G_wave_analysis(all_files::DataFrame; verbose = true)
                    @map({
                         Age = _.Age[1], Genotype = _.Genotype[1], Photoreceptor = _.Photoreceptor[1], Wavelength = _.Wavelength[1],
                         N = length(_),
-                        Rmax = MEAN(_.Rmax), Rmax_SEM = SEM(_.Rmax)
+                        Rmax = MEAN(_.Rmax), Rmax_SEM = SEM(_.Rmax),
+                        Unsubtracted_Rmax = MEAN(_.Unsubtracted_Rmax), Unsubtracted_Rmax_SEM = SEM(_.Unsubtracted_Rmax),
                    }) |>
                    DataFrame
      return qTrace, qExperiment, qConditions
