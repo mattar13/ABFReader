@@ -4,9 +4,12 @@ pkg_dir = joinpath(splitpath(pathof(NeuroPhys))[1:end-2]...)
 export pkg_dir
 
 using Base: String, println
-is_working() = println("Test this push, for some reason it's not working") 
+is_working() = println("Test this push, for some reason it's not working")
 #Imports
-using PyCall
+using PyCall #using Python in the home environment may cause issues
+ENV["R_HOME"] = raw"C:\Program Files\R\R-4.1.2"
+#Have to point to the correct R path first
+using RCall #used for calculating Two-Way ANOVAs
 using RecipesBase #This can be removed if plotting is not desired. This makes the code run much faster
 using StatsBase, Statistics
 using Polynomials, Distributions #Used for polynomial fitting
@@ -36,16 +39,16 @@ export get_stim_channels
 export getchannel, getsweep, getstim, findstimRng
 export eachchannel, eachsweep
 export truncate_data, truncate_data!
-export split_data, drop!, drop 
+export split_data, drop!, drop
 export concat, concat!
 export photon_lookup
 export match_channels
 #These will be disabled eventually
 
 #filtering are any functions that return a Experiment file and alter the old one
-include("filtering.jl") 
+include("filtering.jl")
 #export filter_data #Don't export this one explicitly
-export baseline_cancel, baseline_cancel! 
+export baseline_cancel, baseline_cancel!
 export lowpass_filter, lowpass_filter!
 export highpass_filter, highpass_filter!
 export notch_filter, notch_filter!
@@ -74,7 +77,7 @@ export max_interval_algorithim
 export timescale_analysis
 
 #Models are anything that is used to create new data
-include("models.jl") 
+include("models.jl")
 #Export the photon calculation and Rig-specific Photon equation
 export photons, Transferrance, stimulus_model, f_I
 #Export the Amplification and IR models
