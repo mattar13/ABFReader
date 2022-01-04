@@ -446,18 +446,16 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, v
           if verbose
                println("Completeing the analysis for $idx out of $(size(uniqueData,1))")
           end
-          Minima_To_Maxima = abs.(minima_to_peak(data_ch))
           for (ch_idx, data_ch) in enumerate(eachchannel(sub_data)) #walk through each row of the data iterator
                age = qData.Age[1] #Extract the age
                ch = data_ch.chNames[1] #Extract channel information
                gain = data_ch.chTelegraph[1]
                #Calculate the response based on the age
-
+          
                #======================DATA ANALYSIS========================#
-
+          
                Resps = abs.(maximum(data_ch, dims = 2)[:, 1, :])
-
-
+               Unsubtracted_Resp = abs.(minima_to_peak(data_ch[:, :, ch_idx])) #This is the unsubtracted Response
                minimas = minimum(data_ch, dims = 2)[:, 1, :]
                maximas = maximum(data_ch, dims = 2)[:, 1, :]
                Peak_Times = time_to_peak(data_ch)
@@ -465,9 +463,9 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, v
                rec_res = recovery_tau(data_ch, Resps)
                Recovery_Taus = rec_res[1] |> vec
                Tau_GOFs = rec_res[2] |> vec
-
+          
                #We need to program the amplification as well. But that may be longer
-
+          
                #======================GLUING TOGETHER THE QUERY========================#
                #now we can walk through each one of the responses and add it to the qTrace 
                for swp = 1:size(data_ch, 1) #Walk through all sweep info, since sweeps will represent individual datafiles most of the time
@@ -479,17 +477,18 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, v
                          Photoreceptor = qData[swp, :Photoreceptor], Wavelength = qData[swp, :Wavelength],
                          Photons = qData[swp, :Photons],
                          Channel = ch, Gain = gain,
-                         Response = Resps[swp], Minima_To_Maxima = Minima_To_Maxima[swp], Minima = minimas[swp], Maxima = maximas[swp],
+                         Response = Resps[swp], Unsubtracted_Response = Unsubtracted_Resp[swp],
+                         Minima = minimas[swp], Maxima = maximas[swp],
                          Peak_Time = Peak_Times[swp], Integrated_Time = Integrated_Times[swp],
                          Recovery_Tau = Recovery_Taus[swp], Tau_GOF = Tau_GOFs[swp]))
                end
-     
+          
                push!(qExperiment, (
                     Year = qData[1, :Year], Month = qData[1, :Month], Date = qData[1, :Date],
                     Age = qData[1, :Age], Animal = qData[1, :Animal], Genotype = qData[1, :Genotype],
                     Photoreceptor = qData[1, :Photoreceptor], Wavelength = qData[1, :Wavelength],
                     Photons = qData[1, :Photons],
-                    Rmax = maximum(Resps), Minima_To_Maxima = maximum(Minima_To_Maxima[ch_idx, :])
+                    Rmax = maximum(Resps), Minima_To_Maxima = maximum(Unsubtracted_Resp)
                ))
           end
      end
@@ -534,14 +533,14 @@ function run_G_wave_analysis(all_files::DataFrame; verbose = true)
           data_AB = readABF(qData.AB_Path)
           filt_data_AB = filter_data(data_AB, t_post = 0.5)
           #if we want to subtract we need to filter first
-          println(qData.Path)
-          println(qData.AB_Path)
+          #println(qData.Path)
+          #println(qData.AB_Path)
           filt_data = filt_data_ABG - filt_data_AB
      
           if verbose
                println("Completeing the analysis for $idx out of $(size(uniqueData,1))")
           end
-          for data_ch in eachchannel(filt_data) #walk through each row of the data iterator
+          for (ch_idx, data_ch) in enumerate(eachchannel(filt_data)) #walk through each row of the data iterator
                age = qData.Age[1] #Extract the age
                ch = data_ch.chNames[1] #Extract channel information
                gain = data_ch.chTelegraph[1]
@@ -550,6 +549,7 @@ function run_G_wave_analysis(all_files::DataFrame; verbose = true)
                #======================DATA ANALYSIS========================#
      
                Resps = abs.(minimum(data_ch, dims = 2)[:, 1, :])
+               Unsubtracted_Resp = minimum(filt_data_ABG[:, :, ch_idx])
                minimas = minimum(data_ch, dims = 2)[:, 1, :]
                maximas = maximum(data_ch, dims = 2)[:, 1, :]
                Peak_Times = time_to_peak(data_ch)
@@ -571,7 +571,8 @@ function run_G_wave_analysis(all_files::DataFrame; verbose = true)
                          Photoreceptor = qData[swp, :Photoreceptor], Wavelength = qData[swp, :Wavelength],
                          Photons = qData[swp, :Photons],
                          Channel = ch, Gain = gain,
-                         Response = Resps[swp], Minima = minimas[swp], Maxima = maximas[swp],
+                         Response = Resps[swp], Unsubtracted_Response = Unsubtracted_Resp[swp],
+                         Minima = minimas[swp], Maxima = maximas[swp],
                          Peak_Time = Peak_Times[swp], Integrated_Time = Integrated_Times[swp],
                          Recovery_Tau = Recovery_Taus[swp], Tau_GOF = Tau_GOFs[swp]))
                end
