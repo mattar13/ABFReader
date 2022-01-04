@@ -4,7 +4,7 @@ using NeuroPhys
 import NeuroPhys: format_bank, file_format, number_seperator, make_IR_datasheet
 using DataFrames, Query, XLSX, DelimitedFiles
 param_file = "F:\\Projects\\2021_Retinoschisis\\parameters.xlsx"
-calibration_file = "C:\\Users\\mtarc\\OneDrive - The University of Akron\\Data\\photon_lookup.xlsx"
+calibration_file = "C:\\Users\\mtarc\\OneDrive - The University of Akron\\Data\\Calibrations\\photon_lookup.xlsx"
 
 
 #%%  Lets make a dataframe that does not alter the other dataframe categories

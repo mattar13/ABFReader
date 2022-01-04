@@ -571,7 +571,7 @@ Uses the calibration file or datasheet to look up the photon density. The Photon
 """
 function photon_lookup(wavelength::Real, nd::Real, percent::Real, stim_time::Real,
     calibration_file::String,
-    sheet_name::String = "Sheet1"
+    sheet_name::String = "Matts"
 )
     df = DataFrame(XLSX.readtable(calibration_file, sheet_name)...)
     Qi = df |>
