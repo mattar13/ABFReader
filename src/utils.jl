@@ -569,18 +569,18 @@ exclude(A, exclusions) = A[filter(x -> !(x ∈ exclusions), eachindex(A))]
 
 Uses the calibration file or datasheet to look up the photon density. The Photon datasheet should be either 
 """
-function photon_lookup(wavelength::Real, nd::Real, percent::Real, stim_time::Real,
+function photon_lookup(wavelength::Real, nd::Real, percent::Real, #stim_time::Real,
     calibration_file::String,
-    sheet_name::String = "Matts"
+    sheet_name::String = "Pauls" #Change this when we are using different calibrations
 )
     df = DataFrame(XLSX.readtable(calibration_file, sheet_name)...)
     Qi = df |>
-         @filter(_.Wavelength == wavelength) |>
-         @filter(_.ND == nd) |>
-         @filter(_.Intensity == percent) |>
-         @filter(_.stim_time == stim_time) |>
-         @map(_.Photons) |>
-         DataFrame
+        @filter(_.Wavelength == wavelength) |>
+        @filter(_.ND == nd) |>
+        @filter(_.Intensity == percent) |>
+        #@filter(_.stim_time == stim_time) |>
+        @map(_.Photons) |>
+    DataFrame
     #%%
     if size(Qi, 1) != 0
         #Only return f an entry exists

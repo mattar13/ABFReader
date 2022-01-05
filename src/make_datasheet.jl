@@ -85,7 +85,7 @@ function make_sheet(all_paths::Array{String}, calibration_file::String; verbose 
                          all_files[idx, :Stim_time] = stim_time
                          #Now we want to apply photons using the photon lookup
                          photon = photon_lookup(
-                              nt.Wavelength, nt.ND, nt.Percent, 1.0, calibration_file
+                              nt.Wavelength, nt.ND, nt.Percent, calibration_file
                          )
                          if !isnothing(photon)
                               all_files[idx, :Photons] = photon * stim_time
