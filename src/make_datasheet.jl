@@ -554,7 +554,7 @@ function run_G_wave_analysis(all_files::DataFrame; verbose = true)
                #======================DATA ANALYSIS========================#
           
                Resps = abs.(minimum(data_ch, dims = 2)[:, 1, :])
-               Unsubtracted_Resp = abs.(minimum(unsubtracted_data_ch)) #This is the unsubtracted Response
+               Unsubtracted_Resp = abs.(minimum(unsubtracted_data_ch, dims = 2)[:, 1, :]) #This is the unsubtracted Response
                minimas = minimum(data_ch, dims = 2)[:, 1, :]
                maximas = maximum(data_ch, dims = 2)[:, 1, :]
                Peak_Times = time_to_peak(data_ch)
