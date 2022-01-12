@@ -60,7 +60,8 @@ function make_sheet(all_paths::Array{String}, calibration_file::String; verbose 
                print("Analyzing path number $idx of $(length(all_paths))")
                println(path)
           end
-          nt = formatted_split(path, format_bank) #At this time all necessary information is contained in the path name
+          nt = formatted_split(path, format_bank, verbose = verbose) #At this time all necessary information is contained in the path name
+          println(nt)
           if !isnothing(nt) #Check to see if the formatted split returns anything
                if haskey_value(nt, :flag, "remove") #Before we add the data to the file we need to check if a flag exists and if it is remove
                     push!(delete_after, idx) #We want to add it to the list of files to remove
@@ -442,6 +443,7 @@ function run_B_wave_analysis(all_files::DataFrame; analyze_subtraction = true, v
           filt_data_AB = filter_data(data_AB, t_post = 0.5)
           data_A = readABF(qData.A_Path)
           filt_data_A = filter_data(data_A, t_post = 0.5)
+          println(size(data_AB))
           #if we want to subtract we need to filter first
           sub_data = filt_data_AB - filt_data_A
           if verbose
