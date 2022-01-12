@@ -316,7 +316,7 @@ file_format = [
 
 filename_format = [
     (".", NeuroPhys.choose_words, ~),
-    (".", ("_", NeuroPhys.choose_words, :Background), ~),  
+    (".", ("_", NeuroPhys.choose_words, :Background), ~),
 ]
 
 format_bank_PAUL = [
@@ -326,83 +326,62 @@ format_bank_PAUL = [
         check_pc,
         check_color,
         file_format
-    ), 
-    
-    ("\\", ~, ~, ~, :Project, ~,
+    ), ("\\", ~, ~, ~, :Project, ~,
         ("_", :Year, :Month, :Date, check_geno, check_age, :Animal),
         check_pc,
         check_drugs,
         check_color,
         file_format
-    ), 
-    
-    ("\\", ~, ~, ~, :Project, ~,
+    ), ("\\", ~, ~, ~, :Project, ~,
         ("_", :Year, :Month, :Date, check_geno, check_age, :Animal),
         check_drugs,
         check_pc,
         check_color,
         file_format,
         filename_format
-    ), 
-    
-    ("\\", ~, ~, ~, :Project, :PhotonStatus,
+    ), ("\\", ~, ~, ~, :Project, :PhotonStatus,
         ("_", :Year, :Month, :Date, check_geno, check_age, :Animal),
         check_drugs,
         check_color,
         file_format,
         filename_format
-    ), 
-
-    ("\\", ~, ~, ~, :Project, :PhotonStatus,
+    ), ("\\", ~, ~, ~, :Project, :PhotonStatus,
         ("_", :Year, :Month, :Date, check_geno, check_age, :Animal),
         check_drugs,
         check_color,
         file_format,
         filename_format
-    ), 
-
-
-    ("\\", ~, ~, ~, :Project, :PhotonStatus,
+    ), ("\\", ~, ~, ~, :Project, :PhotonStatus,
         ("_", :Year, :Month, :Date, check_geno, check_age, :Animal),
         check_color,
         file_format,
         filename_format
-    ), 
-    
-    ("\\", ~, ~, ~, :Project, :PhotonStatus,
+    ), ("\\", ~, ~, ~, :Project, :PhotonStatus,
         ("_", :Year, :Month, :Date, check_geno, check_age, :Animal),
         check_drugs,
         check_color,
         file_format,
-    ), 
-    
-    ("\\", ~, ~, ~, :Project, :PhotonStatus,
+    ), ("\\", ~, ~, ~, :Project, :PhotonStatus,
         ("_", :Year, :Month, :Date, check_geno, check_age, :Animal),
         check_drugs,
         check_color,
         file_format,
         filename_format
-    ), 
-    
-    ("\\", ~, ~, ~, :Project, :PhotonStatus,
+    ), ("\\", ~, ~, ~, :Project, :PhotonStatus,
         ("_", :Year, :Month, :Date, check_geno, check_age, :Animal),
         check_pc,
         check_drugs,
         check_color,
         file_format,
         filename_format
-    ), 
-   
-    ("\\", ~, ~, ~, :Project, :PhotonStatus,
+    ), ("\\", ~, ~, ~, :Project, :PhotonStatus,
         ("_", :Year, :Month, :Date, check_geno, check_age, :Animal),
         check_pc,
         check_drugs,
         check_color,
         :StimulusNumber,
         filename_format
-    ), 
-    
-    ("\\", ~, ~, ~, :Project, ~,
+    ), ("\\", ~, ~, ~, :Project, ~,
         ("_", :Year, :Month, :Date, check_geno, check_age, :Animal),
         check_pc,
         check_drugs,
@@ -416,15 +395,15 @@ format_bank_RS = [
     ("\\", :Drive, ~, :Method, :Project,
         ("_", :Year, :Month, :Date, ~, ~),
         ("_", :Animal, check_age, check_geno),
-        condition_check, 
-        check_pc, 
-        check_color, 
+        condition_check,
+        check_pc,
+        check_color,
         file_format
     ), ("\\", :Drive, ~, :Method, :Project,
         ("_", :Year, :Month, :Date, ~, ~),
         ("_", :Animal, check_age, check_geno),
-        condition_check, 
-        check_pc, 
+        condition_check,
+        check_pc,
         file_format
     ), ("\\", :Drive, ~, :Method, :Project,
         ("_", :Year, :Month, :Date, ~, ~),
@@ -435,10 +414,20 @@ format_bank_RS = [
 
 format_bank_GNAT = [
     ("\\", ~, ~, ~, :Project,
-        ("_", :Year, :Month, :Date, ~),
-        ("_", :Animal, check_age, check_geno),
+    ("_", :Year, :Month, :Date, ~),
+    ("_", :Animal, check_age, check_geno),
+    check_drugs,
+    check_color,
+    file_format
+)
+]
+
+format_bank_current = [
+    ("\\", ~, ~, ~, :Project,
+        ("_", :Year, :Month, :Date, :Organism),
+        ("_", :Animal, check_geno), 
         check_drugs, 
-        check_color,
+        check_pc, 
         file_format
     )
 ]
@@ -446,7 +435,8 @@ format_bank_GNAT = [
 format_bank = [
     format_bank_RS,  #These are the formats for the Retinoschisis files
     format_bank_GNAT, #Gnat files
-    format_bank_PAUL #Pauls files
+    format_bank_PAUL, #Pauls files
+    format_bank_current
 ]
 
 organoid_format = [
