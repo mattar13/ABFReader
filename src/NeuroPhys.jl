@@ -8,6 +8,7 @@ export pkg_dir
 using Base: String, println
 using Dates
 #Imports
+using Statistics
 using Polynomials, Distributions #Used for polynomial fitting
 using LsqFit #Used for fitting amplification and Intensity Response models
 using DSP, ContinuousWavelets, Wavelets, FFTW #Used for filtering
