@@ -1,24 +1,4 @@
 """
-This function is for computing the R-squared of a polynomial
-"""
-function RSQ(poly::Polynomial, x, y)
-	ŷ = poly.(x)
-	ȳ = sum(ŷ)/length(ŷ)
-	SSE = sum((y-ŷ).^2)
-	SST = sum((y.-ȳ).^2)
-	1-SSE/SST
-end
-
-function RSQ(ŷ::Array{T}, y::Array{T}) where T <: Real
-	ȳ = sum(ŷ)/length(ŷ)
-	SSE = sum((y-ŷ).^2)
-	SST = sum((y.-ȳ).^2)
-	1-SSE/SST
-end
-
-rolling_mean(arr::AbstractArray; radius = 5) = [sum(arr[i:i+radius])/radius for i = 1:length(arr)-radius]
-
-"""
 This function uses a histogram method to find the saturation point. 
     - In ERG datas, a short nose component is usually present in saturated values
     - Does this same function work for the Rmax of nonsaturated responses?
