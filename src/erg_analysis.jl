@@ -38,7 +38,7 @@ function minima_to_peak(data::Experiment)
     resp = zeros(size(data, 1), size(data, 3))
     for swp = 1:size(data, 1), ch = 1:size(data, 3)
         past_stim = findall(data.t .> 0.0)
-    
+
         data_section = data[swp, past_stim, ch] #Isolate all the items past the stim
         # cutoff the analysis at the maximum (A-wave is before the B-wave)
         cutoff_idx = argmax(data_section)
@@ -58,11 +58,11 @@ end
 """
 This function calculates the time to peak using the dim response properties of the concatenated file
 """
-function time_to_peak(data::Experiment{T}) where T <: Real
+function time_to_peak(data::Experiment{T}) where {T<:Real}
     over_stim = findall(data.t .> 0.0) #We only want to extract time points after the stim
-    lowest_val = map(x -> x[2], argmin(data[:, over_stim, :], dims = 2))[:,1,:]
-    lowest_val .+= over_stim[1]-1
-    data.t[lowest_val].*1000
+    lowest_val = map(x -> x[2], argmin(data[:, over_stim, :], dims = 2))[:, 1, :]
+    lowest_val .+= over_stim[1] - 1
+    data.t[lowest_val] .* 1000
 end
 
 #Pepperburg analysis
@@ -73,17 +73,17 @@ This function conducts a Pepperburg analysis on a single data.
     1) A rmax is provided, does not need to calculate rmaxes
     2) No rmax is provided, so one is calculated
 """
-function pepperburg_analysis(data::Experiment{T}, rmaxes::Array{T, 1}; 
+function pepperburg_analysis(data::Experiment{T}, rmaxes::Array{T,1};
     recovery_percent = 0.60, kwargs...
-    ) where T <: Real
-    if size(data,1) == 1
+) where {T<:Real}
+    if size(data, 1) == 1
         throw(error("Pepperburg will not work on single sweeps"))
     end
     r_rec = rmaxes .* recovery_percent
     #try doing this  different way
-    t_dom = zeros(T, size(data,1), size(data,3))
-    for swp in 1:size(data,1)
-        for ch in 1:size(data,3)
+    t_dom = zeros(T, size(data, 1), size(data, 3))
+    for swp in 1:size(data, 1)
+        for ch in 1:size(data, 3)
             not_recovered = findall(data[swp, :, ch] .< r_rec[ch])
             if isempty(not_recovered)
                 #println("data never exceeded $(recovery_percent*100)% the Rmax")
@@ -99,7 +99,7 @@ function pepperburg_analysis(data::Experiment{T}, rmaxes::Array{T, 1};
     t_dom
 end
 
-pepperburg_analysis(data::Experiment{T}; kwargs...) where T <: Real= pepperburg_analysis(data, saturated_response(data; kwargs...); kwargs...)  
+pepperburg_analysis(data::Experiment{T}; kwargs...) where {T<:Real} = pepperburg_analysis(data, saturated_response(data; kwargs...); kwargs...)
 
 """
 The integration time is fit by integrating the dim flash response and dividing it by the dim flash response amplitude
@@ -107,7 +107,7 @@ The integration time is fit by integrating the dim flash response and dividing i
 - The integral is therefore a defininte integral and a sum of the area under the curve
 """
 
-function integral(data::Experiment{T}) where T <: Real 
+function integral(data::Experiment{T}) where {T<:Real}
     #we want this to be equal to any response after the stimuli
     t_points = findall(data.t .>= 0.0)
     data_section = data[:, t_points, :]
@@ -119,20 +119,20 @@ end
 """
 The dominant time constant is calculated by fitting the normalized Rdim with the response recovery equation
 """
-function recovery_tau(data::Experiment{T}, resp::Union{T, Matrix{T}}; 
-        τRec::T = 1.0
-    ) where T <: Real
+function recovery_tau(data::Experiment{T}, resp::Union{T,Matrix{T}};
+    τRec::T = 1.0
+) where {T<:Real}
     #Make sure the sizes are the same
     #@assert size(resp) == (size(data, 1), size(data,3))
 
-    trec = zeros(T, size(data,1), size(data,3))
-    gofs = zeros(T, size(data,1), size(data,3))
+    trec = zeros(T, size(data, 1), size(data, 3))
+    gofs = zeros(T, size(data, 1), size(data, 3))
     #This function uses the recovery model and takes t as a independent variable
-    model(x,p) = map(t -> REC(t, -1.0, p[2]), x)
-    for swp in 1:size(data,1), ch in 1:size(data,3)
+    model(x, p) = map(t -> REC(t, -1.0, p[2]), x)
+    for swp in 1:size(data, 1), ch in 1:size(data, 3)
         # println(dim_idx[ch])
         xdata = data.t
-        ydata = data[swp, :, ch] 
+        ydata = data[swp, :, ch]
         #Test both scenarios to ensure that
         ydata ./= minimum(ydata) #Normalize the Rdim to the minimum value
         #ydata ./= resp #Normalize the Rdim to the saturated response
@@ -142,7 +142,7 @@ function recovery_tau(data::Experiment{T}, resp::Union{T, Matrix{T}};
         xdata = xdata[begin_rng:end]
         ydata = ydata[begin_rng:end]
 
-        cutoff = findall(ydata .< 0.5)              
+        cutoff = findall(ydata .< 0.5)
         if isempty(cutoff)
             #println("Exception")
             end_rng = length(ydata)
@@ -155,17 +155,19 @@ function recovery_tau(data::Experiment{T}, resp::Union{T, Matrix{T}};
         p0 = [ydata[1], τRec]
         fit = curve_fit(model, xdata, ydata, p0)
         #report the goodness of fit
-        SSE = sum(fit.resid.^2)
-        ȳ = sum(model(xdata, fit.param))/length(xdata)
-        SST = sum((ydata .- ȳ).^2)
-        GOF = 1- SSE/SST
-        trec[swp, ch] =  fit.param[2]
+        SSE = sum(fit.resid .^ 2)
+        ȳ = sum(model(xdata, fit.param)) / length(xdata)
+        SST = sum((ydata .- ȳ) .^ 2)
+        GOF = 1 - SSE / SST
+        trec[swp, ch] = fit.param[2]
         gofs[swp, ch] = GOF
     end
     return trec, gofs
 end
 
+#Function to fit Amplification
 
+AMP(t, α, t_eff, rmax) = t > t_eff ? rmax * (1 - exp(-α * (t - t_eff)^2)) : 0.0
 function amplification(data::Experiment{T}, resp::Union{T,Matrix{T}}; #This argument should be offloaded to a single value 
     time_cutoff = 0.1,
     lb::Vector{T} = [0.0, 0.001],
