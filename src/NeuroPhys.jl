@@ -1,39 +1,25 @@
 module NeuroPhys
+is_working() = println("Test this push, for some reason it's not working")
 
+#lets go through all the imports and remove the unnecessary ones we have moved out of this file
 pkg_dir = joinpath(splitpath(pathof(NeuroPhys))[1:end-2]...)
 export pkg_dir
 
 using Base: String, println
-is_working() = println("Test this push, for some reason it's not working")
-#Imports
-using PyCall #using Python in the home environment may cause issues
-ENV["R_HOME"] = raw"C:\Program Files\R\R-4.1.2"
-#Have to point to the correct R path first
-using RCall #used for calculating Two-Way ANOVAs
-using RecipesBase #This can be removed if plotting is not desired. This makes the code run much faster
-using StatsBase, Statistics
-using Polynomials, Distributions #Used for polynomial fitting
-using DSP, ContinuousWavelets, Wavelets, FFTW #Used for filtering
-using LsqFit #Used for fitting amplification and Intensity Response models
-using JSON2, DataFrames, Query, XLSX #Used for saving data
 using Dates
-using Telegram, Telegram.API, ConfigEnv
+#Imports
+using Polynomials, Distributions #Used for polynomial fitting
+using LsqFit #Used for fitting amplification and Intensity Response models
+using DSP, ContinuousWavelets, Wavelets, FFTW #Used for filtering
 #Functions that can help with file extraction
-include("file_formatting.jl")
-export formatted_split, format_bank_PAUL, format_bank_RS, format_bank_GNAT
-#export check_age, check_color, check_pc, check_geno, get_root, contains_words, condition_check
-export parse_abf
-export number_extractor, filename_extractor
 
 include("abf.jl")
-#export readStruct, 
-export openABF
-#export Experiment
-export readABF, extract_stimulus
-#export StimulusProtocol
+export openABF, readABF
+#export StimulusProtocol, extract_stimulus
 
 #Utility files contain file extraction and abf editing functions
 include("utils.jl")
+export parse_abf
 #Most of these will be removed in the stable branch
 export get_stim_channels
 export getchannel, getsweep, getstim, findstimRng
@@ -57,7 +43,10 @@ export cwt_filter, cwt_filter!
 export dwt_filter
 export average_sweeps, average_sweeps!
 export normalize, normalize!
+
+
 #Analysis functions return a single number or numbers related to the Experiment
+
 include("erg_analysis.jl")
 export RSQ
 export calculate_basic_stats
@@ -70,28 +59,11 @@ export amplification
 export curve_fit #curve fitting from LsqFit
 export IR_curve
 #export patch clamp analysis functions
+
 include("patch_analysis.jl")
 export calculate_threshold
 export get_timestamps
 export max_interval_algorithim
 export timescale_analysis
 
-#Models are anything that is used to create new data
-include("models.jl")
-#Export the photon calculation and Rig-specific Photon equation
-export photons, Transferrance, stimulus_model, f_I
-#Export the Amplification and IR models
-export IR, IR_dev, AMP, REC
-
-include("plotting.jl")
-#export plot, plot!, vline!, hline!, savefig, histogram, grid, title!
-
-#These functions are specific for making datasheets
-include("make_datasheet.jl")
-export update_datasheet, make_sheet
-export run_A_wave_analysis, run_G_wave_analysis, run_B_wave_analysis
-export run_analysis
-
-include("logging.jl")
-export dotenv, env_location, BotNotify
 end # module
