@@ -90,54 +90,6 @@ function readABF(abf_folder::AbstractArray{String}; average_sweeps = false, kwar
     return data
 end
 
-"""
-This code is actually somewhat specific for my own needs, will be some way of making this more general later
-
-"""
-function readABF(df::DataFrame; extra_channels = nothing, a_name = "A_Path", ab_name = "AB_Path", kwargs...)
-    df_names = names(df)
-    #Check to make sure path is in the dataframe
-    #Check to make sure the dataframe contains channel info
-    @assert "Channel" ∈ df_names
-    if (a_name ∈ df_names) #&& ("AB_Path" ∈ df_names) #This is a B subtraction
-        println("B wave subtraction")
-        A_paths = string.(df.A_Path)
-        AB_paths = string.(df.Path)
-        ch = (df.Channel |> unique) .|> String
-        if !isnothing(extra_channels)
-            ch = (vcat(ch..., extra_channels...))
-        end
-        A_data = readABF(A_paths; channels = ch, kwargs...)
-        AB_data = readABF(AB_paths; channels = ch, kwargs...)
-        return A_data, AB_data
-    elseif (ab_name ∈ df_names) #&& ("ABG_Path" ∈ df_names) #This is the G-wave subtraction
-        println("G wave subtraction")
-        AB_paths = string.(df.AB_Path)
-        ABG_paths = string.(df.Path)
-        ch = (df.Channel |> unique) .|> String
-        if !isnothing(extra_channels)
-            ch = (vcat(ch..., extra_channels...))
-        end
-        AB_data = readABF(AB_paths, channels = ch, kwargs...)
-        ABG_data = readABF(ABG_paths, channels = ch, kwargs...)
-        return AB_data, ABG_data
-    elseif ("Path" ∈ df_names) #This is just the A-wave
-        paths = string.(df.Path)
-        ch = (df.Channel |> unique) .|> String
-        if !isnothing(extra_channels)
-            ch = (vcat(ch..., extra_channels...))
-        end
-        data = readABF(paths, channels = ch, kwargs...)
-        return data
-    else
-        throw("There is no path key")
-    end
-
-
-end
-
-readABF(df_row::DataFrameRow; kwargs...) = readABF(df_row |> DataFrame; kwargs...)
-
 import Base: +, -, *, / #Import these basic functions to help 
 +(trace::Experiment, val::Real) = trace.data_array = trace.data_array .+ val
 -(trace::Experiment, val::Real) = trace.data_array = trace.data_array .- val
@@ -369,7 +321,7 @@ function getdata(trace::Experiment, sweeps, timepoints, channels::UnitRange{Int6
     return data
 end
 
-function getdata(trace::Experiment, sweeps, timestamps::Union{Float64, StepRangeLen{Float64}}, channels;  verbose = false)
+function getdata(trace::Experiment, sweeps, timestamps::Union{Float64,StepRangeLen{Float64}}, channels; verbose = false)
     data = deepcopy(trace) #this copies the entire 
     data.data_array = trace[sweeps, timestamps, channels]
     if length(timestamps) == 3 #This case may have happened if a full range was not provided. 
@@ -565,25 +517,24 @@ end
 exclude(A, exclusions) = A[filter(x -> !(x ∈ exclusions), eachindex(A))]
 
 """
-    photon_lookup(wavelength, nd, percent, stim_time, calibration_file[,sheet_name])
-
-Uses the calibration file or datasheet to look up the photon density. The Photon datasheet should be either 
+This function walks through the directory tree and locates any .abf file. 
+The extension can be changed with the keyword argument extension
 """
-function photon_lookup(wavelength::Real, nd::Real, percent::Real, #stim_time::Real,
-    calibration_file::String,
-    sheet_name::String = "Pauls" #Change this when we are using different calibrations
+function parse_abf(super_folder::String;
+    extension::String = ".abf",
+    verbose = false
 )
-    df = DataFrame(XLSX.readtable(calibration_file, sheet_name)...)
-    Qi = df |>
-        @filter(_.Wavelength == wavelength) |>
-        @filter(_.ND == nd) |>
-        @filter(_.Intensity == percent) |>
-        #@filter(_.stim_time == stim_time) |>
-        @map(_.Photons) |>
-    DataFrame
-    #%%
-    if size(Qi, 1) != 0
-        #Only return f an entry exists
-        return Qi.value[1]
+    file_list = String[]
+    for (root, dirs, files) in walkdir(super_folder)
+        for file in files
+            if file[end-3:end] == extension
+                path = joinpath(root, file)
+                if verbose
+                    println(path) # path to files
+                end
+                push!(file_list, path)
+            end
+        end
     end
+    file_list
 end
