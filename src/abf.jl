@@ -1378,15 +1378,25 @@ end
 this function utilizes all julia to extract ABF file data
 """
 
-function extract_stimulus(abfInfo::Dict{String,Any}, sweep::Int64; stimulus_name = "IN 7", stimulus_threshold::Float64 = 2.5)
+function extract_stimulus(abfInfo::Dict{String,Any}; sweep::Int64 = -1, stimulus_name::String = "IN 7", stimulus_threshold::Float64 = 2.5)
     dt = abfInfo["dataSecPerPoint"]
     stimulus_waveform = getWaveform(abfInfo, stimulus_name)
-    idx1 = findfirst(stimulus_waveform[sweep, :] .> stimulus_threshold)
-    idx2 = findlast(stimulus_waveform[sweep, :] .> stimulus_threshold)
-    StimulusProtocol(:test, sweep, stimulus_name, (idx1, idx2), (idx1 * dt, idx2 * dt))
+    if sweep == -1 #We want to extract info about all of the stimuli vs just one
+        Stimuli = StimulusProtocol[]
+        for sweep in 1:size(abfInfo, 1)
+            idx1 = findfirst(stimulus_waveform[sweep, :] .> stimulus_threshold)
+            idx2 = findlast(stimulus_waveform[sweep, :] .> stimulus_threshold)
+            push!(Stimuli, StimulusProtocol(:test, sweep, stimulus_name, (idx1, idx2), (idx1 * dt, idx2 * dt)))
+        end
+        return Stimuli
+    else
+        idx1 = findfirst(stimulus_waveform[sweep, :] .> stimulus_threshold)
+        idx2 = findlast(stimulus_waveform[sweep, :] .> stimulus_threshold)
+        return StimulusProtocol(:test, sweep, stimulus_name, (idx1, idx2), (idx1 * dt, idx2 * dt))
+    end
 end
 
-extract_stimulus(abf_path::String, sweep::Int64; kwargs...) = extract_stimulus(readABFInfo(abf_path), sweep; kwargs...)
+extract_stimulus(abf_path::String; kwargs...) = extract_stimulus(readABFInfo(abf_path), kwargs...)
 
 """
     julia> using NeuroPhys
@@ -1460,12 +1470,7 @@ function readABF(::Type{T}, abf_data::Union{String,Vector{UInt8}};
     stim_protocol_by_sweep = StimulusProtocol{Float64}[]
     if !isnothing(stimulus_name)
         for swp = 1:size(data, 1)
-            push!(stim_protocol_by_sweep,
-                extract_stimulus(
-                    abfInfo, swp;
-                    stimulus_name = stimulus_name, stimulus_threshold = stimulus_threshold
-                )
-            )
+            push!(stim_protocol_by_sweep, extract_stimulus(abfInfo; sweep = swp, stimulus_name = stimulus_name, stimulus_threshold = stimulus_threshold))
         end
     end
     #This section we will rework to include getting analog and digital inputs
@@ -1478,8 +1483,6 @@ function readABF(::Type{T}, abf_data::Union{String,Vector{UInt8}};
 end
 
 readABF(abf_path::Union{String,Vector{UInt8}}; kwargs...) = readABF(Float64, abf_path; kwargs...)
-
-
 
 """
 This function opens the ABF file in clampfit
