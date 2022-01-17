@@ -1383,7 +1383,7 @@ function extract_stimulus(abfInfo::Dict{String,Any}; sweep::Int64 = -1, stimulus
     stimulus_waveform = getWaveform(abfInfo, stimulus_name)
     if sweep == -1 #We want to extract info about all of the stimuli vs just one
         Stimuli = StimulusProtocol[]
-        for sweep in 1:size(abfInfo, 1)
+        for sweep in 1:size(abfInfo["data"], 1)
             idx1 = findfirst(stimulus_waveform[sweep, :] .> stimulus_threshold)
             idx2 = findlast(stimulus_waveform[sweep, :] .> stimulus_threshold)
             push!(Stimuli, StimulusProtocol(:test, sweep, stimulus_name, (idx1, idx2), (idx1 * dt, idx2 * dt)))
@@ -1396,7 +1396,7 @@ function extract_stimulus(abfInfo::Dict{String,Any}; sweep::Int64 = -1, stimulus
     end
 end
 
-extract_stimulus(abf_path::String; kwargs...) = extract_stimulus(readABFInfo(abf_path), kwargs...)
+extract_stimulus(abf_path::String; kwargs...) = extract_stimulus(readABFInfo(abf_path); kwargs...)
 
 """
     julia> using NeuroPhys
