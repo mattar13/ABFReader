@@ -1,12 +1,18 @@
-using Revise #, OhMyREPL, DoctorDocstrings
+using Revise
 using NeuroPhys
-#if we want to plot we will have to import plotting manually
+import NeuroPhys.filter_data
 using Plots
-using Query, DataFrames, XLSX, StatsPlots
-import NeuroPhys: SEM, MEAN, filter_data
-using Dates
-calibration_file = "C:\\Users\\mtarc\\OneDrive - The University of Akron\\Data\\Calibrations\\photon_lookup.xlsx"
+#if we want to plot we will have to import plotting manually
 
 #%% Need to debug the photon datasheet creation
-files = raw"F:\Data\ERG\Zebrafish\2021_12_20_Zebrafish\Zebrafish1_WT\BaCl_LAP4\Rods" |> parse_abf
-datasheet = make_sheet(files, calibration_file, verbose = true)
+#calibration_file = raw"C:\Users\mtarc\OneDrive - The University of Akron\Data\Calibrations\photon_lookup.xlsx"
+files = raw"F:\Data\ERG\Retinoschisis\2021_09_28_ERG_WT\Mouse2_Adult_WT\BaCl\Rods" |> parse_abf
+#datasheet = make_sheet(files, calibration_file, verbose = true)
+data = readABF(files) |> filter_data
+
+#lets extract multiple stimuli of a multi-sweep datapoint
+NeuroPhys.extract_stimulus.(files; sweep = 1)
+
+plot(data)
+saturated_response(data)
+using StatsBase
