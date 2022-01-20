@@ -12,6 +12,7 @@ using Statistics
 using Polynomials, Distributions #Used for polynomial fitting
 using LsqFit #Used for fitting amplification and Intensity Response models
 using DSP, ContinuousWavelets, Wavelets, FFTW #Used for filtering
+using RecipesBase
 #Functions that can help with file extraction
 
 include("abf.jl")
