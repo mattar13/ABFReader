@@ -67,4 +67,6 @@ export get_timestamps
 export max_interval_algorithim
 export timescale_analysis
 
+include("plotting.jl")
+
 end # module
