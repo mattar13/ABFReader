@@ -46,7 +46,6 @@ export dwt_filter
 export average_sweeps, average_sweeps!
 export normalize, normalize!
 
-
 #Analysis functions return a single number or numbers related to the Experiment
 
 include("erg_analysis.jl")
