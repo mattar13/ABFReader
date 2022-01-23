@@ -1,4 +1,4 @@
-module NeuroPhys
+module ABFReader
 is_working() = println("Test this push, for some reason it's not working")
 
 #lets go through all the imports and remove the unnecessary ones we have moved out of this file
