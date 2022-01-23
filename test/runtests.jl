@@ -1,7 +1,7 @@
 #%% Test to see if the importing works
 println("Beginning testing")
 using Revise
-using NeuroPhys
+using ABFReader
 using Distributions, StatsBase, StatsPlots, Polynomials
 println("Exporting succeeded")
 
