@@ -1,7 +1,7 @@
-name = "NeuroPhys"
+name = "ABFReader"
 uuid = "0612f44b-defb-466c-a561-fff8bd3ecefc"
 authors = ["Matthew Tarchick <mtarchick13@gmail.com>"]
-version = "0.12.0"
+version = "0.1.0"
 
 [deps]
 ContinuousWavelets = "96eb917e-2868-4417-9cb6-27e7ff17528f"
