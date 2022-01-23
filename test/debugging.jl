@@ -1,6 +1,6 @@
 using Revise
-using NeuroPhys
-import NeuroPhys.filter_data
+using ABFReader
+import ABFReader.filter_data
 using Plots
 #if we want to plot we will have to import plotting manually
 
