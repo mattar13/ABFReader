@@ -1423,7 +1423,6 @@ function readABF(::Type{T}, abf_data::Union{String,Vector{UInt8}};
     end
     if flatten_episodic
         n_size = size(data)
-        println(n_size)
         reshape_data = permutedims(data, (3, 2, 1))
         reshape_data = reshape(reshape_data, 1, n_size[3], :)
         data = permutedims(reshape_data, (1, 3, 2))
