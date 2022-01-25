@@ -69,6 +69,8 @@ export get_timestamps
 export max_interval_algorithim
 export timescale_analysis
 
+#include("ABFPlots.jl")
+
 end # module
 
 #module ABFPlotting

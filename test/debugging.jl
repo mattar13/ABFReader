@@ -15,4 +15,5 @@ NeuroPhys.extract_stimulus.(files; sweep = 1)
 
 plot(data)
 saturated_response(data)
-using StatsBase
+
+#%% Test the inheritance of Experiments so we can do the same thing with ERG Experiments
