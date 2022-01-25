@@ -648,17 +648,17 @@ function readHeaderSection(f::IO; bytemap = header_bytemap, check_bit_pos = fals
         headerSection["fHeaderVersionNumber"] = readStruct(f, "f", 32)
         headerSection["nFileType"] = readStruct(f, "h", 36)
         headerSection["nMSBinFormat"] = readStruct(f, "h", 38)
-
+    
         # GROUP 2 - File Structure (78 bytes)
         headerSection["lDataSectionPtr"] = readStruct(f, "i", 40)
         headerSection["lTagSectionPtr"] = readStruct(f, "i", 44)
         headerSection["lNumTagEntries"] = readStruct(f, "i", 48)
-
+    
         # missing entries
         headerSection["lSynchArrayPtr"] = readStruct(f, "i", 92)
         headerSection["lSynchArraySize"] = readStruct(f, "i", 96)
         headerSection["nDataFormat"] = readStruct(f, "h", 100)
-
+    
         # GROUP 3 - Trial hierarchy information (82 bytes)
         headerSection["nADCNumChannels"] = readStruct(f, "h", 120)
         headerSection["fADCSampleInterval"] = readStruct(f, "f", 122)
@@ -669,16 +669,16 @@ function readHeaderSection(f::IO; bytemap = header_bytemap, check_bit_pos = fals
         headerSection["lPreTriggerSamples"] = readStruct(f, "i", 142)
         headerSection["lEpisodesPerRun"] = readStruct(f, "i", 146)
         # missing entries
-
+    
         # GROUP 4 - Display Parameters (44 bytes)
         # missing entries
-
+    
         # GROUP 5 - Hardware information (16 bytes)
         headerSection["fADCRange"] = readStruct(f, "f", 244)
         headerSection["fDACRange"] = readStruct(f, "f", 248)
         headerSection["lADCResolution"] = readStruct(f, "i", 252)
         headerSection["lDACResolution"] = readStruct(f, "i", 256)
-
+    
         # GROUP 6 - Environmental Information (118 bytes)
         headerSection["nExperimentType"] = readStruct(f, "h", 260)
         # missing entries
@@ -686,7 +686,7 @@ function readHeaderSection(f::IO; bytemap = header_bytemap, check_bit_pos = fals
         headerSection["sFileCommentOld"] = readStruct(f, "56s", 310)
         headerSection["nFileStartMillisecs"] = readStruct(f, "h", 366)
         # missing entries
-
+    
         # GROUP 7 - Multi-channel information (1044 bytes)
         headerSection["nADCPtoLChannelMap"] = readStruct(f, "16h", 378)
         headerSection["nADCSamplingSeq"] = readStruct(f, "16h", 410)
@@ -701,11 +701,11 @@ function readHeaderSection(f::IO; bytemap = header_bytemap, check_bit_pos = fals
         headerSection["fInstrumentOffset"] = readStruct(f, "16f", 986)
         headerSection["fSignalGain"] = readStruct(f, "16f", 1050)
         headerSection["fSignalOffset"] = readStruct(f, "16f", 1114)
-
+    
         headerSection["sDACChannelName"] = readStruct(f, "10s", 1306, repeat = 4)
         headerSection["sDACChannelUnit"] = readStruct(f, "8s", 1346, repeat = 4)
         # missing entries
-
+    
         # GROUP 8 - Synchronous timer outputs (14 bytes)
         # missing entries
         # GROUP 9 - Epoch Waveform and Pulses (184 bytes)
@@ -717,7 +717,7 @@ function readHeaderSection(f::IO; bytemap = header_bytemap, check_bit_pos = fals
         headerSection["nDigitalInterEpisode"] = readStruct(f, "h", 1586)
         # missing entries
         headerSection["nDigitalValue"] = readStruct(f, "10h", 1588)
-
+    
         # GROUP 10 - DAC Output File (98 bytes)
         # missing entries
         # GROUP 11 - Presweep (conditioning) pulse train (44 bytes)
@@ -739,7 +739,7 @@ function readHeaderSection(f::IO; bytemap = header_bytemap, check_bit_pos = fals
         # EXTENDED GROUP 7 - Multi-channel information (62 bytes)
         headerSection["fDACCalibrationFactor"] = readStruct(f, "4f", 2074)
         headerSection["fDACCalibrationOffset"] = readStruct(f, "4f", 2090)
-
+    
         # GROUP 17 - Trains parameters (160 bytes)
         # missing entries
         # EXTENDED GROUP 9 - Epoch Waveform and Pulses (412 bytes)
@@ -752,7 +752,7 @@ function readHeaderSection(f::IO; bytemap = header_bytemap, check_bit_pos = fals
         headerSection["lEpochInitDuration"] = readStruct(f, "20i", 2508)
         headerSection["lEpochDurationInc"] = readStruct(f, "20i", 2588)
         # missing entries
-
+    
         # EXTENDED GROUP 10 - DAC Output File (552 bytes)
         headerSection["fDACFileScale"] = readStruct(f, "2f", 2708)
         headerSection["fDACFileOffset"] = readStruct(f, "2f", 2716)
@@ -773,7 +773,7 @@ function readHeaderSection(f::IO; bytemap = header_bytemap, check_bit_pos = fals
             headerSection["sULParamValueList"] = []
             headerSection["nULRepeat"] = []
         end
-
+    
         # EXTENDED GROUP 15 - On-line subtraction (56 bytes)
         # missing entries
         # EXTENDED GROUP 6 Environmental Information  (898 bytes)
@@ -794,7 +794,7 @@ function readHeaderSection(f::IO; bytemap = header_bytemap, check_bit_pos = fals
         headerSection["nCreatorMinorVersion"] = readStruct(f, "h", 5800)
         headerSection["nCreatorBugfixVersion"] = readStruct(f, "h", 5802)
         headerSection["nCreatorBuildVersion"] = readStruct(f, "h", 5804)
-
+    
         # EXTENDED GROUP 13 - Statistics measurements (388 bytes)
         # missing entries
         # GROUP 18 - Application version data (16 bytes)
@@ -816,7 +816,7 @@ function readHeaderSection(f::IO; bytemap = header_bytemap, check_bit_pos = fals
         headerSection["abfVersion"] = versionPartsInt
         headerSection["abfVersionString"] = versionParts
         abfVersionDict = Dict{String,Int}()
-
+    
         abfVersionDict["major"] = versionPartsInt[1]
         abfVersionDict["minor"] = versionPartsInt[2]
         abfVersionDict["bugfix"] = versionPartsInt[3]
@@ -828,7 +828,7 @@ function readHeaderSection(f::IO; bytemap = header_bytemap, check_bit_pos = fals
         headerSection["creatorVersionDict"]["minor"] = headerSection["nCreatorMinorVersion"]
         headerSection["creatorVersionDict"]["bugfix"] = headerSection["nCreatorBugfixVersion"]
         headerSection["creatorVersionDict"]["build"] = headerSection["nCreatorBuildVersion"]
-
+    
         # Format the FileGUID
         guid = []
         for i in [4, 3, 2, 1, 6, 5, 8, 7, 9, 10, 11, 12, 13, 14, 15, 16]
@@ -848,12 +848,12 @@ function readHeaderSection(f::IO; bytemap = header_bytemap, check_bit_pos = fals
             headerSection["sweepCount"] = sweepCount = headerSection["lActualEpisodes"][1] |> Int64
         end
         headerSection["sweepPointCount"] = Int64(dataPointCount / sweepCount / channelCount)
-
+    
         headerSection["dataRate"] = dataRate = (1e6 / headerSection["fADCSampleInterval"][1])
         headerSection["dataRate"] = dataRate / channelCount
         headerSection["dataPointsPerMS"] = dataRate / 1000
         headerSection["dataSecPerPoint"] = 1.0 / dataRate
-
+    
         if headerSection["nDataFormat"][1] == 0
             headerSection["dataType"] = Int16
         elseif headerSection["nDataFormat"][1] == 1
@@ -862,7 +862,7 @@ function readHeaderSection(f::IO; bytemap = header_bytemap, check_bit_pos = fals
         else
             throw("unknown data format")
         end
-
+    
         headerSection["adcUnits"] = []
         headerSection["adcNames"] = []
         headerSection["channelList"] = []
@@ -873,7 +873,7 @@ function readHeaderSection(f::IO; bytemap = header_bytemap, check_bit_pos = fals
             push!(headerSection["adcUnits"], rstrip(headerSection["sADCUnits"][physicalChannel]))
             push!(headerSection["adcNames"], rstrip(headerSection["sADCChannelName"][physicalChannel]))
         end
-
+    
         headerSection["dacUnits"] = rstrip.(headerSection["sDACChannelUnit"])
         headerSection["dacNames"] = rstrip.(headerSection["sDACChannelName"])
         headerSection["dataGain"] = []
@@ -889,18 +889,15 @@ function readHeaderSection(f::IO; bytemap = header_bytemap, check_bit_pos = fals
             end
             gain *= headerSection["fADCRange"][1]
             gain /= headerSection["lADCResolution"][1]
-
+    
             offset += headerSection["fInstrumentOffset"][i]
             offset -= headerSection["fSignalOffset"][i]
-
+    
             push!(headerSection["dataGain"], gain)
             push!(headerSection["dataOffset"], offset)
         end
-
-
-
         return headerSection
-
+    
     elseif sFileSignature == "ABF2"
         seek(f, 0) #Ensure that the 
         for (i, bmp) in enumerate(bytemap)
@@ -927,10 +924,10 @@ function readHeaderSection(f::IO; bytemap = header_bytemap, check_bit_pos = fals
         headerSection["DACSection"] = DACSection = readDACSection(f, headerSection["DACSection"]...)
         headerSection["TagSection"] = TagSection = readTagSection(f, headerSection["TagSection"]...)
         headerSection["SyncArraySection"] = SyncArraySection = readSyncArraySection(f, headerSection["SynchArraySection"]...)
-
+    
         headerSection["channelCount"] = ADCSection["entryCount"]
         headerSection["nOperationMode"] = ProtocolSection["nOperationMode"]
-
+    
         #Format the version number
         versionPartsInt = reverse(headerSection["fFileVersionNumber"])
         versionParts = map(x -> "$(string(x)).", collect(versionPartsInt)) |> join
@@ -947,40 +944,40 @@ function readHeaderSection(f::IO; bytemap = header_bytemap, check_bit_pos = fals
         creatorParts = map(x -> "$(string(x)).", collect(versionPartsInt)) |> join
         headerSection["creatorVersion"] = creatorPartsInt
         headerSection["creatorVersionString"] = creatorParts
-
+    
         # Format the FileGUID
         guid = []
         for i in [4, 3, 2, 1, 6, 5, 8, 7, 9, 10, 11, 12, 13, 14, 15, 16]
             push!(guid, headerSection["FileGUID"][i] |> string)
         end
         headerSection["sFileGUID"] = join(guid)
-
+    
         #Format the date found in the header
         d = DateTime(headerSection["uFileStartDate"][1] |> string, DateFormat("yyyymmdd"))
         t = Millisecond(headerSection["uFileStartTimeMS"][1])
         headerSection["FileStartDateTime"] = d + t
-
+    
         headerSection["ProtocolPath"] = StringSection[headerSection["uProtocolPathIndex"][1]+1] #Read the protocol path
         headerSection["abfFileComment"] = StringSection[ProtocolSection["lFileCommentIndex"][1]+1]
         headerSection["creator"] = join([
             StringSection[headerSection["uCreatorNameIndex"][1]+1], " ",
             headerSection["creatorVersionString"]
         ])
-
-
+    
+    
         dataRate = 1e6 / ProtocolSection["fADCSequenceInterval"][1] #This is the data rate as
         headerSection["dataRate"] = dataRate
         headerSection["dataSecPerPoint"] = 1.0 / dataRate
         headerSection["dataPointsPerMS"] = dataRate / 1000
         headerSection["channelCount"] = channelCount = ADCSection["entryCount"]
         headerSection["channelList"] = ADCSection["channelList"]
-
+    
         if ProtocolSection["nOperationMode"][1] |> Int64 == 3
             headerSection["sweepCount"] = sweepCount = 1 #This is gap-free mode
         else
             headerSection["sweepCount"] = sweepCount = headerSection["lActualEpisodes"][1]
         end
-
+    
         if headerSection["nDataFormat"][1] == 0
             headerSection["dataType"] = Int16
         elseif headerSection["nDataFormat"][1] == 1
@@ -988,23 +985,23 @@ function readHeaderSection(f::IO; bytemap = header_bytemap, check_bit_pos = fals
         else
             throw("unknown data format")
         end
-
+    
         #Start decoding the sections
         FileInfoSize = headerSection["uFileInfoSize"][1] #This is the block size for all sections
-
+    
         #data section
         blockStart, dataPointByteSize, dataPointCount = headerSection["DataSection"]
         dataByteStart = blockStart * FileInfoSize
         headerSection["dataByteStart"] = dataByteStart
         headerSection["dataPointCount"] = dataPointCount
         headerSection["dataPointByteSize"] = dataPointByteSize
-
+    
         #Parse ADC channel names
         headerSection["adcNames"] = map(i -> StringSection[i+1], ADCSection["lADCChannelNameIndex"])
         headerSection["adcUnits"] = map(i -> StringSection[i+1], ADCSection["lADCUnitsIndex"])
+        headerSection["fTelegraphAdditGain"] = ADCSection["fTelegraphAdditGain"]
         #The data should have a gain and an offset
-
-
+    
         #Parse DAC channel names
         headerSection["dacNames"] = map(i -> StringSection[i+1], DACSection["lDACChannelNameIndex"])
         headerSection["dacUnits"] = map(i -> StringSection[i+1], DACSection["lDACChannelUnitsIndex"])
@@ -1023,7 +1020,7 @@ function readHeaderSection(f::IO; bytemap = header_bytemap, check_bit_pos = fals
         headerSection["nDataPoints"] = Int64(dataPointCount / channelCount)
         dataGain = zeros(channelCount)
         dataOffset = zeros(channelCount)
-
+    
         for i = 1:channelCount
             gain = 1
             offset = 0
@@ -1035,10 +1032,10 @@ function readHeaderSection(f::IO; bytemap = header_bytemap, check_bit_pos = fals
             end
             gain *= ProtocolSection["fADCRange"][1]
             gain /= ProtocolSection["lADCResolution"][1]
-
+    
             offset += ADCSection["fInstrumentOffset"][i]
             offset -= ADCSection["fSignalOffset"][i]
-
+    
             dataGain[i] = gain
             dataOffset[i] = offset
         end
@@ -1051,9 +1048,6 @@ function readHeaderSection(f::IO; bytemap = header_bytemap, check_bit_pos = fals
             push!(EpochTableByChannel, et)
         end
         headerSection["EpochTableByChannel"] = EpochTableByChannel
-
-
-
         return headerSection
     end
 end
@@ -1397,7 +1391,7 @@ function readABF(::Type{T}, abf_data::Union{String,Vector{UInt8}};
     #Extract info for the adc names and units
     ch_names = Vector{String}(abfInfo["adcNames"][ch_idxs])
     ch_units = Vector{String}(abfInfo["adcUnits"][ch_idxs])
-    ch_telegraph = Vector{T}(abfInfo["ADCSection"]["fTelegraphAdditGain"][ch_idxs])
+    ch_telegraph = Vector{T}(abfInfo["fTelegraphAdditGain"][ch_idxs])
     #we can extract the data using getWaveform from above
     if sweeps == -1 && channels == -1
         data = abfInfo["data"]
