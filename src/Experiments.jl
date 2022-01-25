@@ -25,7 +25,6 @@ mutable struct Experiment{T}
     chUnits::Vector{String}
     chTelegraph::Vector{T}
     stim_protocol::Vector{StimulusProtocol{T}}
-    #labels::Array{String, 1}
 end
 
 import Base: +, -, *, / #Import these basic functions to help 

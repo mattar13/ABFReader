@@ -14,7 +14,7 @@ using LsqFit #Used for fitting amplification and Intensity Response models
 using DSP, ContinuousWavelets, Wavelets, FFTW #Used for filtering
 using RecipesBase
 #Functions that can help with file extraction
-include("Experiment.jl")
+include("Experiments.jl")
 
 
 include("abf.jl")
@@ -69,6 +69,11 @@ export get_timestamps
 export max_interval_algorithim
 export timescale_analysis
 
+end # module
+
+module ABFPlotting
+
+println("Plotting is imported")
 include("plotting.jl")
 
-end # module
+end
