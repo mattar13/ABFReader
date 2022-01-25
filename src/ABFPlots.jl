@@ -1,3 +1,5 @@
+module ABFPlots
+
 """
 This function helps us to determine sweeps and channels in a layout for plotting
 """
@@ -154,3 +156,5 @@ Plotting function.
         end
     end
 end
+
+end #module ABFPlots
