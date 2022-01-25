@@ -72,9 +72,3 @@ export timescale_analysis
 #include("ABFPlots.jl")
 
 end # module
-
-#module ABFPlotting
-#using RecipesBase
-#println("Plotting is imported")
-#include("plotting.jl")
-#end
