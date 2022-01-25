@@ -1343,36 +1343,6 @@ end
 
 readABFInfo(filename::String; kwargs...) = readABFInfo(Float64, filename::String; kwargs...)
 
-"""
-This file contains the ABF data traces. It is a generic experiment which doesn't include any other specifics. 
-
-"""
-mutable struct StimulusProtocol{T}
-    type::Symbol
-    sweep::Int64
-    channel::Union{String,Int64}
-    index_range::Tuple{Int64,Int64}
-    timestamps::Tuple{T,T}
-end
-
-
-mutable struct Experiment{T}
-    infoDict::Dict{String,Any}
-    dt::T
-    t::Vector{T}
-    data_array::Array{T,3}
-    chNames::Vector{String}
-    chUnits::Vector{String}
-    chTelegraph::Vector{T}
-    stim_protocol::Vector{StimulusProtocol{T}}
-    #labels::Array{String, 1}
-end
-
-function StimulusProtocol(type::Symbol, sweep::Int64, channel::Union{Int64,String}, index_range::Tuple{T,T}, t::Vector) where {T<:Real}
-    t1 = t[index_range[1]]
-    t2 = t[index_range[2]]
-    StimulusProtocol(type, sweep, channel, index_range, (t1, t2))
-end
 
 """
 this function utilizes all julia to extract ABF file data
