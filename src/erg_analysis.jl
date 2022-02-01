@@ -33,7 +33,7 @@ function saturated_response(data::Experiment{T}; precision::Int64 = 100) where {
     rmaxes
 end
 
-function minima_to_peak(data::Experiment)
+function minima_to_peak(data::Experiment; verbose = false)
     #We need to exclude the area 
     resp = zeros(size(data, 1), size(data, 3))
     for swp = 1:size(data, 1), ch = 1:size(data, 3)
@@ -46,9 +46,11 @@ function minima_to_peak(data::Experiment)
         data_section = data_section[1:cutoff_idx]
         #Measure the minimum betweent the first value and the maximum
         min_val = minimum(data_section)
-        println("Minimum: $min_val")
-        println("Maximum: $max_val")
-        println(max_val - min_val)
+        if verbose
+            println("Minimum: $min_val")
+            println("Maximum: $max_val")
+            println(max_val - min_val)
+        end
 
         resp[swp, ch] = max_val - min_val
     end
