@@ -36,7 +36,7 @@ function concat(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, posit
     return new_data
 end
 
-function concat!(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, position = :post, kwargs...) where {T}
+function concat!(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, position = :post, verbose = false, kwargs...) where {T}
     if size(data, 2) > size(data_add, 2)
         #println("Original data larger $(size(data,2)) > $(size(data_add,2))")
         n_vals = abs(size(data, 2) - size(data_add, 2))
@@ -55,12 +55,14 @@ function concat!(data::Experiment{T}, data_add::Experiment{T}; mode = :pad, posi
         end
     end
 
-    if size(data, 3) != size(data_add, 3)
-        println(size(data))
-        println(size(data_add))
-        println(data_add.infoDict["abfPath"])
-        #We need to write a catch here to concatenate files with different numbers of channels
-        println("Don't concatenate these files")
+    if size(data, 3) != size(data_add, 3) 
+        if verbose
+            println(size(data))
+            println(size(data_add))
+            println(data_add.infoDict["abfPath"])
+            #We need to write a catch here to concatenate files with different numbers of channels
+            println("Don't concatenate these files")
+        end
     else
         push!(data, data_add)
         push!(data.stim_protocol, data_add.stim_protocol...)
