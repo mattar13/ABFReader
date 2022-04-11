@@ -19,5 +19,7 @@ saturated_response(data)
 
 #%% Test the inheritance of Experiments so we can do the same thing with ERG Experiments
 error_file = raw"F:\Data\Patching\Jordans_Patch_Data\UsuableData\11228003.abf"
-abf_info = ABFReader.readABFInfo(error_file)#, channels = ["Im_scaled"], stimulus_name = nothing, flatten_episodic = true)
-abf_info["fTelegraphAdditGain"]
+readABF(error_file,
+     channels = ["Im_scaled"],
+     stimulus_name = nothing, flatten_episodic = true
+)

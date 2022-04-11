@@ -2,67 +2,16 @@
 println("Beginning testing")
 using Revise
 using ABFReader
-using Distributions, StatsBase, StatsPlots, Polynomials
 println("Exporting succeeded")
 
-#%% Lets test all the fileformats in the RS file structure
-root_rs = "E:\\Data\\ERG\\Retinoschisis\\"
-rs_paths = root_rs |> parse_abf
-incorrect_formats = []
-for (i, file) in enumerate(rs_paths)
-     format = formatted_split(file, format_bank_RS)
-     if isnothing(format)
-          push!(incorrect_formats, file)
-     end
-end
-incorrect_formats
-
-#%% test all of pauls files roots
-root_wt = "F:\\Data\\ERG\\Pauls\\"
-wt_paths = root_wt |> parse_abf
-incorrect_formats = []
-for (i, file) in enumerate(wt_paths)
-     format = formatted_split(file, format_bank_PAUL)
-     if isnothing(format)
-          push!(incorrect_formats, file)
-     end
-end
-incorrect_formats
-
-#%% Test the exporting and filtering of .abf files
+#%% Set up the necessary testing utilities
 target_path1 = "test\\to_filter.abf"
 target_path2 = "test\\to_analyze.abf"
 #%% First test some things related to extracting the headerSection info
-println("Testing base functionality of ABF extraction")
-abf_1swp = NeuroPhys.readABFInfo(target_path1)
-abf_12swp = NeuroPhys.readABFInfo(target_path2)
+include("test_Experiment.jl")
+include("test_abf.jl") #this tests whether the functionality of abf.jl is working properly
 
-NeuroPhys.getWaveform(abf_1swp, 1, 1; channel_type = :analog) #Test get waveform of analog 0
-NeuroPhys.getWaveform(abf_1swp, 1, 1; channel_type = :digital) #Get waveform of digital 0
-
-NeuroPhys.getWaveform(abf_12swp, 1, 2; channel_type = :analog) #get waveform of multisweep analog
-NeuroPhys.getWaveform(abf_12swp, 1, 2; channel_type = :digital) #get waveform of multisweep digital
-
-NeuroPhys.getWaveform(abf_12swp, 1; channel_type = :analog) #get waveform of multisweep analog, all sweeps
-NeuroPhys.getWaveform(abf_12swp, 1; channel_type = :digital) #get waveform of multisweep analog
-
-#use strings to get the waveforms
-NeuroPhys.getWaveform(abf_12swp, 1, "An 0")
-NeuroPhys.getWaveform(abf_12swp, 1, "Ana 0")
-NeuroPhys.getWaveform(abf_12swp, 1, "Analog 0")
-NeuroPhys.getWaveform(abf_12swp, 1, "An 0") #Get all related sweeps to analog 0
-NeuroPhys.getWaveform(abf_12swp, 1, "Cmd 0") #Get all related sweeps to analog 0
-
-NeuroPhys.getWaveform(abf_12swp, 1, "D 0")
-NeuroPhys.getWaveform(abf_12swp, 1, "Dig 0")
-NeuroPhys.getWaveform(abf_12swp, 1, "Digital 0")
-NeuroPhys.getWaveform(abf_12swp, 1, "D 0") #Get all related sweeps to digital 0
-
-data1 = readABF(target_path1); #Extract the data for filtering
-data2 = readABF(target_path2; channels = ["Vm_prime", "Vm_prime4"]); #Extract the data for concatenation analysis
 println("File extraction works")
-
-data1.infoDict["dataSecPerPoint"]
 #%% Test inline filtering functions
 truncate_data!(data1);
 truncate_data!(data2);
@@ -167,11 +116,3 @@ thresh = calculate_threshold(data)
 timestamps = get_timestamps(data)
 max_interval_algorithim(data)
 timescale_analysis(data)
-
-#%% Lets test the Photon intensity lookup table
-using DataFrames, Query, XLSX
-calibration_file = "E:\\Data\\photons_lookup.xlsx"
-wavelength = 520
-nd = 0
-per_int = 1
-photon_lookup(calibration_file, 520, 0, 1)
