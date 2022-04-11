@@ -2,6 +2,19 @@
 This file contains the ABF data traces. It is a generic experiment which doesn't include any other specifics. 
 
 """
+
+abstract type Flash{T} end 
+
+"""
+A stimulus protocol contains information about the stimulus. 
+    ### T <: Real The type declaration is the type of floating point numbers
+    ## Options are: 
+        1) type::Symbol - This is the label or type of stimulus. TODO: This will be defined in stimulus types
+        2) sweep::Int64 - The sweep number the stimulus is contained on
+        3) channel::Union{String, Int64} - The channel name or number which contains stimulus data
+        4) index_range::Tuple{Int64, Int64} - The indexes that thew stimulus starts at and the ends at
+        5) timestamps::Tuple{T, T} - The timestamps which the stimulus starts at and ends at. 
+"""
 mutable struct StimulusProtocol{T}
     type::Symbol
     sweep::Int64
@@ -16,6 +29,20 @@ function StimulusProtocol(type::Symbol, sweep::Int64, channel::Union{Int64,Strin
     StimulusProtocol(type, sweep, channel, index_range, (t1, t2))
 end
 
+"""
+The experiment data object. 
+This contains all the data for the sweep. 
+    ### DataType is defined by {T}
+    ## The options are: 
+        1) infoDict::Dict{String,Any} -> The information object that contains all the ABF info extracted from the binary file
+        2) dt::T -> The time differential for the y axis. This is the inverse of the sampling rate collected by the digitizers
+        3) t::Vector{T} -> The y axis and timestamps for each data point.
+        4) data_array::Array{T,3} -> The data collected by the digitization process. The data array is sized by {sweeps, datapoints, channels}
+        5) chNames::Vector{String} -> The names of each channel in string format
+        6) chUnits::Vector{String} -> The units the data collected is in labeled by channel
+        7) chTelegraph::Vector{T} -> The gain on each channel.
+        8) stim_protocol::Vector{StimulusProtocol{T}} -> The stimulus protocols for each sweep. 
+"""
 mutable struct Experiment{T}
     infoDict::Dict{String,Any}
     dt::T
