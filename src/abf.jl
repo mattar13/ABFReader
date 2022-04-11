@@ -1350,13 +1350,13 @@ function extract_stimulus(abfInfo::Dict{String,Any}; sweep::Int64 = -1, stimulus
         for sweep in 1:size(abfInfo["data"], 1)
             idx1 = findfirst(stimulus_waveform[sweep, :] .> stimulus_threshold)
             idx2 = findlast(stimulus_waveform[sweep, :] .> stimulus_threshold)
-            push!(Stimuli, StimulusProtocol(:test, sweep, stimulus_name, (idx1, idx2), (idx1 * dt, idx2+1 * dt)))
+            push!(Stimuli, StimulusProtocol(:test, sweep, stimulus_name, (idx1, idx2), (idx1 * dt, (idx2+1) * dt)))
         end
         return Stimuli
     else
         idx1 = findfirst(stimulus_waveform[sweep, :] .> stimulus_threshold)
         idx2 = findlast(stimulus_waveform[sweep, :] .> stimulus_threshold)
-        return StimulusProtocol(:test, sweep, stimulus_name, (idx1, idx2), (idx1 * dt, idx2+1 * dt))
+        return StimulusProtocol(:test, sweep, stimulus_name, (idx1, idx2), (idx1 * dt, (idx2+1) * dt))
     end
 end
 
