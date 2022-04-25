@@ -59,6 +59,18 @@ import Base: +, -, *, / #Import these basic functions to help
 -(trace::Experiment, val::Real) = trace.data_array = trace.data_array .- val
 *(trace::Experiment, val::Real) = trace.data_array = trace.data_array .* val
 /(trace::Experiment, val::Real) = trace.data_array = trace.data_array ./ val
+#if the value provided is different
+function /(trace::Experiment{T}, vals::Matrix{T}) where T<:Real
+    #This function has not been worked out yet
+    if size(trace, 1) == size(vals, 1) && size(trace, 3) == size(vals, 2) #Sweeps and channels of divisor match
+        println("Both Sweeps and channels")
+    elseif size(trace, 1) == size(vals, 1) && !(size(trace, 3) == size(vals, 2))# only channels match
+        println("Only sweeps match")
+    elseif !(size(trace, 1) == size(vals, 1)) && size(trace, 3) == size(vals, 2)# only channels match
+        println("O")
+    end
+end
+
 
 import Base: size, length, getindex, setindex, sum, copy, maximum, minimum, push!, cumsum, argmin, argmax
 import Statistics.std

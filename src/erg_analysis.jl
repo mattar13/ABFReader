@@ -1,4 +1,30 @@
 """
+This is useful for finding sequences of items. Requires a bitvector
+"""
+function findsequential(sequence::BitVector; seq_to_find = :all)
+     #first we need to do a normal findall
+     sequences = Vector{Int64}[] #Save all sequences in a vector of sequences
+     current = Int64[]
+     for (idx, itm) in enumerate(sequence)
+          if itm #If an item is true, push it to the current sequence
+               push!(current, idx)
+          elseif !isempty(current) && !itm #If the current sequence is not empty and the item is false
+               push!(current, idx) #push the item to the current sequence
+               if seq_to_find == :first #if we only want to find the first sequence, then return
+                    return current
+               end
+               push!(sequences, current) #push the current sequence to all sequences
+               current = Int64[] #clear the current sequence
+          end
+     end
+     if seq_to_find == :last
+          return sequences[end]
+     else
+          return sequences
+     end
+end
+
+"""
 This function uses a histogram method to find the saturation point. 
     - In ERG datas, a short nose component is usually present in saturated values
     - Does this same function work for the Rmax of nonsaturated responses?
@@ -103,6 +129,37 @@ end
 
 pepperburg_analysis(data::Experiment{T}; kwargs...) where {T<:Real} = pepperburg_analysis(data, saturated_response(data; kwargs...); kwargs...)
 
+"""
+This function is the amount of time that a certain trace spends in a particular bandwith. 
+    I think it will be similar to the pepperburg, So this may become that function
+    The "criterion" is the percent. 
+    This function will measure how long a response takes to return to a specific criterion amount (iᵣ)
+        -By default iᵣ is set to 0.60. 
+    
+    An intial problem is the tendancy for the function to pick up drift and other packets. We can eliminate non-sequential packets
+    For more information on this function see 
+        Pepperburg & Cornwall et al. Light-dependent delay in the falling phase of the retinal rod photoresponse
+"""
+function percent_recovery_interval(data::Experiment{T}, rmaxes::Matrix{T}; iᵣ::T = 0.60) where T <: Real
+    #first we can normalize the data to a range
+    @assert size(rmaxes,1) == size(data,1) && size(rmaxes,2) == size(data,3)
+    Tᵣ = zeros(size(rmaxes))
+    for swp in 1:size(data, 1), ch in 1:size(data, 3)
+        data_percent = data.data_array[swp, :, ch] / rmaxes[swp, ch]
+        recovery_seqs = findsequential(data_percent .> iᵣ, seq_to_find=:all)
+        #we have to eliminate all datavalues under data.t = 0.0
+        after_stim = findall(map(seq -> all(data.t[seq] .> 0.0), recovery_seqs)) #this returns false anywhere where the data.t is less than 0.0
+        recovery_seqs = recovery_seqs[after_stim] #this eliminates all sequences with less than 0.0 time
+        if isempty(recovery_seqs) #if there are no sequences then return 0.0
+            Tᵣ[swp, ch] = 0.0 #This means that there may be no response
+        else
+            long_seq = argmax(length.(recovery_seqs))
+            recovery_idx = recovery_seqs[long_seq][end]
+            Tᵣ[swp, ch] = data.t[recovery_idx]
+        end
+    end
+    return Tᵣ
+end
 """
 The integration time is fit by integrating the dim flash response and dividing it by the dim flash response amplitude
 - A key to note here is that the exact f(x) of the ERG data is not completely known
