@@ -1,27 +1,27 @@
 """
 This is useful for finding sequences of items. Requires a bitvector
 """
-function findsequential(sequence::BitVector; seq_to_find = :all)
-     #first we need to do a normal findall
-     sequences = Vector{Int64}[] #Save all sequences in a vector of sequences
-     current = Int64[]
-     for (idx, itm) in enumerate(sequence)
-          if itm #If an item is true, push it to the current sequence
-               push!(current, idx)
-          elseif !isempty(current) && !itm #If the current sequence is not empty and the item is false
-               push!(current, idx) #push the item to the current sequence
-               if seq_to_find == :first #if we only want to find the first sequence, then return
-                    return current
-               end
-               push!(sequences, current) #push the current sequence to all sequences
-               current = Int64[] #clear the current sequence
-          end
-     end
-     if seq_to_find == :last
-          return sequences[end]
-     else
-          return sequences
-     end
+function findsequential(sequence::BitVector; seq_to_find=:all)
+    #first we need to do a normal findall
+    sequences = Vector{Int64}[] #Save all sequences in a vector of sequences
+    current = Int64[]
+    for (idx, itm) in enumerate(sequence)
+        if itm #If an item is true, push it to the current sequence
+            push!(current, idx)
+        elseif !isempty(current) && !itm #If the current sequence is not empty and the item is false
+            push!(current, idx) #push the item to the current sequence
+            if seq_to_find == :first #if we only want to find the first sequence, then return
+                return current
+            end
+            push!(sequences, current) #push the current sequence to all sequences
+            current = Int64[] #clear the current sequence
+        end
+    end
+    if seq_to_find == :last
+        return sequences[end]
+    else
+        return sequences
+    end
 end
 
 """
@@ -30,11 +30,11 @@ This function uses a histogram method to find the saturation point.
     - Does this same function work for the Rmax of nonsaturated responses?
     - Setting the saturated threshold to infinity will completely disregard the histogram method
 """
-function saturated_response(data::Experiment{T}; precision::Int64 = 100) where {T<:Real}
+function saturated_response(data::Experiment{T}; precision::Int64=100) where {T<:Real}
     #We want to pick the region to analyze first
     norm_factor = minimum(data)
     rmaxes = zeros(size(data, 1), size(data, 3))
-    minima = minimum(data, dims = 2)[:, 1, :]
+    minima = minimum(data, dims=2)[:, 1, :]
 
     for swp = 1:size(data, 1), ch = 1:size(data, 3)
         #Lets try to quickly zero any positive results
@@ -59,7 +59,7 @@ function saturated_response(data::Experiment{T}; precision::Int64 = 100) where {
     rmaxes
 end
 
-function minima_to_peak(data::Experiment; verbose = false)
+function minima_to_peak(data::Experiment; verbose=false)
     #We need to exclude the area 
     resp = zeros(size(data, 1), size(data, 3))
     for swp = 1:size(data, 1), ch = 1:size(data, 3)
@@ -88,7 +88,7 @@ This function calculates the time to peak using the dim response properties of t
 """
 function time_to_peak(data::Experiment{T}) where {T<:Real}
     over_stim = findall(data.t .> 0.0) #We only want to extract time points after the stim
-    lowest_val = map(x -> x[2], argmin(data[:, over_stim, :], dims = 2))[:, 1, :]
+    lowest_val = map(x -> x[2], argmin(data[:, over_stim, :], dims=2))[:, 1, :]
     lowest_val .+= over_stim[1] - 1
     data.t[lowest_val] .* 1000
 end
@@ -102,7 +102,7 @@ This function conducts a Pepperburg analysis on a single data.
     2) No rmax is provided, so one is calculated
 """
 function pepperburg_analysis(data::Experiment{T}, rmaxes::Array{T,1};
-    recovery_percent = 0.60, kwargs...
+    recovery_percent=0.60, kwargs...
 ) where {T<:Real}
     if size(data, 1) == 1
         throw(error("Pepperburg will not work on single sweeps"))
@@ -139,10 +139,15 @@ This function is the amount of time that a certain trace spends in a particular 
     An intial problem is the tendancy for the function to pick up drift and other packets. We can eliminate non-sequential packets
     For more information on this function see 
         Pepperburg & Cornwall et al. Light-dependent delay in the falling phase of the retinal rod photoresponse
+
+    Use: 
+    >>> rmaxes = saturated_response(data1_testA)
+    >>> Tᵣ = percent_recovery_interval(data1_testA, rmaxes)
+
 """
-function percent_recovery_interval(data::Experiment{T}, rmaxes::Matrix{T}; iᵣ::T = 0.60) where T <: Real
+function percent_recovery_interval(data::Experiment{T}, rmaxes::Matrix{T}; iᵣ::T=0.60) where {T<:Real}
     #first we can normalize the data to a range
-    @assert size(rmaxes,1) == size(data,1) && size(rmaxes,2) == size(data,3)
+    @assert size(rmaxes, 1) == size(data, 1) && size(rmaxes, 2) == size(data, 3)
     Tᵣ = zeros(size(rmaxes))
     for swp in 1:size(data, 1), ch in 1:size(data, 3)
         data_percent = data.data_array[swp, :, ch] / rmaxes[swp, ch]
@@ -172,8 +177,8 @@ function integral(data::Experiment{T}) where {T<:Real}
     #we want this to be equal to any response after the stimuli
     data_section = data[:, data.t.>0.0, :]
     data_section = abs.(data_section)
-    data_section ./= maximum(data_section, dims = 2)
-    return sum(data_section, dims = 2) * data.dt
+    data_section ./= maximum(data_section, dims=2)
+    return sum(data_section, dims=2) * data.dt
 end
 
 # The below functions are created by fitting a model 
@@ -193,7 +198,7 @@ REC(t, V⁰, τRec) = V⁰ * exp(-t / τRec)
 The dominant time constant is calculated by fitting the normalized Rdim with the response recovery equation
 """
 function recovery_tau(data::Experiment{T}, resp::Union{T,Matrix{T}};
-    τRec::T = 1.0
+    τRec::T=1.0
 ) where {T<:Real}
     #Make sure the sizes are the same
     #@assert size(resp) == (size(data, 1), size(data,3))
@@ -266,10 +271,10 @@ Amplification is a time series, therefore it is a function of time
 AMP(t, α, t_eff, rmax) = t > t_eff ? rmax * (1 - exp(-α * (t - t_eff)^2)) : 0.0
 
 function amplification(data::Experiment{T}, resp::Union{T,Matrix{T}}; #This argument should be offloaded to a single value 
-    time_cutoff = 0.1,
-    lb::Vector{T} = [0.0, 0.001],
-    p0::Vector{T} = [200.0, 0.002],
-    ub::Vector{T} = [Inf, 0.040]
+    time_cutoff=0.1,
+    lb::Vector{T}=[0.0, 0.001],
+    p0::Vector{T}=[200.0, 0.002],
+    ub::Vector{T}=[Inf, 0.040]
 ) where {T<:Real}
 
     #@assert size(resp) == (size(data, 1), size(data,3))
@@ -288,7 +293,7 @@ function amplification(data::Experiment{T}, resp::Union{T,Matrix{T}}; #This argu
         xdata = data.t[1:idx_end]
         ydata = data[swp, 1:idx_end, ch]
 
-        fit = curve_fit(model, xdata, ydata, p0, lower = lb, upper = ub)
+        fit = curve_fit(model, xdata, ydata, p0, lower=lb, upper=ub)
         #Check Goodness of fit
         SSE = sum(fit.resid .^ 2)
         ȳ = sum(model(xdata, fit.param)) / length(xdata)
