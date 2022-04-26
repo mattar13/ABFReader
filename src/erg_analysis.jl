@@ -148,7 +148,8 @@ This function is the amount of time that a certain trace spends in a particular 
 function percent_recovery_interval(data::Experiment{T}, rmaxes::Matrix{T}; iᵣ::T=0.60) where {T<:Real}
     #first we can normalize the data to a range
     @assert size(data,3) == size(rmaxes, 1)
-    Tᵣ = fill(NaN, size(data,1), size(data,3))
+    #Tᵣ = fill(NaN, size(data,1), size(data,3))
+    Tᵣ = zeros(size(data,1), size(data,3))
     for swp in 1:size(data, 1), ch in 1:size(data, 3)
         data_percent = data.data_array[swp, :, ch] ./ rmaxes[ch]
         recovery_seqs = findsequential(data_percent .> iᵣ, seq_to_find=:all)
