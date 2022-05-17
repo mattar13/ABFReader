@@ -215,29 +215,33 @@ function recovery_tau(data::Experiment{T}, resp::Union{T,Matrix{T}};
         #ydata ./= resp #Normalize the Rdim to the saturated response
 
         #cutoff all points below -0.5 and above -1.0
-        begin_rng = findall(ydata .>= 1.0)[end]
-        xdata = xdata[begin_rng:end]
-        ydata = ydata[begin_rng:end]
+        over_1 = findall(ydata .>= 1.0)
+        if !isempty(over_1)
+            begin_rng = over_1[end]
+        
+            xdata = xdata[begin_rng:end]
+            ydata = ydata[begin_rng:end]
 
-        cutoff = findall(ydata .< 0.5)
-        if isempty(cutoff)
-            #println("Exception")
-            end_rng = length(ydata)
-        else
-            end_rng = cutoff[1]
+            cutoff = findall(ydata .< 0.5)
+            if isempty(cutoff)
+                #println("Exception")
+                end_rng = length(ydata)
+            else
+                end_rng = cutoff[1]
+            end
+
+            xdata = xdata[1:end_rng] .- xdata[1]
+            ydata = -ydata[1:end_rng]
+            p0 = [ydata[1], τRec]
+            fit = curve_fit(model, xdata, ydata, p0)
+            #report the goodness of fit
+            SSE = sum(fit.resid .^ 2)
+            ȳ = sum(model(xdata, fit.param)) / length(xdata)
+            SST = sum((ydata .- ȳ) .^ 2)
+            GOF = 1 - SSE / SST
+            trec[swp, ch] = fit.param[2]
+            gofs[swp, ch] = GOF
         end
-
-        xdata = xdata[1:end_rng] .- xdata[1]
-        ydata = -ydata[1:end_rng]
-        p0 = [ydata[1], τRec]
-        fit = curve_fit(model, xdata, ydata, p0)
-        #report the goodness of fit
-        SSE = sum(fit.resid .^ 2)
-        ȳ = sum(model(xdata, fit.param)) / length(xdata)
-        SST = sum((ydata .- ȳ) .^ 2)
-        GOF = 1 - SSE / SST
-        trec[swp, ch] = fit.param[2]
-        gofs[swp, ch] = GOF
     end
     return trec, gofs
 end
