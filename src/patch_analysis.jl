@@ -94,9 +94,10 @@ This function uses the Maximum Interval Sorting method to sort bursts in a singl
 A multiple dispatch of this function allows the max_interval to be calculated on a 3D array (x, y, and time) 
 """
 function max_interval_algorithim(timestamps::Matrix{T}; 
-        ISIstart::T = 500.0, ISIend::T = 500.0, IBImin::T = 1000.0, DURmin::T = 500.0, SPBmin::Int64 = 4, 
+        ISIstart::T = 0.500, ISIend::T = 0.500, IBImin::T = 1.0, DURmin::T = 0.200, SPBmin::Int64 = 4, 
         verbose = false
     ) where T <: Real
+    #timestamps may be in seconds, whereas this is in milliseconds
     burst_timestamps = Tuple[]
     SPB_list = Float64[]
     if isempty(timestamps)
@@ -105,9 +106,14 @@ function max_interval_algorithim(timestamps::Matrix{T};
         end
         return nothing
     else
-        #Lets organize the spipkes into intervals spikes and not spikes
-        results = extract_interval(timestamps)
+        #Lets organize the spikes into intervals spikes and not spikes
+        results = extract_interval(timestamps, min_duration = 0.0001)
         intervals = results[2]
+        if verbose
+            println("Interval durations: $(results[1])")
+            println("Timestamps starts $(timestamps[:, 1])")
+            println("Timestamps starts $(timestamps[:, 2])")
+        end
         bursting = false
         burst_start_list = T[]
         burst_end_list = T[]
