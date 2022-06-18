@@ -1,8 +1,7 @@
 # ABFReader
 
-This project was influenced by pyABF. Attempts to rebuild pyABF in Julia
-
-Takes the .ABF format and reads the binaries
+This is a project for opening electrophysiology/engineering data in Julia. 
+At the moment this analyzes data mainly is acquired in an Axon Instruments device: 
 
 To Do list: 
 - [x] Make compatible with .abf files (For use with MolecularDevices products)
@@ -12,6 +11,8 @@ To Do list:
 - [] What other formats are regularly used?
 
 ## Usage
+
+1) Opening .abf files
 ```
 path_name = "test\\to_filter.abf"
 data = readABF(path_name)
