@@ -9,6 +9,7 @@ To Do list:
 - [ ] Make compatible with .idata files (For use with MatLab and IrisData https://github.com/sampath-lab-ucla/IrisDVA)
 - [ ] Make compatible with .csv files (Some formats are saved as CSV files, especially from LabView products)
 - [ ] What other formats are regularly used?
+- [ ] Make a Pluto.jl data entry suite to use as analysis GUI
 
 ## Usage
 
