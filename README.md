@@ -9,6 +9,8 @@ To Do list:
 - [] Make compatible with .csv files (Some formats are saved as CSV files)
 
 ## Usage
-`path_name = "test\\to_filter.abf"`
-`data = readABF(path_name)`
+```
+path_name = "test\\to_filter.abf"
+data = readABF(path_name)
+```
 
