@@ -1,15 +1,11 @@
 # ABFReader
 
-This is a project for opening electrophysiology/engineering data in Julia. 
-At the moment this analyzes data mainly is acquired in an Axon Instruments device: 
+This system is used for opening .abf files. 
 
 To Do list: 
-- [x] Make compatible with .abf files (For use with MolecularDevices products)
-- [ ] Make compatible with .mat files (For use with MatLab and Symphony)
-- [ ] Make compatible with .idata files (For use with MatLab and IrisData https://github.com/sampath-lab-ucla/IrisDVA)
-- [ ] Make compatible with .csv files (Some formats are saved as CSV files, especially from LabView products)
-- [ ] What other formats are regularly used?
-- [ ] Make a Pluto.jl data entry suite to use as analysis GUI
+- [x] Open .abf files
+- [ ] Save .abf files
+- [ ] Modify ABF binaries to modify the file
 
 ## Usage
 
