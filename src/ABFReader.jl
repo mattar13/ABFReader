@@ -13,8 +13,9 @@ using LsqFit #Used for fitting amplification and Intensity Response models
 using DSP, ContinuousWavelets, Wavelets, FFTW #Used for filtering
 
 #Functions that can help with file extraction
-include("ABFStimulus.jl")
-
+include("ABFExtraction/ByteMaps.jl") #These functions deal with the bytemap extractions
+include("ABFExtraction/ABFEpoch.jl") #These functions deal with the Epochs
+include("ABFExtraction/WaveformExtraction.jl") #This 
 
 include("abf.jl")
 export openABF, readABF
@@ -23,51 +24,5 @@ export openABF, readABF
 #Utility files contain file extraction and abf editing functions
 include("utils.jl")
 export parse_abf
-#Most of these will be removed in the stable branch
-export get_stim_channels
-export getchannel, getsweep, getstim, findstimRng
-export eachchannel, eachsweep
-export truncate_data, truncate_data!
-export split_data, drop!, drop
-export concat, concat!
-export photon_lookup
-export match_channels
-#These will be disabled eventually
-
-#filtering are any functions that return a Experiment file and alter the old one
-include("filtering.jl")
-#export filter_data #Don't export this one explicitly
-export baseline_cancel, baseline_cancel!
-export lowpass_filter, lowpass_filter!
-export highpass_filter, highpass_filter!
-export notch_filter, notch_filter!
-export EI_filter, EI_filter!
-export cwt_filter, cwt_filter!
-export dwt_filter
-export average_sweeps, average_sweeps!
-export normalize, normalize!
-
-#Analysis functions return a single number or numbers related to the Experiment
-
-include("erg_analysis.jl")
-export RSQ
-export calculate_basic_stats
-export saturated_response, dim_response, minima_to_peak, time_to_peak
-export get_response
-export pepperburg_analysis
-export integral
-export recovery_tau
-export amplification
-export curve_fit #curve fitting from LsqFit
-export IR_curve
-#export patch clamp analysis functions
-
-include("patch_analysis.jl")
-export calculate_threshold
-export get_timestamps
-export max_interval_algorithim
-export timescale_analysis
-
-#include("ABFPlots.jl")
 
 end # module
