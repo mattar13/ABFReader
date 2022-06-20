@@ -1464,11 +1464,3 @@ openABF(abfDict::Dict{String,Any}) = openABF(abfDict["abfPath"])
 
 #Need to reorganize this
 #openABF(exp::Experiment{T}) where {T<:Real} = openABF(exp.infoDict)
-
-"""
-We should try to make a saveABF function
-"""
-function saveABF(data::Experiment)
-
-
-end
