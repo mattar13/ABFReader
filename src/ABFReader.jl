@@ -9,11 +9,11 @@ include("ABFExtraction/Epochs.jl") #These functions deal with the Epochs
 include("ABFExtraction/WaveformExtraction.jl") #This 
 include("ABFExtraction/ReadHeaders.jl")
 include("ABFExtraction/ReadABFInfo.jl")
-export openABF
 #export StimulusProtocol, extract_stimulus
 
 #Utility files contain file extraction and abf editing functions
 include("Utilities.jl")
-export parse_abf
+export openABF
+export parseABF
 
 end # module

@@ -3,7 +3,7 @@
 This function walks through the directory tree and locates any .abf file. 
 The extension can be changed with the keyword argument extension
 """
-function parse_abf(super_folder::String; extension::String = ".abf", verbose = false)
+function parseABF(super_folder::String; extension::String = ".abf", verbose = false)
     file_list = String[]
     for (root, dirs, files) in walkdir(super_folder)
         for file in files
