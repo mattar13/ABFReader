@@ -1442,7 +1442,8 @@ function readABF(::Type{T}, abf_data::Union{String,Vector{UInt8}};
         data = sum(data, dims = 1) / size(data, 1)
         stim_protocol_by_sweep = Vector{StimulusProtocol{Float64}}([stim_protocol_by_sweep[1]])
     end
-    return Experiment(abfInfo, dt, t, data, ch_names, ch_units, ch_telegraph, stim_protocol_by_sweep)
+    #With our new file structure we probably need to reorganize this a bit
+    #return Experiment(abfInfo, dt, t, data, ch_names, ch_units, ch_telegraph, stim_protocol_by_sweep)
 end
 
 readABF(abf_path::Union{String,Vector{UInt8}}; kwargs...) = readABF(Float64, abf_path; kwargs...)
@@ -1460,7 +1461,9 @@ function openABF(abf_path::String)
 end
 
 openABF(abfDict::Dict{String,Any}) = openABF(abfDict["abfPath"])
-openABF(exp::Experiment{T}) where {T<:Real} = openABF(exp.infoDict)
+
+#Need to reorganize this
+#openABF(exp::Experiment{T}) where {T<:Real} = openABF(exp.infoDict)
 
 """
 We should try to make a saveABF function
