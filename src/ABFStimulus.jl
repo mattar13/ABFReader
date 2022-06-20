@@ -15,7 +15,7 @@ A stimulus protocol contains information about the stimulus.
         4) index_range::Tuple{Int64, Int64} - The indexes that thew stimulus starts at and the ends at
         5) timestamps::Tuple{T, T} - The timestamps which the stimulus starts at and ends at. 
 """
-mutable struct StimulusProtocol{T}
+mutable struct ABFStimulus{T}
     type::Symbol
     sweep::Int64
     channel::Union{String,Int64}
@@ -23,12 +23,14 @@ mutable struct StimulusProtocol{T}
     timestamps::Tuple{T,T}
 end
 
-function StimulusProtocol(type::Symbol, sweep::Int64, channel::Union{Int64,String}, index_range::Tuple{T,T}, t::Vector) where {T<:Real}
+function ABFStimulus(type::Symbol, sweep::Int64, channel::Union{Int64,String}, index_range::Tuple{T,T}, t::Vector) where {T<:Real}
     t1 = t[index_range[1]]
     t2 = t[index_range[2]]
-    StimulusProtocol(type, sweep, channel, index_range, (t1, t2))
+    ABFStimulus(type, sweep, channel, index_range, (t1, t2))
 end
 
+
+#=
 """
 The experiment data object. 
 This contains all the data for the sweep. 
@@ -170,3 +172,4 @@ end
 function reverse!(trace::Experiment; kwargs...)
     trace.data_array = reverse(trace.data_array; kwargs...)
 end
+=#
