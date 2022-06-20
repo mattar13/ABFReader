@@ -230,3 +230,55 @@ EpochPerDAC_bytemap = [
     ("lEpochPulsePeriod", "I"),  # 22
     ("lEpochPulseWidth", "I")  # 26
 ]
+
+
+"""
+These functions handle the byte interpretations of the ABF file
+
+"""
+function readStruct(f::IO, byteType::String)
+    b = UInt8[0x00] #Either this needs to be UInt8 or Int8
+    if length(byteType) > 1
+        first_char = tryparse(Int64, byteType[1] |> string)
+        if isnothing(first_char)
+            vals = map(c -> readStruct(f, string(c))[1], collect(byteType))
+            return vals #Return statement vs continuing
+        else
+            type_conv = ByteDict[Symbol(byteType[end])]
+            if type_conv == String
+                n_bytes = parse(Int64, byteType[1:end-1])
+            else
+                n_bytes = parse(Int64, byteType[1:end-1]) * sizeof(type_conv)
+            end
+        end
+    else
+        type_conv = ByteDict[Symbol(byteType)]
+        if type_conv == String
+            n_bytes = 1
+        else
+            n_bytes = sizeof(type_conv)
+        end
+    end
+
+    readbytes!(f, b, n_bytes)
+    if type_conv == String
+        val = b |> String
+    elseif type_conv == Int16 || type_conv == UInt16
+        val = Vector{type_conv}(b)[1:2:end]
+    elseif type_conv == Int8 || type_conv == UInt8
+        val = bytes2hex(b)
+    else
+        val = reinterpret(type_conv, b) |> Array
+    end
+    return val
+end
+
+function readStruct(f::IO, byteType::String, seekTo::Int64; repeat = 1)
+    seek(f, seekTo)
+    if repeat == 1
+        return readStruct(f, byteType)
+    else
+        return map(x -> readStruct(f, byteType), 1:repeat)
+    end
+end
+
